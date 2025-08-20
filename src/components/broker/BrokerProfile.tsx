@@ -24,7 +24,17 @@ interface BrokerProfileData {
   subscription_tier: string;
   created_at: string;
   last_login_at: string | null;
-  login_count: number;
+  login_count: number | null;
+  // Additional fields that might come from the database
+  broker_type?: string | null;
+  company_id?: string | null;
+  invited_at?: string | null;
+  invited_by?: string | null;
+  portal_access?: string;
+  preferred_portal?: string;
+  updated_at?: string;
+  is_super_admin?: boolean;
+  is_active?: boolean;
 }
 
 const BrokerProfile = () => {
@@ -66,7 +76,7 @@ const BrokerProfile = () => {
 
       if (error) throw error;
 
-      setProfile(data);
+      setProfile(data as BrokerProfileData);
       setProfileData({
         first_name: data.first_name || "",
         last_name: data.last_name || "",

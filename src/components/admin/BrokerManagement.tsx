@@ -23,6 +23,18 @@ interface BrokerProfile {
   login_count: number | null;
   last_login_at: string | null;
   created_at: string;
+  // Additional fields from profiles table
+  broker_type?: string | null;
+  company_id?: string | null;
+  department?: string | null;
+  invited_at?: string | null;
+  invited_by?: string | null;
+  job_title?: string | null;
+  portal_access?: string;
+  preferred_portal?: string;
+  subscription_tier?: string;
+  updated_at?: string;
+  is_super_admin?: boolean;
 }
 
 interface BrokerManagementProps {
@@ -59,7 +71,7 @@ const BrokerManagement = ({ onStatsUpdate }: BrokerManagementProps) => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setBrokers(data || []);
+      setBrokers(data as BrokerProfile[] || []);
     } catch (error) {
       console.error('Error fetching brokers:', error);
       toast({

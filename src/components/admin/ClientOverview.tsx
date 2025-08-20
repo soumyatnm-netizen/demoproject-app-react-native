@@ -35,18 +35,31 @@ const ClientOverview = () => {
       // Fetch all client reports with broker information
       const { data: clientReports, error: reportsError } = await supabase
         .from('client_reports')
-        .select(`
-          *,
-          broker:profiles!inner(first_name, last_name)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (reportsError) throw reportsError;
 
+      // Get unique user IDs to fetch broker names
+      const userIds = [...new Set(clientReports?.map(report => report.user_id) || [])];
+      
+      const { data: brokerProfiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name')
+        .in('user_id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Create broker lookup map
+      const brokerLookup = brokerProfiles?.reduce((acc, broker) => {
+        acc[broker.user_id] = `${broker.first_name || ''} ${broker.last_name || ''}`.trim() || 'Unknown';
+        return acc;
+      }, {} as Record<string, string>) || {};
+
       const formattedClients = clientReports?.map(report => ({
         id: report.id,
         client_name: report.client_name,
-        broker_name: `${report.broker.first_name || ''} ${report.broker.last_name || ''}`.trim() || 'Unknown',
+        broker_name: brokerLookup[report.user_id] || 'Unknown',
         industry: (report.report_data as any)?.industry || 'Unknown',
         report_status: report.report_status,
         created_at: report.created_at,
