@@ -310,17 +310,48 @@ const InstantQuoteComparison = () => {
             </div>
             
             {uploadedQuotes.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="font-medium">Uploaded Quotes:</h4>
-                {uploadedQuotes.map((file, index) => (
-                  <div key={index} className="flex items-center justify-between p-2 bg-muted/50 rounded">
-                    <div className="flex items-center space-x-2">
-                      <FileText className="h-4 w-4" />
-                      <span className="text-sm">{file.name}</span>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium flex items-center">
+                    <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                    Ready for Comparison
+                  </h4>
+                  <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200">
+                    {uploadedQuotes.length} Quote{uploadedQuotes.length !== 1 ? 's' : ''} Uploaded
+                  </Badge>
+                </div>
+                
+                <div className="grid gap-2">
+                  {uploadedQuotes.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-green-25 border border-green-200 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="flex items-center justify-center w-8 h-8 bg-green-100 rounded-full">
+                          <span className="text-sm font-medium text-green-700">#{index + 1}</span>
+                        </div>
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <FileText className="h-4 w-4 text-green-600" />
+                            <span className="text-sm font-medium">{file.name}</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {(file.size / 1024 / 1024).toFixed(2)} MB • Ready to analyze
+                          </div>
+                        </div>
+                      </div>
+                      <CheckCircle className="h-5 w-5 text-green-600" />
                     </div>
-                    <Badge variant="outline">{(file.size / 1024 / 1024).toFixed(2)} MB</Badge>
+                  ))}
+                </div>
+                
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Zap className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium text-primary">All quotes ready for instant comparison</span>
                   </div>
-                ))}
+                  <p className="text-xs text-muted-foreground">
+                    Click "Compare Quotes Instantly" below to analyze coverage, limits, exclusions, and competitiveness across all {uploadedQuotes.length} quotes.
+                  </p>
+                </div>
               </div>
             )}
           </div>
