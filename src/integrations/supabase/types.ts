@@ -913,6 +913,72 @@ export type Database = {
         }
         Relationships: []
       }
+      underwriter_matches: {
+        Row: {
+          appetite_document_id: string
+          compatibility_factors: Json | null
+          competitive_advantages: string[] | null
+          coverage_gaps: Json | null
+          created_at: string | null
+          document_id: string
+          id: string
+          match_rank: number
+          match_reasoning: Json
+          match_score: number
+          recommended_premium_range: Json | null
+          risk_assessment: string | null
+          underwriter_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          appetite_document_id: string
+          compatibility_factors?: Json | null
+          competitive_advantages?: string[] | null
+          coverage_gaps?: Json | null
+          created_at?: string | null
+          document_id: string
+          id?: string
+          match_rank: number
+          match_reasoning: Json
+          match_score: number
+          recommended_premium_range?: Json | null
+          risk_assessment?: string | null
+          underwriter_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          appetite_document_id?: string
+          compatibility_factors?: Json | null
+          competitive_advantages?: string[] | null
+          coverage_gaps?: Json | null
+          created_at?: string | null
+          document_id?: string
+          id?: string
+          match_rank?: number
+          match_reasoning?: Json
+          match_score?: number
+          recommended_premium_range?: Json | null
+          risk_assessment?: string | null
+          underwriter_name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "underwriter_matches_appetite_document_id_fkey"
+            columns: ["appetite_document_id"]
+            isOneToOne: false
+            referencedRelation: "underwriter_appetites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "underwriter_matches_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "structured_quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -929,6 +995,24 @@ export type Database = {
       generate_invite_code: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_best_underwriter_matches: {
+        Args: { p_document_id: string; p_limit?: number }
+        Returns: {
+          appetite_document_id: string
+          compatibility_factors: Json
+          competitive_advantages: string[]
+          coverage_gaps: Json
+          financial_ratings: Json
+          id: string
+          logo_url: string
+          match_rank: number
+          match_reasoning: Json
+          match_score: number
+          recommended_premium_range: Json
+          risk_assessment: string
+          underwriter_name: string
+        }[]
       }
       get_team_member_safe_data: {
         Args: { target_user_id: string }
@@ -985,6 +1069,10 @@ export type Database = {
           p_user_agent?: string
         }
         Returns: undefined
+      }
+      trigger_underwriter_matching: {
+        Args: { p_document_id: string }
+        Returns: boolean
       }
     }
     Enums: {

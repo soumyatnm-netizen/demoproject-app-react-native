@@ -43,6 +43,11 @@ All colors MUST be HSL.
     --gradient-secondary: linear-gradient(180deg, hsl(200 81% 74% / 0.1), hsl(200 81% 74% / 0.05));
     --shadow-brand: 0 10px 30px -10px hsl(207 56% 22% / 0.2);
 
+    /* Ranking colors */
+    --gold: 45 100% 50%;
+    --silver: 0 0% 75%;
+    --bronze: 30 100% 35%;
+
     --sidebar-background: 0 0% 99%;
     --sidebar-foreground: 207 56% 22%;
     --sidebar-primary: 207 56% 22%;
@@ -105,5 +110,19 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .bg-gold {
+    background-color: hsl(var(--gold));
+  }
+  
+  .bg-silver {
+    background-color: hsl(var(--silver));
+  }
+  
+  .bg-bronze {
+    background-color: hsl(var(--bronze));
   }
 }

@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, FileText, BarChart3, TrendingUp, Upload, Users, Building2, Target } from "lucide-react";
+import { ArrowLeft, FileText, BarChart3, TrendingUp, Upload, Users, Building2, Target, Star } from "lucide-react";
 import FileUpload from "./FileUpload";
 import ComparisonView from "./ComparisonView";
 import CompanyManagement from "./CompanyManagement";
@@ -12,6 +12,7 @@ import AttackingBrokerIntelligence from "./AttackingBrokerIntelligence";
 import PlacementOutcomeTracker from "./PlacementOutcomeTracker";
 import PredictiveAnalyticsDashboard from "./PredictiveAnalyticsDashboard";
 import DocumentProcessingSuccess from "./DocumentProcessingSuccess";
+import UnderwriterMatchingResults from "./UnderwriterMatchingResults";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -29,6 +30,7 @@ interface Document {
 
 interface StructuredQuote {
   id: string;
+  document_id: string;
   insurer_name: string;
   product_type: string;
   premium_amount: number;
@@ -59,6 +61,7 @@ const Dashboard = ({ onBack }: DashboardProps) => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [showProcessingSuccess, setShowProcessingSuccess] = useState<StructuredQuote | null>(null);
+  const [selectedDocumentForMatching, setSelectedDocumentForMatching] = useState<{ id: string; name: string } | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -312,25 +315,51 @@ const Dashboard = ({ onBack }: DashboardProps) => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {documents.slice(0, 5).map((doc) => (
-                      <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <p className="text-sm font-medium">{doc.filename}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(doc.created_at).toLocaleDateString()}
-                            </p>
+                    {documents.slice(0, 5).map((doc) => {
+                      // Find the corresponding structured quote for this document
+                      const relatedQuote = quotes.find(q => q.document_id === doc.id);
+                      
+                      return (
+                        <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-medium">{doc.filename}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(doc.created_at).toLocaleDateString()}
+                                {relatedQuote && (
+                                  <span className="ml-2 text-primary">
+                                    • {relatedQuote.insurer_name}
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge 
+                              variant={doc.status === 'processed' ? 'default' : 
+                                      doc.status === 'processing' ? 'secondary' : 'destructive'}
+                            >
+                              {doc.status}
+                            </Badge>
+                            {doc.status === 'processed' && relatedQuote && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSelectedDocumentForMatching({ 
+                                  id: relatedQuote.id, // Use the structured quote ID, not document ID
+                                  name: doc.filename 
+                                })}
+                                className="flex items-center gap-1"
+                              >
+                                <Star className="h-3 w-3" />
+                                Matches
+                              </Button>
+                            )}
                           </div>
                         </div>
-                        <Badge 
-                          variant={doc.status === 'processed' ? 'default' : 
-                                  doc.status === 'processing' ? 'secondary' : 'destructive'}
-                        >
-                          {doc.status}
-                        </Badge>
-                      </div>
-                    ))}
+                      );
+                    })}
                     {documents.length === 0 && (
                       <p className="text-sm text-muted-foreground text-center py-4">
                         No documents uploaded yet
@@ -362,6 +391,16 @@ const Dashboard = ({ onBack }: DashboardProps) => {
             <CompanyManagement userProfile={userProfile} />
           </TabsContent>
         </Tabs>
+
+        {/* Underwriter Matching Dialog */}
+        {selectedDocumentForMatching && (
+          <UnderwriterMatchingResults
+            documentId={selectedDocumentForMatching.id}
+            documentName={selectedDocumentForMatching.name}
+            isOpen={!!selectedDocumentForMatching}
+            onClose={() => setSelectedDocumentForMatching(null)}
+          />
+        )}
       </div>
     </div>
   );

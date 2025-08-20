@@ -16,3 +16,6 @@ verify_jwt = false
 
 [functions.auth-email]
 verify_jwt = false
+
+[functions.match-underwriters]
+verify_jwt = false
