@@ -1,1 +1,12 @@
 project_id = "ijhiavpjobzfxoirhnux"
+
+[auth]
+enabled = true
+# Configuration for Supabase Auth
+
+[auth.email]
+# Allow/disallow new user signups via email to your project.
+enable_signup = true
+
+[functions.process-document]
+verify_jwt = false
