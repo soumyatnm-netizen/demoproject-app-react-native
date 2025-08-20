@@ -320,6 +320,39 @@ export type Database = {
           },
         ]
       }
+      login_audit: {
+        Row: {
+          failure_reason: string | null
+          id: string
+          ip_address: unknown | null
+          login_time: string
+          portal_type: Database["public"]["Enums"]["portal_type"]
+          success: boolean
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          failure_reason?: string | null
+          id?: string
+          ip_address?: unknown | null
+          login_time?: string
+          portal_type: Database["public"]["Enums"]["portal_type"]
+          success?: boolean
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          failure_reason?: string | null
+          id?: string
+          ip_address?: unknown | null
+          login_time?: string
+          portal_type?: Database["public"]["Enums"]["portal_type"]
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       market_intelligence: {
         Row: {
           appetite_score: number | null
@@ -493,9 +526,14 @@ export type Database = {
           invited_at: string | null
           invited_by: string | null
           is_active: boolean | null
+          is_super_admin: boolean | null
           job_title: string | null
+          last_login_at: string | null
           last_name: string | null
+          login_count: number | null
           phone: string | null
+          portal_access: Database["public"]["Enums"]["portal_type"] | null
+          preferred_portal: Database["public"]["Enums"]["portal_type"] | null
           role: Database["public"]["Enums"]["app_role"] | null
           subscription_tier: string | null
           updated_at: string
@@ -512,9 +550,14 @@ export type Database = {
           invited_at?: string | null
           invited_by?: string | null
           is_active?: boolean | null
+          is_super_admin?: boolean | null
           job_title?: string | null
+          last_login_at?: string | null
           last_name?: string | null
+          login_count?: number | null
           phone?: string | null
+          portal_access?: Database["public"]["Enums"]["portal_type"] | null
+          preferred_portal?: Database["public"]["Enums"]["portal_type"] | null
           role?: Database["public"]["Enums"]["app_role"] | null
           subscription_tier?: string | null
           updated_at?: string
@@ -531,9 +574,14 @@ export type Database = {
           invited_at?: string | null
           invited_by?: string | null
           is_active?: boolean | null
+          is_super_admin?: boolean | null
           job_title?: string | null
+          last_login_at?: string | null
           last_name?: string | null
+          login_count?: number | null
           phone?: string | null
+          portal_access?: Database["public"]["Enums"]["portal_type"] | null
+          preferred_portal?: Database["public"]["Enums"]["portal_type"] | null
           role?: Database["public"]["Enums"]["app_role"] | null
           subscription_tier?: string | null
           updated_at?: string
@@ -809,6 +857,10 @@ export type Database = {
         Args: { user_id: string }
         Returns: string
       }
+      get_user_portal_access: {
+        Args: { user_id: string }
+        Returns: Database["public"]["Enums"]["portal_type"]
+      }
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -817,9 +869,25 @@ export type Database = {
         Args: { user_id: string }
         Returns: boolean
       }
+      is_super_admin: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
+      log_login_attempt: {
+        Args: {
+          p_failure_reason?: string
+          p_ip_address?: unknown
+          p_portal_type: Database["public"]["Enums"]["portal_type"]
+          p_success?: boolean
+          p_user_agent?: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "company_admin" | "broker" | "viewer"
+      portal_type: "admin" | "broker" | "both"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -948,6 +1016,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["company_admin", "broker", "viewer"],
+      portal_type: ["admin", "broker", "both"],
     },
   },
 } as const
