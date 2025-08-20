@@ -24,8 +24,7 @@ const Index = () => {
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <img src="/lovable-uploads/cd40fcf4-7e23-4ca5-9781-dcb03881a281.png" alt="CoverCompass" className="h-8 w-8" />
-          <h1 className="text-2xl font-bold text-foreground">CoverCompass</h1>
+          <img src="/lovable-uploads/7efe2624-58cc-456e-877b-95332a0fa92d.png" alt="CoverCompass" className="h-8" />
         </div>
           <Button onClick={() => setCurrentView('dashboard')}>
             Get Started
@@ -37,7 +36,7 @@ const Index = () => {
       <section className="py-20 bg-gradient-to-br from-primary/5 to-primary/10">
         <div className="container mx-auto px-4 text-center">
           <Badge className="mb-4" variant="secondary">
-            The placement intelligence layer for insurance broking
+            Markets Mapped. Cover Unlocked
           </Badge>
           <h2 className="text-5xl font-bold text-foreground mb-6">
             Remove the guesswork from <br />
@@ -184,12 +183,11 @@ const Index = () => {
       <footer className="py-12 border-t">
         <div className="container mx-auto px-4 text-center">
         <div className="flex items-center justify-center space-x-2 mb-4">
-          <img src="/lovable-uploads/cd40fcf4-7e23-4ca5-9781-dcb03881a281.png" alt="CoverCompass" className="h-6 w-6" />
-          <span className="font-semibold">CoverCompass</span>
+          <img src="/lovable-uploads/7efe2624-58cc-456e-877b-95332a0fa92d.png" alt="CoverCompass" className="h-8" />
         </div>
-          <p className="text-sm text-muted-foreground">
-            The placement intelligence layer for insurance broking
-          </p>
+        <p className="text-sm text-muted-foreground">
+          Markets Mapped. Cover Unlocked
+        </p>
         </div>
       </footer>
     </div>

@@ -39,7 +39,7 @@ export const WelcomeEmail = ({
             <div style={logoIcon}>🧭</div>
             <Text style={logoText}>CoverCompass</Text>
           </div>
-          <Text style={tagline}>The placement intelligence layer for insurance broking</Text>
+          <Text style={tagline}>Markets Mapped. Cover Unlocked</Text>
         </Section>
 
         <Section style={content}>

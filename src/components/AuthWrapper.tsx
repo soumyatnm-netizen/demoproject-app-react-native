@@ -112,10 +112,9 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
           )}
           
           <div className="text-center mb-8">
-            <img src="/lovable-uploads/cd40fcf4-7e23-4ca5-9781-dcb03881a281.png" alt="CoverCompass" className="h-12 w-12 mx-auto mb-4" />
-            <h1 className="text-3xl font-bold">CoverCompass</h1>
+            <img src="/lovable-uploads/7efe2624-58cc-456e-877b-95332a0fa92d.png" alt="CoverCompass" className="h-16 mx-auto mb-4" />
             <p className="text-muted-foreground mt-2">
-              The placement intelligence layer for insurance broking
+              Markets Mapped. Cover Unlocked
             </p>
           </div>
 
