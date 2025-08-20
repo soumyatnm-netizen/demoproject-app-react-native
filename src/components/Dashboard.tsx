@@ -3,9 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, FileText, BarChart3, TrendingUp, Upload } from "lucide-react";
+import { ArrowLeft, FileText, BarChart3, TrendingUp, Upload, Users } from "lucide-react";
 import FileUpload from "./FileUpload";
 import ComparisonView from "./ComparisonView";
+import CompanyManagement from "./CompanyManagement";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -35,9 +36,20 @@ interface StructuredQuote {
   created_at: string;
 }
 
+interface UserProfile {
+  id: string;
+  user_id: string;
+  company_id: string | null;
+  role: 'company_admin' | 'broker' | 'viewer';
+  first_name: string | null;
+  last_name: string | null;
+  subscription_tier: string;
+}
+
 const Dashboard = ({ onBack }: DashboardProps) => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [quotes, setQuotes] = useState<StructuredQuote[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -47,6 +59,38 @@ const Dashboard = ({ onBack }: DashboardProps) => {
 
   const fetchData = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No authenticated user');
+
+      // Fetch user profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select(`
+          *,
+          company:broker_companies(*)
+        `)
+        .eq('user_id', user.id)
+        .single();
+
+      if (profileError) {
+        console.error('Profile error:', profileError);
+        // Create profile if it doesn't exist
+        const { data: newProfileData, error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: user.id,
+            subscription_tier: 'basic',
+            role: 'broker'
+          })
+          .select()
+          .single();
+        
+        if (createError) throw createError;
+        setUserProfile(newProfileData);
+      } else {
+        setUserProfile(profileData);
+      }
+
       // Fetch documents
       const { data: documentsData, error: documentsError } = await supabase
         .from('documents')
@@ -174,9 +218,10 @@ const Dashboard = ({ onBack }: DashboardProps) => {
 
         {/* Main Content */}
         <Tabs defaultValue="upload" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="upload">Upload & Process</TabsTrigger>
             <TabsTrigger value="compare">Compare Quotes</TabsTrigger>
+            <TabsTrigger value="team">Team Management</TabsTrigger>
             <TabsTrigger value="intelligence">Market Intelligence</TabsTrigger>
           </TabsList>
 
@@ -235,6 +280,10 @@ const Dashboard = ({ onBack }: DashboardProps) => {
 
           <TabsContent value="compare">
             <ComparisonView quotes={quotes} onRefresh={fetchData} />
+          </TabsContent>
+
+          <TabsContent value="team">
+            <CompanyManagement userProfile={userProfile} />
           </TabsContent>
 
           <TabsContent value="intelligence">

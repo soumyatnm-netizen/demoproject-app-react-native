@@ -20,6 +20,8 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
+  const [inviteCode, setInviteCode] = useState("");
+  const [inviteData, setInviteData] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -34,11 +36,114 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
       async (event, session) => {
         setUser(session?.user ?? null);
         setLoading(false);
+        
+        // Handle post-signup profile creation
+        if (event === 'SIGNED_IN' && session?.user) {
+          setTimeout(async () => {
+            await createOrUpdateProfile(session.user, inviteData);
+          }, 100);
+        }
       }
     );
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [inviteData]);
+
+  const createOrUpdateProfile = async (user: any, inviteInfo?: any) => {
+    try {
+      // Check if profile already exists
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!existingProfile) {
+        // Create new profile
+        const profileData: any = {
+          user_id: user.id,
+          subscription_tier: 'basic',
+        };
+
+        // If user is signing up with an invite code
+        if (inviteInfo) {
+          profileData.company_id = inviteInfo.company_id;
+          profileData.role = inviteInfo.role;
+          profileData.invited_by = inviteInfo.invited_by;
+          profileData.invited_at = new Date().toISOString();
+
+          // Mark invite as used
+          await supabase
+            .from('company_invites')
+            .update({
+              used_at: new Date().toISOString(),
+              used_by: user.id
+            })
+            .eq('invite_code', inviteInfo.invite_code);
+        }
+
+        const { error } = await supabase
+          .from('profiles')
+          .insert(profileData);
+
+        if (error) {
+          console.error('Error creating profile:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Error in createOrUpdateProfile:', error);
+    }
+  };
+
+  const validateInviteCode = async (code: string) => {
+    if (!code.trim()) {
+      setInviteData(null);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('company_invites')
+        .select(`
+          *,
+          company:broker_companies(*),
+          inviter:profiles!invited_by(*)
+        `)
+        .eq('invite_code', code.toUpperCase())
+        .is('used_at', null)
+        .gt('expires_at', new Date().toISOString())
+        .single();
+
+      if (error || !data) {
+        toast({
+          title: "Invalid Invite Code",
+          description: "The invite code is invalid, expired, or already used.",
+          variant: "destructive",
+        });
+        setInviteData(null);
+        return;
+      }
+
+      setInviteData(data);
+      setEmail(data.email); // Pre-fill email from invite
+      toast({
+        title: "Invite Code Valid",
+        description: `You're invited to join ${data.company.name}`,
+      });
+    } catch (error) {
+      console.error('Error validating invite code:', error);
+      setInviteData(null);
+    }
+  };
+
+  useEffect(() => {
+    if (inviteCode) {
+      const timeoutId = setTimeout(() => {
+        validateInviteCode(inviteCode);
+      }, 500);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [inviteCode]);
 
   const handleTestAccount = async () => {
     setAuthLoading(true);
@@ -111,12 +216,20 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
         const { error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: {
+              invite_code: inviteCode || null
+            }
+          }
         });
         if (error) throw error;
         
         toast({
           title: "Success",
-          description: "Please check your email to confirm your account",
+          description: inviteData 
+            ? `Account created! You'll be added to ${inviteData.company.name}.`
+            : "Please check your email to confirm your account",
         });
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -263,6 +376,27 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                 <TabsContent value="signup" className="space-y-4 mt-4">
                   <form onSubmit={handleAuth} className="space-y-4">
                     <div className="space-y-2">
+                      <Label htmlFor="invite-code">Invite Code (Optional)</Label>
+                      <Input
+                        id="invite-code"
+                        type="text"
+                        placeholder="Enter company invite code"
+                        value={inviteCode}
+                        onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                        className="uppercase"
+                      />
+                      {inviteData && (
+                        <div className="p-3 bg-primary/10 border border-primary/20 rounded-md">
+                          <p className="text-sm font-medium text-primary">
+                            🎉 You're invited to join {inviteData.company.name}!
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Role: {inviteData.role}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-2">
                       <Label htmlFor="signup-email">Email</Label>
                       <Input
                         id="signup-email"
@@ -271,6 +405,7 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
+                        disabled={!!inviteData} // Disable if invite code is used
                       />
                     </div>
                     <div className="space-y-2">
