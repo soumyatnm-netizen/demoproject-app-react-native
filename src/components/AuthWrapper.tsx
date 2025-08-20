@@ -40,6 +40,68 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
     return () => subscription.unsubscribe();
   }, []);
 
+  const handleTestAccount = async () => {
+    setAuthLoading(true);
+    const testEmail = 'demo@covercompass.io';
+    const testPassword = 'demo123456';
+
+    try {
+      // First try to sign in with existing test account
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: testEmail,
+        password: testPassword,
+      });
+
+      if (signInError && signInError.message.includes('Invalid login credentials')) {
+        // Test account doesn't exist, create it
+        const { error: signUpError } = await supabase.auth.signUp({
+          email: testEmail,
+          password: testPassword,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: {
+              test_account: true
+            }
+          }
+        });
+
+        if (signUpError) throw signUpError;
+
+        // If signup requires email confirmation, try signing in immediately
+        // (this works if email confirmation is disabled)
+        const { error: immediateSignInError } = await supabase.auth.signInWithPassword({
+          email: testEmail,
+          password: testPassword,
+        });
+
+        if (immediateSignInError && !immediateSignInError.message.includes('Email not confirmed')) {
+          throw immediateSignInError;
+        }
+
+        toast({
+          title: "Test Account Created",
+          description: "Welcome to CoverCompass! You're now signed in with a demo account.",
+        });
+      } else if (signInError) {
+        throw signInError;
+      } else {
+        toast({
+          title: "Welcome Back",
+          description: "Signed in with test account successfully",
+        });
+      }
+    } catch (error: any) {
+      console.error('Test account error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create test account",
+        variant: "destructive",
+      });
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthLoading(true);
@@ -169,6 +231,32 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                         "Sign In"
                       )}
                     </Button>
+                    
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-card px-2 text-muted-foreground">Or</span>
+                      </div>
+                    </div>
+                    
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      className="w-full" 
+                      onClick={handleTestAccount}
+                      disabled={authLoading}
+                    >
+                      {authLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating Test Account...
+                        </>
+                      ) : (
+                        "🚀 Try Test Account"
+                      )}
+                    </Button>
                   </form>
                 </TabsContent>
                 
@@ -205,6 +293,32 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                         </>
                       ) : (
                         "Create Account"
+                      )}
+                    </Button>
+                    
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-card px-2 text-muted-foreground">Or</span>
+                      </div>
+                    </div>
+                    
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      className="w-full" 
+                      onClick={handleTestAccount}
+                      disabled={authLoading}
+                    >
+                      {authLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating Test Account...
+                        </>
+                      ) : (
+                        "🚀 Try Test Account"
                       )}
                     </Button>
                   </form>
