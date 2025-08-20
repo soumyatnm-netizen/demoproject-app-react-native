@@ -728,6 +728,45 @@ export type Database = {
           },
         ]
       }
+      sensitive_data_access_audit: {
+        Row: {
+          access_reason: string | null
+          access_timestamp: string | null
+          access_type: string
+          accessed_fields: string[] | null
+          accessed_user_id: string
+          accessing_user_id: string
+          id: string
+          ip_address: unknown | null
+          session_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          access_reason?: string | null
+          access_timestamp?: string | null
+          access_type: string
+          accessed_fields?: string[] | null
+          accessed_user_id: string
+          accessing_user_id: string
+          id?: string
+          ip_address?: unknown | null
+          session_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          access_reason?: string | null
+          access_timestamp?: string | null
+          access_type?: string
+          accessed_fields?: string[] | null
+          accessed_user_id?: string
+          accessing_user_id?: string
+          id?: string
+          ip_address?: unknown | null
+          session_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       structured_quotes: {
         Row: {
           coverage_limits: Json | null
@@ -995,7 +1034,39 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      profile_sensitive_data_secure: {
+        Row: {
+          created_at: string | null
+          emergency_contact: Json | null
+          id: string | null
+          personal_address: string | null
+          phone: string | null
+          sensitive_notes: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          emergency_contact?: never
+          id?: string | null
+          personal_address?: never
+          phone?: never
+          sensitive_notes?: never
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          emergency_contact?: never
+          id?: string | null
+          personal_address?: never
+          phone?: never
+          sensitive_notes?: never
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       analyze_quote_coverage: {
@@ -1007,6 +1078,10 @@ export type Database = {
         Returns: boolean
       }
       cleanup_old_audit_data: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      cleanup_sensitive_audit_logs: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
@@ -1102,6 +1177,19 @@ export type Database = {
           p_user_agent?: string
         }
         Returns: undefined
+      }
+      log_sensitive_data_access: {
+        Args: {
+          p_access_reason?: string
+          p_access_type: string
+          p_accessed_fields?: string[]
+          p_accessed_user_id: string
+        }
+        Returns: undefined
+      }
+      mask_sensitive_field: {
+        Args: { field_value: string; mask_type?: string }
+        Returns: string
       }
       rank_quotes_for_client: {
         Args: { p_client_id: string; p_quote_ids?: string[] }
