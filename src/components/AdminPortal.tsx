@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Users, FileText, Database, BarChart3, Settings, Upload } from "lucide-react";
+import { ArrowLeft, Users, FileText, Database, BarChart3, Settings, Upload, BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import BrokerManagement from "./admin/BrokerManagement";
@@ -11,6 +11,7 @@ import ClientOverview from "./admin/ClientOverview";
 import PDFManagement from "./admin/PDFManagement";
 import DataVisualization from "./admin/DataVisualization";
 import SystemSettings from "./admin/SystemSettings";
+import UnderwriterAppetiteManager from "./UnderwriterAppetiteManager";
 
 interface AdminPortalProps {
   onBack: () => void;
@@ -22,6 +23,8 @@ interface AdminStats {
   totalClients: number;
   totalPDFs: number;
   processedPDFs: number;
+  totalAppetiteGuides: number;
+  processedAppetiteGuides: number;
 }
 
 const AdminPortal = ({ onBack }: AdminPortalProps) => {
@@ -30,7 +33,9 @@ const AdminPortal = ({ onBack }: AdminPortalProps) => {
     activeBrokers: 0,
     totalClients: 0,
     totalPDFs: 0,
-    processedPDFs: 0
+    processedPDFs: 0,
+    totalAppetiteGuides: 0,
+    processedAppetiteGuides: 0
   });
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -68,7 +73,9 @@ const AdminPortal = ({ onBack }: AdminPortalProps) => {
         activeBrokers: brokers?.filter(b => b.is_active !== false).length || 0,
         totalClients: clients?.length || 0,
         totalPDFs: pdfs?.length || 0,
-        processedPDFs: pdfs?.filter(p => p.status === 'processed').length || 0
+        processedPDFs: pdfs?.filter(p => p.status === 'processed').length || 0,
+        totalAppetiteGuides: pdfs?.length || 0,
+        processedAppetiteGuides: pdfs?.filter(p => p.status === 'processed').length || 0
       });
     } catch (error) {
       console.error('Error fetching admin stats:', error);
@@ -140,13 +147,13 @@ const AdminPortal = ({ onBack }: AdminPortalProps) => {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Insurer PDFs</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Appetite Guides</CardTitle>
+              <BookOpen className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalPDFs}</div>
+              <div className="text-2xl font-bold">{stats.totalAppetiteGuides}</div>
               <p className="text-xs text-muted-foreground">
-                {stats.processedPDFs} processed
+                {stats.processedAppetiteGuides} processed
               </p>
             </CardContent>
           </Card>
@@ -182,9 +189,10 @@ const AdminPortal = ({ onBack }: AdminPortalProps) => {
 
         {/* Main Content */}
         <Tabs defaultValue="brokers" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="brokers">Broker Management</TabsTrigger>
             <TabsTrigger value="clients">Client Overview</TabsTrigger>
+            <TabsTrigger value="appetites">Appetite Guides</TabsTrigger>
             <TabsTrigger value="pdfs">PDF Management</TabsTrigger>
             <TabsTrigger value="data">Data Visualization</TabsTrigger>
             <TabsTrigger value="settings">System Settings</TabsTrigger>
@@ -196,6 +204,10 @@ const AdminPortal = ({ onBack }: AdminPortalProps) => {
 
           <TabsContent value="clients">
             <ClientOverview />
+          </TabsContent>
+
+          <TabsContent value="appetites">
+            <UnderwriterAppetiteManager />
           </TabsContent>
 
           <TabsContent value="pdfs">

@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Users, Mail, Target, FileText, TrendingUp } from "lucide-react";
+import { ArrowLeft, Users, Mail, Target, FileText, TrendingUp, BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import ClientManagement from "./broker/ClientManagement";
@@ -11,6 +11,7 @@ import InsurerMatching from "./broker/InsurerMatching";
 import EmailIntegration from "./broker/EmailIntegration";
 import BrokerProfile from "./broker/BrokerProfile";
 import QuoteComparison from "./broker/QuoteComparison";
+import AppetiteGuidesViewer from "./broker/AppetiteGuidesViewer";
 
 interface BrokerPortalProps {
   onBack: () => void;
@@ -169,8 +170,9 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
 
         {/* Main Content */}
         <Tabs defaultValue="clients" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="clients">Client Management</TabsTrigger>
+            <TabsTrigger value="appetites">Appetite Guides</TabsTrigger>
             <TabsTrigger value="matching">Insurer Matching</TabsTrigger>
             <TabsTrigger value="comparison">Quote Comparison</TabsTrigger>
             <TabsTrigger value="email">Email Integration</TabsTrigger>
@@ -179,6 +181,10 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
 
           <TabsContent value="clients">
             <ClientManagement onStatsUpdate={fetchBrokerStats} />
+          </TabsContent>
+
+          <TabsContent value="appetites">
+            <AppetiteGuidesViewer />
           </TabsContent>
 
           <TabsContent value="matching">
