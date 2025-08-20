@@ -142,13 +142,14 @@ const InstantQuoteComparison = () => {
     setIsProcessing(true);
     setAnalysisComplete(false);
     
+    const uploadedQuoteIds: string[] = [];
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No authenticated user');
 
       // Step 1: Upload and process documents
       setProcessingStep("Uploading documents...");
-      const uploadedQuoteIds: string[] = [];
 
       for (let i = 0; i < uploadedQuotes.length; i++) {
         const file = uploadedQuotes[i];
@@ -156,14 +157,20 @@ const InstantQuoteComparison = () => {
         setProcessingStep(`Processing quote ${i + 1} of ${uploadedQuotes.length}...`);
         
         // Upload to storage with user-specific folder structure
+        console.log('Uploading to storage...');
         const fileName = `${user.id}/${Date.now()}-${file.name}`;
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('documents')
           .upload(fileName, file);
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error('Storage upload error:', uploadError);
+          throw uploadError;
+        }
+        console.log('Upload successful:', uploadData.path);
 
         // Create document record
+        console.log('Creating document record...');
         const { data: docData, error: docError } = await supabase
           .from('documents')
           .insert({
@@ -177,9 +184,14 @@ const InstantQuoteComparison = () => {
           .select()
           .single();
 
-        if (docError) throw docError;
+        if (docError) {
+          console.error('Document creation error:', docError);
+          throw docError;
+        }
+        console.log('Document created:', docData.id);
 
         // Process document with AI
+        console.log('Calling process-document edge function...');
         setProcessingStep(`Analyzing quote ${i + 1} with AI...`);
         const { data: processResult, error: processError } = await supabase.functions
           .invoke('process-document', {
@@ -188,11 +200,18 @@ const InstantQuoteComparison = () => {
 
         if (processError) {
           console.error('Process document error:', processError);
+          console.error('Process error details:', {
+            message: processError.message,
+            context: processError.context,
+            details: processError.details
+          });
           throw processError;
         }
+        console.log('Process result:', processResult);
         
         // The process-document function creates a structured_quote record
         // We need to get the quote ID from the structured_quotes table
+        console.log('Looking up structured quote...');
         const { data: quoteData, error: quoteError } = await supabase
           .from('structured_quotes')
           .select('id')
@@ -201,16 +220,29 @@ const InstantQuoteComparison = () => {
           
         if (quoteError) {
           console.error('Quote lookup error:', quoteError);
+          console.error('Quote lookup details:', {
+            documentId: docData.id,
+            error: quoteError
+          });
           throw quoteError;
         }
+        console.log('Quote found:', quoteData);
         
         if (quoteData?.id) {
           uploadedQuoteIds.push(quoteData.id);
+          console.log('Added quote ID to array:', quoteData.id);
+        } else {
+          console.warn('No quote ID found for document:', docData.id);
         }
       }
 
       // Step 2: Analyze and rank quotes
+      console.log('Starting quote ranking with IDs:', uploadedQuoteIds);
       setProcessingStep("Ranking quotes by coverage and value...");
+      
+      if (uploadedQuoteIds.length === 0) {
+        throw new Error('No quotes were processed successfully');
+      }
       
       const { data: rankingData, error: rankingError } = await supabase
         .rpc('rank_quotes_for_client', {
@@ -218,7 +250,16 @@ const InstantQuoteComparison = () => {
           p_quote_ids: uploadedQuoteIds
         });
 
-      if (rankingError) throw rankingError;
+      if (rankingError) {
+        console.error('Ranking error:', rankingError);
+        console.error('Ranking details:', {
+          selectedClient,
+          uploadedQuoteIds,
+          error: rankingError
+        });
+        throw rankingError;
+      }
+      console.log('Ranking result:', rankingData);
 
       // Sort by overall score (best first)
       const sortedRankings = (rankingData || []).sort((a, b) => b.overall_score - a.overall_score);
@@ -232,9 +273,16 @@ const InstantQuoteComparison = () => {
 
     } catch (error) {
       console.error('Analysis error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        uploadedQuotes: uploadedQuotes.length,
+        selectedClient,
+        uploadedQuoteIds
+      });
       toast({
         title: "Analysis Failed",
-        description: "There was an error analyzing your quotes. Please try again.",
+        description: `Error: ${error.message}. Check console for details.`,
         variant: "destructive",
       });
     } finally {
