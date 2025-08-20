@@ -228,7 +228,8 @@ Extract as much relevant information as possible. If a field cannot be determine
         specialty_focus: structuredData.specialty_focus || [],
         broker_features: structuredData.broker_features || {},
         risk_appetite: structuredData.risk_appetite || 'moderate',
-        additional_products: structuredData.additional_products || []
+        additional_products: structuredData.additional_products || [],
+        logo_url: appetiteDoc.logo_url // Include logo URL from the appetite document
       });
 
     if (insertError) {

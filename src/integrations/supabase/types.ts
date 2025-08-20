@@ -453,6 +453,7 @@ export type Database = {
           financial_ratings: Json | null
           geographic_coverage: string[] | null
           id: string
+          logo_url: string | null
           maximum_premium: number | null
           minimum_premium: number | null
           policy_features: Json | null
@@ -472,6 +473,7 @@ export type Database = {
           financial_ratings?: Json | null
           geographic_coverage?: string[] | null
           id?: string
+          logo_url?: string | null
           maximum_premium?: number | null
           minimum_premium?: number | null
           policy_features?: Json | null
@@ -491,6 +493,7 @@ export type Database = {
           financial_ratings?: Json | null
           geographic_coverage?: string[] | null
           id?: string
+          logo_url?: string | null
           maximum_premium?: number | null
           minimum_premium?: number | null
           policy_features?: Json | null
@@ -518,6 +521,7 @@ export type Database = {
           file_type: string
           filename: string
           id: string
+          logo_url: string | null
           processing_error: string | null
           source_url: string | null
           status: string
@@ -533,6 +537,7 @@ export type Database = {
           file_type: string
           filename: string
           id?: string
+          logo_url?: string | null
           processing_error?: string | null
           source_url?: string | null
           status?: string
@@ -548,6 +553,7 @@ export type Database = {
           file_type?: string
           filename?: string
           id?: string
+          logo_url?: string | null
           processing_error?: string | null
           source_url?: string | null
           status?: string

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Upload, Download, Plus, ExternalLink, AlertCircle, CheckCircle } from "lucide-react";
+import { FileText, Upload, Download, Plus, ExternalLink, AlertCircle, CheckCircle, Building2 } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -19,6 +19,7 @@ interface UnderwriterAppetite {
   source_url?: string;
   status: string;
   processing_error?: string;
+  logo_url?: string;
   created_at: string;
 }
 
@@ -41,7 +42,8 @@ const UnderwriterAppetiteManager = () => {
   const [newUnderwriter, setNewUnderwriter] = useState({
     name: "",
     documentType: "appetite_guide",
-    sourceUrl: ""
+    sourceUrl: "",
+    logoUrl: ""
   });
   const { toast } = useToast();
 
@@ -114,6 +116,7 @@ const UnderwriterAppetiteManager = () => {
           filename: file.name,
           storage_path: filePath,
           source_url: newUnderwriter.sourceUrl || null,
+          logo_url: newUnderwriter.logoUrl || null,
           file_size: file.size,
           file_type: file.type,
           uploaded_by: user.id
@@ -142,7 +145,7 @@ const UnderwriterAppetiteManager = () => {
       }
 
       // Reset form
-      setNewUnderwriter({ name: "", documentType: "appetite_guide", sourceUrl: "" });
+      setNewUnderwriter({ name: "", documentType: "appetite_guide", sourceUrl: "", logoUrl: "" });
       fetchAppetiteData();
 
     } catch (error) {
@@ -181,6 +184,7 @@ const UnderwriterAppetiteManager = () => {
           filename: `Web Document - ${newUnderwriter.name}`,
           storage_path: '', // Empty for URL-based documents
           source_url: newUnderwriter.sourceUrl,
+          logo_url: newUnderwriter.logoUrl || null,
           file_type: 'web/url',
           uploaded_by: user.id
         })
@@ -208,7 +212,7 @@ const UnderwriterAppetiteManager = () => {
       }
 
       // Reset form
-      setNewUnderwriter({ name: "", documentType: "appetite_guide", sourceUrl: "" });
+      setNewUnderwriter({ name: "", documentType: "appetite_guide", sourceUrl: "", logoUrl: "" });
       fetchAppetiteData();
 
     } catch (error) {
@@ -301,6 +305,16 @@ const UnderwriterAppetiteManager = () => {
             </div>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="logo-url">Logo URL (Optional)</Label>
+            <Input
+              id="logo-url"
+              placeholder="https://example.com/logo.png"
+              value={newUnderwriter.logoUrl}
+              onChange={(e) => setNewUnderwriter(prev => ({ ...prev, logoUrl: e.target.value }))}
+            />
+          </div>
+
           <div className="border-t pt-4">
             <Label>Or Upload Document</Label>
             <div
@@ -345,30 +359,41 @@ const UnderwriterAppetiteManager = () => {
               
               return (
                 <div key={doc.id} className="border rounded-lg p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-start space-x-3">
-                      <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
-                      <div>
-                        <h4 className="font-medium">{doc.underwriter_name}</h4>
-                        <p className="text-sm text-muted-foreground">{doc.filename}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="outline" className="text-xs">
-                            {doc.document_type.replace('_', ' ')}
-                          </Badge>
-                          {doc.source_url && (
-                            <a 
-                              href={doc.source_url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-xs text-primary hover:underline flex items-center gap-1"
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                              Source
-                            </a>
-                          )}
-                        </div>
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start space-x-3">
+                    {doc.logo_url ? (
+                      <img 
+                        src={doc.logo_url} 
+                        alt={`${doc.underwriter_name} logo`}
+                        className="w-12 h-12 object-contain bg-white rounded border p-1"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <Building2 className="h-12 w-12 text-muted-foreground mt-0.5 p-2 bg-muted rounded border" />
+                    )}
+                    <div>
+                      <h4 className="font-medium">{doc.underwriter_name}</h4>
+                      <p className="text-sm text-muted-foreground">{doc.filename}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="outline" className="text-xs">
+                          {doc.document_type.replace('_', ' ')}
+                        </Badge>
+                        {doc.source_url && (
+                          <a 
+                            href={doc.source_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline flex items-center gap-1"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            Source
+                          </a>
+                        )}
                       </div>
                     </div>
+                  </div>
                     <Badge 
                       variant={
                         doc.status === 'processed' ? 'default' : 

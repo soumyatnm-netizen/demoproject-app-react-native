@@ -9,6 +9,7 @@ import ComparisonView from "./ComparisonView";
 import CompanyManagement from "./CompanyManagement";
 import UnderwriterAppetiteManager from "./UnderwriterAppetiteManager";
 import UnderwriterMatchingView from "./UnderwriterMatchingView";
+import DocumentProcessingSuccess from "./DocumentProcessingSuccess";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -55,6 +56,7 @@ const Dashboard = ({ onBack }: DashboardProps) => {
   const [quotes, setQuotes] = useState<StructuredQuote[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showProcessingSuccess, setShowProcessingSuccess] = useState<StructuredQuote | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -131,6 +133,24 @@ const Dashboard = ({ onBack }: DashboardProps) => {
       title: "Success",
       description: "Document uploaded and processing started",
     });
+    
+    // Check if we have a new processed quote to show recommendations for
+    setTimeout(async () => {
+      try {
+        const { data: latestQuote, error } = await supabase
+          .from('structured_quotes')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (!error && latestQuote) {
+          setShowProcessingSuccess(latestQuote);
+        }
+      } catch (error) {
+        console.error('Error fetching latest quote:', error);
+      }
+    }, 3000); // Wait 3 seconds for processing
   };
 
   if (loading) {
@@ -139,6 +159,36 @@ const Dashboard = ({ onBack }: DashboardProps) => {
         <div className="text-center">
           <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show processing success modal
+  if (showProcessingSuccess) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b bg-card">
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button variant="ghost" size="sm" onClick={onBack}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+              <h1 className="text-2xl font-bold text-foreground">CoverCompass Dashboard</h1>
+            </div>
+            <Badge variant="secondary">Beta</Badge>
+          </div>
+        </header>
+        <div className="container mx-auto px-4 py-8">
+          <DocumentProcessingSuccess 
+            quote={showProcessingSuccess}
+            onClose={() => setShowProcessingSuccess(null)}
+            onViewRecommendations={() => {
+              // Could navigate to recommendations tab
+              setShowProcessingSuccess(null);
+            }}
+          />
         </div>
       </div>
     );
