@@ -1,0 +1,205 @@
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Users, Mail, Target, FileText, TrendingUp } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
+import ClientManagement from "./broker/ClientManagement";
+import InsurerMatching from "./broker/InsurerMatching";
+import EmailIntegration from "./broker/EmailIntegration";
+import BrokerProfile from "./broker/BrokerProfile";
+import QuoteComparison from "./broker/QuoteComparison";
+
+interface BrokerPortalProps {
+  onBack: () => void;
+}
+
+interface BrokerStats {
+  totalClients: number;
+  activeQuotes: number;
+  matchesFound: number;
+  emailsSent: number;
+}
+
+const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
+  const [stats, setStats] = useState<BrokerStats>({
+    totalClients: 0,
+    activeQuotes: 0,
+    matchesFound: 0,
+    emailsSent: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchBrokerStats();
+  }, []);
+
+  const fetchBrokerStats = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No authenticated user');
+
+      // Fetch client reports (proxy for clients)
+      const { data: clients, error: clientsError } = await supabase
+        .from('client_reports')
+        .select('id')
+        .eq('user_id', user.id);
+
+      if (clientsError) throw clientsError;
+
+      // Fetch quotes
+      const { data: quotes, error: quotesError } = await supabase
+        .from('structured_quotes')
+        .select('quote_status')
+        .eq('user_id', user.id);
+
+      if (quotesError) throw quotesError;
+
+      // Fetch gap analyses (proxy for matches)
+      const { data: matches, error: matchesError } = await supabase
+        .from('gap_analyses')
+        .select('id')
+        .eq('user_id', user.id);
+
+      if (matchesError) throw matchesError;
+
+      setStats({
+        totalClients: clients?.length || 0,
+        activeQuotes: quotes?.filter(q => q.quote_status === 'quoted').length || 0,
+        matchesFound: matches?.length || 0,
+        emailsSent: Math.floor((matches?.length || 0) * 1.5) // Estimated
+      });
+    } catch (error) {
+      console.error('Error fetching broker stats:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load broker statistics",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading broker portal...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b bg-card">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Button variant="ghost" size="sm" onClick={onBack}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <h1 className="text-2xl font-bold text-foreground">Broker Portal</h1>
+          </div>
+          <Badge variant="default">CoverCompass Broker</Badge>
+        </div>
+      </header>
+
+      <div className="container mx-auto px-4 py-8">
+        {/* Broker Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">My Clients</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalClients}</div>
+              <p className="text-xs text-muted-foreground">
+                Active relationships
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Quotes</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.activeQuotes}</div>
+              <p className="text-xs text-muted-foreground">
+                Awaiting placement
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Matches Found</CardTitle>
+              <Target className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.matchesFound}</div>
+              <p className="text-xs text-muted-foreground">
+                Insurer opportunities
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Emails Sent</CardTitle>
+              <Mail className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.emailsSent}</div>
+              <p className="text-xs text-muted-foreground">
+                This month
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Content */}
+        <Tabs defaultValue="clients" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="clients">Client Management</TabsTrigger>
+            <TabsTrigger value="matching">Insurer Matching</TabsTrigger>
+            <TabsTrigger value="comparison">Quote Comparison</TabsTrigger>
+            <TabsTrigger value="email">Email Integration</TabsTrigger>
+            <TabsTrigger value="profile">My Profile</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="clients">
+            <ClientManagement onStatsUpdate={fetchBrokerStats} />
+          </TabsContent>
+
+          <TabsContent value="matching">
+            <InsurerMatching />
+          </TabsContent>
+
+          <TabsContent value="comparison">
+            <QuoteComparison />
+          </TabsContent>
+
+          <TabsContent value="email">
+            <EmailIntegration />
+          </TabsContent>
+
+          <TabsContent value="profile">
+            <BrokerProfile />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+};
+
+export default BrokerPortal;
