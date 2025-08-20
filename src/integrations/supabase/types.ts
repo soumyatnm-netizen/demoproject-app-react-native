@@ -514,6 +514,75 @@ export type Database = {
           },
         ]
       }
+      profile_access_audit: {
+        Row: {
+          access_reason: string | null
+          access_type: string
+          accessed_fields: string[] | null
+          accessed_user_id: string
+          accessing_user_id: string
+          created_at: string | null
+          id: string
+          ip_address: unknown | null
+          user_agent: string | null
+        }
+        Insert: {
+          access_reason?: string | null
+          access_type: string
+          accessed_fields?: string[] | null
+          accessed_user_id: string
+          accessing_user_id: string
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+        }
+        Update: {
+          access_reason?: string | null
+          access_type?: string
+          accessed_fields?: string[] | null
+          accessed_user_id?: string
+          accessing_user_id?: string
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      profile_sensitive_data: {
+        Row: {
+          created_at: string | null
+          emergency_contact: Json | null
+          id: string
+          personal_address: string | null
+          phone: string | null
+          sensitive_notes: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          emergency_contact?: Json | null
+          id?: string
+          personal_address?: string | null
+          phone?: string | null
+          sensitive_notes?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          emergency_contact?: Json | null
+          id?: string
+          personal_address?: string | null
+          phone?: string | null
+          sensitive_notes?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           broker_type: string | null
@@ -849,9 +918,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_access_profile: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
+      cleanup_old_audit_data: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       generate_invite_code: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_team_member_safe_data: {
+        Args: { target_user_id: string }
+        Returns: {
+          created_at: string
+          department: string
+          first_name: string
+          is_active: boolean
+          job_title: string
+          last_login_at: string
+          last_name: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }[]
       }
       get_user_company_id: {
         Args: { user_id: string }
@@ -881,6 +972,17 @@ export type Database = {
           p_success?: boolean
           p_user_agent?: string
           p_user_id: string
+        }
+        Returns: undefined
+      }
+      log_profile_access: {
+        Args: {
+          p_access_reason?: string
+          p_access_type: string
+          p_accessed_fields?: string[]
+          p_accessed_user_id: string
+          p_ip_address?: unknown
+          p_user_agent?: string
         }
         Returns: undefined
       }
