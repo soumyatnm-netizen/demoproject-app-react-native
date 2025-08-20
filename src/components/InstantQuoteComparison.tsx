@@ -128,8 +128,8 @@ const InstantQuoteComparison = () => {
         const file = uploadedQuotes[i];
         setProcessingStep(`Processing quote ${i + 1} of ${uploadedQuotes.length}...`);
         
-        // Upload to storage
-        const fileName = `${Date.now()}-${file.name}`;
+        // Upload to storage with user-specific folder structure
+        const fileName = `${user.id}/${Date.now()}-${file.name}`;
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('documents')
           .upload(fileName, file);
