@@ -177,7 +177,10 @@ const Dashboard = ({ onBack }: DashboardProps) => {
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
               </Button>
-              <h1 className="text-2xl font-bold text-foreground">CoverCompass Dashboard</h1>
+              <div className="flex items-center space-x-3">
+                <img src="/lovable-uploads/117007fd-e5c4-4ee6-a580-ee7bde7ad08a.png" alt="CoverCompass" className="h-8" />
+                <h1 className="text-2xl font-bold text-foreground">CoverCompass Dashboard</h1>
+              </div>
             </div>
             <Badge variant="secondary">Beta</Badge>
           </div>
@@ -201,13 +204,16 @@ const Dashboard = ({ onBack }: DashboardProps) => {
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" onClick={onBack}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-            <h1 className="text-2xl font-bold text-foreground">CoverCompass Dashboard</h1>
-          </div>
+            <div className="flex items-center space-x-4">
+              <Button variant="ghost" size="sm" onClick={onBack}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+              <div className="flex items-center space-x-3">
+                <img src="/lovable-uploads/117007fd-e5c4-4ee6-a580-ee7bde7ad08a.png" alt="CoverCompass" className="h-8" />
+                <h1 className="text-2xl font-bold text-foreground">CoverCompass Dashboard</h1>
+              </div>
+            </div>
           <Badge variant="secondary">Beta</Badge>
         </div>
       </header>
