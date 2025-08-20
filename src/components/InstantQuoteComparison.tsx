@@ -20,7 +20,8 @@ import {
   Target,
   Crown,
   Star,
-  Zap
+  Zap,
+  X
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -94,17 +95,37 @@ const InstantQuoteComparison = () => {
   const handleFileUpload = (files: FileList | null) => {
     if (!files) return;
     
-    const fileArray = Array.from(files).slice(0, 5); // Max 5 quotes
+    const newFiles = Array.from(files);
+    const remainingSlots = 5 - uploadedQuotes.length;
     
-    // Clear previous uploads first
-    setUploadedQuotes([]);
+    if (remainingSlots <= 0) {
+      toast({
+        title: "Maximum Reached",
+        description: "You can upload a maximum of 5 quotes. Remove some files first.",
+        variant: "destructive",
+      });
+      return;
+    }
     
-    // Add all files
-    setUploadedQuotes(fileArray);
+    // Add new files to existing ones, up to the limit
+    const filesToAdd = newFiles.slice(0, remainingSlots);
+    const updatedQuotes = [...uploadedQuotes, ...filesToAdd];
+    
+    setUploadedQuotes(updatedQuotes);
     
     toast({
-      title: "Quotes Uploaded",
-      description: `${fileArray.length} quote${fileArray.length !== 1 ? 's' : ''} ready for analysis`,
+      title: `${filesToAdd.length} Quote${filesToAdd.length !== 1 ? 's' : ''} Added`,
+      description: `Total: ${updatedQuotes.length} quote${updatedQuotes.length !== 1 ? 's' : ''} ready for analysis`,
+    });
+  };
+
+  const removeFile = (indexToRemove: number) => {
+    const updatedQuotes = uploadedQuotes.filter((_, index) => index !== indexToRemove);
+    setUploadedQuotes(updatedQuotes);
+    
+    toast({
+      title: "Quote Removed",
+      description: `${updatedQuotes.length} quote${updatedQuotes.length !== 1 ? 's' : ''} remaining`,
     });
   };
 
@@ -316,19 +337,36 @@ const InstantQuoteComparison = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
-              <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-              <Label htmlFor="quote-upload" className="cursor-pointer">
-                <span className="text-sm font-medium">Click to upload quotes</span>
-                <p className="text-xs text-muted-foreground mt-1">PDF files, up to 5 quotes</p>
-              </Label>
+            <div className={`border-2 border-dashed rounded-lg p-8 text-center ${
+              uploadedQuotes.length >= 5 
+                ? 'border-gray-300 bg-gray-50 cursor-not-allowed' 
+                : 'border-muted-foreground/25 cursor-pointer hover:border-primary/50'
+            }`}>
+              <Upload className={`h-8 w-8 mx-auto mb-2 ${
+                uploadedQuotes.length >= 5 ? 'text-gray-400' : 'text-muted-foreground'
+              }`} />
+              {uploadedQuotes.length >= 5 ? (
+                <>
+                  <span className="text-sm font-medium text-gray-500">Maximum 5 quotes reached</span>
+                  <p className="text-xs text-gray-400 mt-1">Remove a quote to add another</p>
+                </>
+              ) : (
+                <Label htmlFor="quote-upload" className="cursor-pointer">
+                  <span className="text-sm font-medium">
+                    {uploadedQuotes.length === 0 ? 'Click to upload first quote' : 'Click to add another quote'}
+                  </span>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Add PDF files one by one ({uploadedQuotes.length}/5 uploaded)
+                  </p>
+                </Label>
+              )}
               <Input
                 id="quote-upload"
                 type="file"
-                multiple
                 accept=".pdf"
                 onChange={(e) => handleFileUpload(e.target.files)}
                 className="hidden"
+                disabled={uploadedQuotes.length >= 5}
               />
             </div>
             
@@ -361,7 +399,17 @@ const InstantQuoteComparison = () => {
                           </div>
                         </div>
                       </div>
-                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeFile(index)}
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                      </div>
                     </div>
                   ))}
                 </div>
