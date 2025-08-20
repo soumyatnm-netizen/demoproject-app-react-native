@@ -188,7 +188,7 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
 
   const handleTestAccount = async () => {
     setAuthLoading(true);
-    const testEmail = 'demo@covercompass.co.uk';
+    const testEmail = 'dan@covercompass.co.uk';
     const testPassword = 'demo123456';
 
     try {
