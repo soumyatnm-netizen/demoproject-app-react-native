@@ -5,14 +5,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Loader2 } from "lucide-react";
+import { Shield, Loader2, ArrowLeft } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 interface AuthWrapperProps {
   children: React.ReactNode;
+  onBack?: () => void;
 }
 
-const AuthWrapper = ({ children }: AuthWrapperProps) => {
+const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
@@ -101,6 +102,15 @@ const AuthWrapper = ({ children }: AuthWrapperProps) => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="w-full max-w-md">
+          {onBack && (
+            <div className="mb-6">
+              <Button variant="ghost" size="sm" onClick={onBack}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Homepage
+              </Button>
+            </div>
+          )}
+          
           <div className="text-center mb-8">
             <Shield className="h-12 w-12 text-primary mx-auto mb-4" />
             <h1 className="text-3xl font-bold">CoverCompass</h1>

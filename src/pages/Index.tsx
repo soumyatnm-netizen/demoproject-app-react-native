@@ -12,7 +12,7 @@ const Index = () => {
 
   if (currentView === 'dashboard') {
     return (
-      <AuthWrapper>
+      <AuthWrapper onBack={() => setCurrentView('landing')}>
         <Dashboard onBack={() => setCurrentView('landing')} />
       </AuthWrapper>
     );
