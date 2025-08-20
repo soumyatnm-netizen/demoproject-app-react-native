@@ -13,6 +13,8 @@ import PlacementOutcomeTracker from "./PlacementOutcomeTracker";
 import PredictiveAnalyticsDashboard from "./PredictiveAnalyticsDashboard";
 import DocumentProcessingSuccess from "./DocumentProcessingSuccess";
 import UnderwriterMatchingResults from "./UnderwriterMatchingResults";
+import BrokerPortal from "./BrokerPortal";
+import AdminPortal from "./AdminPortal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -62,6 +64,7 @@ const Dashboard = ({ onBack }: DashboardProps) => {
   const [loading, setLoading] = useState(true);
   const [showProcessingSuccess, setShowProcessingSuccess] = useState<StructuredQuote | null>(null);
   const [selectedDocumentForMatching, setSelectedDocumentForMatching] = useState<{ id: string; name: string } | null>(null);
+  const [currentView, setCurrentView] = useState<'dashboard' | 'broker-portal' | 'admin-portal'>('dashboard');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -169,6 +172,15 @@ const Dashboard = ({ onBack }: DashboardProps) => {
     );
   }
 
+  // Show different views based on currentView
+  if (currentView === 'broker-portal') {
+    return <BrokerPortal onBack={() => setCurrentView('dashboard')} />;
+  }
+
+  if (currentView === 'admin-portal') {
+    return <AdminPortal onBack={() => setCurrentView('dashboard')} />;
+  }
+
   // Show processing success modal
   if (showProcessingSuccess) {
     return (
@@ -222,6 +234,51 @@ const Dashboard = ({ onBack }: DashboardProps) => {
       </header>
 
       <div className="container mx-auto px-4 py-8">
+        {/* Portal Access Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20" onClick={() => setCurrentView('broker-portal')}>
+            <CardHeader>
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Target className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl">Broker Portal</CardTitle>
+                  <CardDescription>Instant quote comparison, client management, and market intelligence</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+                  ⚡ Instant Quote Comparison
+                </Badge>
+                <Badge variant="outline">Client Management</Badge>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow bg-gradient-to-br from-secondary/5 to-secondary/10 border-secondary/20" onClick={() => setCurrentView('admin-portal')}>
+            <CardHeader>
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-secondary/10 rounded-lg">
+                  <Building2 className="h-6 w-6 text-secondary" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl">Admin Portal</CardTitle>
+                  <CardDescription>Team management, appetite guides, and system administration</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                <Badge variant="outline">Team Management</Badge>
+                <Badge variant="outline">Appetite Guides</Badge>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
