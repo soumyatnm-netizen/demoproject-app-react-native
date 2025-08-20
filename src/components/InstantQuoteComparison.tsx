@@ -95,6 +95,11 @@ const InstantQuoteComparison = () => {
     if (!files) return;
     
     const fileArray = Array.from(files).slice(0, 5); // Max 5 quotes
+    
+    // Clear previous uploads first
+    setUploadedQuotes([]);
+    
+    // Add all files
     setUploadedQuotes(fileArray);
     
     toast({
@@ -126,6 +131,7 @@ const InstantQuoteComparison = () => {
 
       for (let i = 0; i < uploadedQuotes.length; i++) {
         const file = uploadedQuotes[i];
+        console.log(`Processing file ${i + 1}:`, file.name);
         setProcessingStep(`Processing quote ${i + 1} of ${uploadedQuotes.length}...`);
         
         // Upload to storage with user-specific folder structure
@@ -159,9 +165,26 @@ const InstantQuoteComparison = () => {
             body: { documentId: docData.id }
           });
 
-        if (processError) throw processError;
-        if (processResult?.quoteId) {
-          uploadedQuoteIds.push(processResult.quoteId);
+        if (processError) {
+          console.error('Process document error:', processError);
+          throw processError;
+        }
+        
+        // The process-document function creates a structured_quote record
+        // We need to get the quote ID from the structured_quotes table
+        const { data: quoteData, error: quoteError } = await supabase
+          .from('structured_quotes')
+          .select('id')
+          .eq('document_id', docData.id)
+          .single();
+          
+        if (quoteError) {
+          console.error('Quote lookup error:', quoteError);
+          throw quoteError;
+        }
+        
+        if (quoteData?.id) {
+          uploadedQuoteIds.push(quoteData.id);
         }
       }
 
@@ -394,9 +417,9 @@ const InstantQuoteComparison = () => {
                   <span>{processingStep}</span>
                   <span>Processing...</span>
                 </div>
-                <Progress value={33} className="w-full" />
+                <Progress value={uploadedQuotes.length > 0 ? Math.round((100 / (uploadedQuotes.length + 1)) * (uploadedQuotes.length > 0 ? 1 : 0)) : 33} className="w-full" />
                 <p className="text-xs text-muted-foreground">
-                  Analyzing schedules, limits, exclusions, enhancements, and core policy wording...
+                  Using OpenAI to analyze schedules, limits, exclusions, enhancements, and core policy wording...
                 </p>
               </div>
             )}
