@@ -8,7 +8,7 @@ import Dashboard from "@/components/Dashboard";
 import AuthWrapper from "@/components/AuthWrapper";
 
 const Index = () => {
-  const [currentView, setCurrentView] = useState<'landing' | 'dashboard'>('dashboard');
+  const [currentView, setCurrentView] = useState<'landing' | 'dashboard'>('landing');
 
   if (currentView === 'dashboard') {
     return (
