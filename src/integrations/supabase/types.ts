@@ -62,6 +62,65 @@ export type Database = {
         }
         Relationships: []
       }
+      client_reports: {
+        Row: {
+          broker_company_name: string | null
+          broker_logo_url: string | null
+          client_name: string
+          comparison_id: string | null
+          created_at: string
+          id: string
+          key_changes: Json | null
+          pdf_storage_path: string | null
+          recommendations: string[] | null
+          report_data: Json
+          report_status: string | null
+          report_title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          broker_company_name?: string | null
+          broker_logo_url?: string | null
+          client_name: string
+          comparison_id?: string | null
+          created_at?: string
+          id?: string
+          key_changes?: Json | null
+          pdf_storage_path?: string | null
+          recommendations?: string[] | null
+          report_data: Json
+          report_status?: string | null
+          report_title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          broker_company_name?: string | null
+          broker_logo_url?: string | null
+          client_name?: string
+          comparison_id?: string | null
+          created_at?: string
+          id?: string
+          key_changes?: Json | null
+          pdf_storage_path?: string | null
+          recommendations?: string[] | null
+          report_data?: Json
+          report_status?: string | null
+          report_title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_reports_comparison_id_fkey"
+            columns: ["comparison_id"]
+            isOneToOne: false
+            referencedRelation: "comparisons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_invites: {
         Row: {
           company_id: string
@@ -201,6 +260,66 @@ export type Database = {
         }
         Relationships: []
       }
+      gap_analyses: {
+        Row: {
+          attack_strategy: string | null
+          comparison_id: string | null
+          competitive_advantages: string[] | null
+          coverage_gaps: Json
+          created_at: string
+          id: string
+          incumbent_quote_id: string | null
+          key_weaknesses: string[] | null
+          opportunity_score: number
+          switch_evidence: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attack_strategy?: string | null
+          comparison_id?: string | null
+          competitive_advantages?: string[] | null
+          coverage_gaps: Json
+          created_at?: string
+          id?: string
+          incumbent_quote_id?: string | null
+          key_weaknesses?: string[] | null
+          opportunity_score: number
+          switch_evidence?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attack_strategy?: string | null
+          comparison_id?: string | null
+          competitive_advantages?: string[] | null
+          coverage_gaps?: Json
+          created_at?: string
+          id?: string
+          incumbent_quote_id?: string | null
+          key_weaknesses?: string[] | null
+          opportunity_score?: number
+          switch_evidence?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gap_analyses_comparison_id_fkey"
+            columns: ["comparison_id"]
+            isOneToOne: false
+            referencedRelation: "comparisons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gap_analyses_incumbent_quote_id_fkey"
+            columns: ["incumbent_quote_id"]
+            isOneToOne: false
+            referencedRelation: "structured_quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       market_intelligence: {
         Row: {
           appetite_score: number | null
@@ -248,6 +367,119 @@ export type Database = {
           win_rate?: number | null
         }
         Relationships: []
+      }
+      market_predictions: {
+        Row: {
+          average_response_days: number | null
+          capacity_status: string | null
+          created_at: string
+          data_points_count: number | null
+          id: string
+          industry: string | null
+          last_updated: string
+          product_type: string | null
+          quote_probability: number | null
+          revenue_band: string | null
+          typical_premium_adjustment: number | null
+          underwriter_name: string
+          win_probability: number | null
+        }
+        Insert: {
+          average_response_days?: number | null
+          capacity_status?: string | null
+          created_at?: string
+          data_points_count?: number | null
+          id?: string
+          industry?: string | null
+          last_updated?: string
+          product_type?: string | null
+          quote_probability?: number | null
+          revenue_band?: string | null
+          typical_premium_adjustment?: number | null
+          underwriter_name: string
+          win_probability?: number | null
+        }
+        Update: {
+          average_response_days?: number | null
+          capacity_status?: string | null
+          created_at?: string
+          data_points_count?: number | null
+          id?: string
+          industry?: string | null
+          last_updated?: string
+          product_type?: string | null
+          quote_probability?: number | null
+          revenue_band?: string | null
+          typical_premium_adjustment?: number | null
+          underwriter_name?: string
+          win_probability?: number | null
+        }
+        Relationships: []
+      }
+      placement_outcomes: {
+        Row: {
+          competitiveness_score: number | null
+          coverage_limits: Json | null
+          created_at: string
+          id: string
+          industry: string | null
+          notes: string | null
+          outcome: string
+          placed_at: string | null
+          premium_amount: number | null
+          product_type: string | null
+          quote_id: string | null
+          response_time_days: number | null
+          underwriter_name: string
+          updated_at: string
+          user_id: string
+          win_reason: string | null
+        }
+        Insert: {
+          competitiveness_score?: number | null
+          coverage_limits?: Json | null
+          created_at?: string
+          id?: string
+          industry?: string | null
+          notes?: string | null
+          outcome: string
+          placed_at?: string | null
+          premium_amount?: number | null
+          product_type?: string | null
+          quote_id?: string | null
+          response_time_days?: number | null
+          underwriter_name: string
+          updated_at?: string
+          user_id: string
+          win_reason?: string | null
+        }
+        Update: {
+          competitiveness_score?: number | null
+          coverage_limits?: Json | null
+          created_at?: string
+          id?: string
+          industry?: string | null
+          notes?: string | null
+          outcome?: string
+          placed_at?: string | null
+          premium_amount?: number | null
+          product_type?: string | null
+          quote_id?: string | null
+          response_time_days?: number | null
+          underwriter_name?: string
+          updated_at?: string
+          user_id?: string
+          win_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "placement_outcomes_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "structured_quotes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

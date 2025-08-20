@@ -7,8 +7,10 @@ import { ArrowLeft, FileText, BarChart3, TrendingUp, Upload, Users, Building2, T
 import FileUpload from "./FileUpload";
 import ComparisonView from "./ComparisonView";
 import CompanyManagement from "./CompanyManagement";
-import UnderwriterAppetiteManager from "./UnderwriterAppetiteManager";
-import UnderwriterMatchingView from "./UnderwriterMatchingView";
+import ClientReportGenerator from "./ClientReportGenerator";
+import AttackingBrokerIntelligence from "./AttackingBrokerIntelligence";
+import PlacementOutcomeTracker from "./PlacementOutcomeTracker";
+import PredictiveAnalyticsDashboard from "./PredictiveAnalyticsDashboard";
 import DocumentProcessingSuccess from "./DocumentProcessingSuccess";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -274,11 +276,11 @@ const Dashboard = ({ onBack }: DashboardProps) => {
         <Tabs defaultValue="upload" className="space-y-6">
           <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="upload">Upload & Process</TabsTrigger>
-            <TabsTrigger value="compare">Compare Quotes</TabsTrigger>
-            <TabsTrigger value="matching">Smart Matching</TabsTrigger>
-            <TabsTrigger value="underwriters">Underwriter Appetites</TabsTrigger>
+            <TabsTrigger value="reports">Client Reports</TabsTrigger>
+            <TabsTrigger value="intelligence">Attack Intelligence</TabsTrigger>
+            <TabsTrigger value="tracking">Placement Tracking</TabsTrigger>
+            <TabsTrigger value="predictions">Predictive Analytics</TabsTrigger>
             <TabsTrigger value="team">Team Management</TabsTrigger>
-            <TabsTrigger value="intelligence">Market Intelligence</TabsTrigger>
           </TabsList>
 
           <TabsContent value="upload">
@@ -334,40 +336,24 @@ const Dashboard = ({ onBack }: DashboardProps) => {
             </div>
           </TabsContent>
 
-          <TabsContent value="compare">
-            <ComparisonView quotes={quotes} onRefresh={fetchData} />
+          <TabsContent value="reports">
+            <ClientReportGenerator />
           </TabsContent>
 
-          <TabsContent value="matching">
-            <UnderwriterMatchingView quotes={quotes} />
+          <TabsContent value="intelligence">
+            <AttackingBrokerIntelligence />
           </TabsContent>
 
-          <TabsContent value="underwriters">
-            <UnderwriterAppetiteManager />
+          <TabsContent value="tracking">
+            <PlacementOutcomeTracker />
+          </TabsContent>
+
+          <TabsContent value="predictions">
+            <PredictiveAnalyticsDashboard />
           </TabsContent>
 
           <TabsContent value="team">
             <CompanyManagement userProfile={userProfile} />
-          </TabsContent>
-
-          <TabsContent value="intelligence">
-            <Card>
-              <CardHeader>
-                <CardTitle>Market Intelligence</CardTitle>
-                <CardDescription>
-                  Insights and recommendations based on your quote data
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12">
-                  <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Coming Soon</h3>
-                  <p className="text-muted-foreground">
-                    Market intelligence features will be available once you've uploaded more quotes
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
       </div>
