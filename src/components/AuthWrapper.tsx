@@ -345,7 +345,7 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
           )}
           
           <div className="text-center mb-8">
-            <img src="/lovable-uploads/7efe2624-58cc-456e-877b-95332a0fa92d.png" alt="CoverCompass" className="h-16 mx-auto mb-4" />
+            <img src="/lovable-uploads/117007fd-e5c4-4ee6-a580-ee7bde7ad08a.png" alt="CoverCompass" className="h-16 mx-auto mb-4" />
             <p className="text-muted-foreground mt-2">
               Markets Mapped. Cover Unlocked
             </p>
