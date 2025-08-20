@@ -14,6 +14,115 @@ export type Database = {
   }
   public: {
     Tables: {
+      broker_companies: {
+        Row: {
+          address: string | null
+          city: string | null
+          country: string | null
+          created_at: string
+          domain: string | null
+          id: string
+          logo_url: string | null
+          max_users: number | null
+          name: string
+          phone: string | null
+          subscription_tier: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          domain?: string | null
+          id?: string
+          logo_url?: string | null
+          max_users?: number | null
+          name: string
+          phone?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          domain?: string | null
+          id?: string
+          logo_url?: string | null
+          max_users?: number | null
+          name?: string
+          phone?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
+      company_invites: {
+        Row: {
+          company_id: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invite_code: string
+          invited_by: string
+          role: Database["public"]["Enums"]["app_role"] | null
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invite_code: string
+          invited_by: string
+          role?: Database["public"]["Enums"]["app_role"] | null
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invite_code?: string
+          invited_by?: string
+          role?: Database["public"]["Enums"]["app_role"] | null
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_invites_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "broker_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_invites_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_invites_used_by_fkey"
+            columns: ["used_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comparisons: {
         Row: {
           client_name: string | null
@@ -143,32 +252,77 @@ export type Database = {
       profiles: {
         Row: {
           broker_type: string | null
+          company_id: string | null
           company_name: string | null
           created_at: string
+          department: string | null
+          first_name: string | null
           id: string
+          invited_at: string | null
+          invited_by: string | null
+          is_active: boolean | null
+          job_title: string | null
+          last_name: string | null
+          phone: string | null
+          role: Database["public"]["Enums"]["app_role"] | null
           subscription_tier: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           broker_type?: string | null
+          company_id?: string | null
           company_name?: string | null
           created_at?: string
+          department?: string | null
+          first_name?: string | null
           id?: string
+          invited_at?: string | null
+          invited_by?: string | null
+          is_active?: boolean | null
+          job_title?: string | null
+          last_name?: string | null
+          phone?: string | null
+          role?: Database["public"]["Enums"]["app_role"] | null
           subscription_tier?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           broker_type?: string | null
+          company_id?: string | null
           company_name?: string | null
           created_at?: string
+          department?: string | null
+          first_name?: string | null
           id?: string
+          invited_at?: string | null
+          invited_by?: string | null
+          is_active?: boolean | null
+          job_title?: string | null
+          last_name?: string | null
+          phone?: string | null
+          role?: Database["public"]["Enums"]["app_role"] | null
           subscription_tier?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "broker_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reports: {
         Row: {
@@ -293,10 +447,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_invite_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_user_company_id: {
+        Args: { user_id: string }
+        Returns: string
+      }
+      get_user_role: {
+        Args: { user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      is_company_admin: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "company_admin" | "broker" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -423,6 +592,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["company_admin", "broker", "viewer"],
+    },
   },
 } as const
