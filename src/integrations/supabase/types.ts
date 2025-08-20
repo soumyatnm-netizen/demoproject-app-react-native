@@ -984,6 +984,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      analyze_quote_coverage: {
+        Args: { p_analysis_criteria?: Json; p_quote_id: string }
+        Returns: Json
+      }
       can_access_profile: {
         Args: { target_user_id: string }
         Returns: boolean
@@ -1069,6 +1073,22 @@ export type Database = {
           p_user_agent?: string
         }
         Returns: undefined
+      }
+      rank_quotes_for_client: {
+        Args: { p_client_id: string; p_quote_ids?: string[] }
+        Returns: {
+          areas_of_concern: string[]
+          competitiveness_score: number
+          coverage_score: number
+          insurer_name: string
+          key_strengths: string[]
+          overall_score: number
+          premium_amount: number
+          quality_score: number
+          quote_id: string
+          rank_position: number
+          recommendation_category: string
+        }[]
       }
       trigger_underwriter_matching: {
         Args: { p_document_id: string }

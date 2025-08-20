@@ -39,12 +39,12 @@ const Index = () => {
             Markets Mapped. Cover Unlocked
           </Badge>
           <h2 className="text-5xl font-bold text-foreground mb-6">
-            Remove the guesswork from <br />
-            <span className="text-primary">insurance placement</span>
+            Upload quotes and compare <br />
+            <span className="text-primary">coverage instantly</span>
           </h2>
           <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-            Upload quotes, compare coverage instantly, and discover the best markets for your clients. 
-            Stop spending hours collating policies - let AI do the heavy lifting.
+            Stop spending hours manually comparing insurance quotes. Upload 1-5 quotes from different underwriters 
+            and our AI instantly analyzes schedules, limits, clauses, exclusions, and core wording to rank them from best to worst.
           </p>
           <div className="flex gap-4 justify-center">
             <Button size="lg" onClick={() => setCurrentView('dashboard')}>
@@ -62,10 +62,10 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h3 className="text-3xl font-bold text-foreground mb-4">
-              Three steps to better placements
+              From quote chaos to ranked clarity in minutes
             </h3>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Upload your documents, get instant comparisons, and make data-driven placement decisions
+              Create client profiles, upload multiple quotes, and get instant rankings based on coverage quality, competitiveness, and value
             </p>
           </div>
 
@@ -73,9 +73,9 @@ const Index = () => {
             <Card className="text-center">
               <CardHeader>
                 <Upload className="h-12 w-12 text-primary mx-auto mb-4" />
-                <CardTitle>1. Upload Documents</CardTitle>
+                <CardTitle>1. Create Client Profile</CardTitle>
                 <CardDescription>
-                  Drag and drop insurer quotes, policy wordings, and schedules. Supports PDF, Word, and Excel.
+                  Set up your client with industry, revenue band, and risk profile to ensure accurate analysis.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -83,9 +83,9 @@ const Index = () => {
             <Card className="text-center">
               <CardHeader>
                 <Eye className="h-12 w-12 text-primary mx-auto mb-4" />
-                <CardTitle>2. AI Analysis</CardTitle>
+                <CardTitle>2. Upload 1-5 Quotes</CardTitle>
                 <CardDescription>
-                  Our AI instantly extracts coverage details, limits, and terms, structuring everything for comparison.
+                  Upload PDF quotes from different underwriters. Our AI analyzes schedules, limits, inner limits, exclusions, enhancements, and core wording.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -93,9 +93,9 @@ const Index = () => {
             <Card className="text-center">
               <CardHeader>
                 <Download className="h-12 w-12 text-primary mx-auto mb-4" />
-                <CardTitle>3. Client-Ready Reports</CardTitle>
+                <CardTitle>3. Instant Rankings</CardTitle>
                 <CardDescription>
-                  Get professional comparison reports highlighting strengths, gaps, and recommendations for your clients.
+                  Get quotes ranked from best to worst with highlighted strengths, concerns, and clear recommendations for quick decision-making.
                 </CardDescription>
               </CardHeader>
             </Card>

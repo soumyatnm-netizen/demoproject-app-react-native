@@ -11,6 +11,7 @@ import InsurerMatching from "./broker/InsurerMatching";
 import EmailIntegration from "./broker/EmailIntegration";
 import BrokerProfile from "./broker/BrokerProfile";
 import QuoteComparison from "./broker/QuoteComparison";
+import InstantQuoteComparison from "./InstantQuoteComparison";
 import AppetiteGuidesViewer from "./broker/AppetiteGuidesViewer";
 
 interface BrokerPortalProps {
@@ -169,15 +170,19 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
         </div>
 
         {/* Main Content */}
-        <Tabs defaultValue="clients" className="space-y-6">
+        <Tabs defaultValue="instant-comparison" className="space-y-6">
           <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="instant-comparison">Instant Comparison</TabsTrigger>
             <TabsTrigger value="clients">Client Management</TabsTrigger>
             <TabsTrigger value="appetites">Appetite Guides</TabsTrigger>
             <TabsTrigger value="matching">Insurer Matching</TabsTrigger>
-            <TabsTrigger value="comparison">Quote Comparison</TabsTrigger>
             <TabsTrigger value="email">Email Integration</TabsTrigger>
             <TabsTrigger value="profile">My Profile</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="instant-comparison">
+            <InstantQuoteComparison />
+          </TabsContent>
 
           <TabsContent value="clients">
             <ClientManagement onStatsUpdate={fetchBrokerStats} />
@@ -189,10 +194,6 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
 
           <TabsContent value="matching">
             <InsurerMatching />
-          </TabsContent>
-
-          <TabsContent value="comparison">
-            <QuoteComparison />
           </TabsContent>
 
           <TabsContent value="email">
