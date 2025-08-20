@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Edit, UserX, Mail, Phone } from "lucide-react";
+import { Plus, Search, Edit, UserX, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -18,7 +18,6 @@ interface BrokerProfile {
   last_name: string | null;
   role: string;
   company_name: string | null;
-  phone: string | null;
   is_active: boolean;
   login_count: number | null;
   last_login_at: string | null;
@@ -54,7 +53,6 @@ const BrokerManagement = ({ onStatsUpdate }: BrokerManagementProps) => {
     first_name: "",
     last_name: "",
     company_name: "",
-    phone: "",
     role: "broker"
   });
 
@@ -64,9 +62,22 @@ const BrokerManagement = ({ onStatsUpdate }: BrokerManagementProps) => {
 
   const fetchBrokers = async () => {
     try {
+      // Use the secure function to get team member data without sensitive fields
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select(`
+          user_id,
+          first_name,
+          last_name,
+          job_title,
+          department,
+          role,
+          is_active,
+          last_login_at,
+          created_at,
+          company_id,
+          subscription_tier
+        `)
         .in('role', ['broker', 'company_admin'])
         .order('created_at', { ascending: false });
 
@@ -95,7 +106,6 @@ const BrokerManagement = ({ onStatsUpdate }: BrokerManagementProps) => {
           first_name: newBroker.first_name,
           last_name: newBroker.last_name,
           company_name: newBroker.company_name,
-          phone: newBroker.phone,
           role: newBroker.role as any,
           is_active: true
         })
@@ -115,7 +125,6 @@ const BrokerManagement = ({ onStatsUpdate }: BrokerManagementProps) => {
         first_name: "",
         last_name: "",
         company_name: "",
-        phone: "",
         role: "broker"
       });
       fetchBrokers();
@@ -225,14 +234,6 @@ const BrokerManagement = ({ onStatsUpdate }: BrokerManagementProps) => {
                   id="company_name"
                   value={newBroker.company_name}
                   onChange={(e) => setNewBroker({ ...newBroker, company_name: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  value={newBroker.phone}
-                  onChange={(e) => setNewBroker({ ...newBroker, phone: e.target.value })}
                 />
               </div>
               <div>

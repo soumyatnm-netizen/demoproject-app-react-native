@@ -17,7 +17,6 @@ interface BrokerProfileData {
   first_name: string | null;
   last_name: string | null;
   company_name: string | null;
-  phone: string | null;
   job_title: string | null;
   department: string | null;
   role: string;
@@ -37,8 +36,16 @@ interface BrokerProfileData {
   is_active?: boolean;
 }
 
+interface SensitiveData {
+  phone: string | null;
+  personal_address: string | null;
+  emergency_contact: any;
+  sensitive_notes: string | null;
+}
+
 const BrokerProfile = () => {
   const [profile, setProfile] = useState<BrokerProfileData | null>(null);
+  const [sensitiveData, setSensitiveData] = useState<SensitiveData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -68,22 +75,36 @@ const BrokerProfile = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No authenticated user');
 
-      const { data, error } = await supabase
+      // Fetch basic profile data
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', user.id)
         .single();
 
-      if (error) throw error;
+      if (profileError) throw profileError;
 
-      setProfile(data as BrokerProfileData);
+      setProfile(profileData as BrokerProfileData);
+
+      // Fetch sensitive data separately
+      const { data: sensitiveDataResult, error: sensitiveError } = await supabase
+        .from('profile_sensitive_data')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      // It's OK if sensitive data doesn't exist yet
+      if (!sensitiveError) {
+        setSensitiveData(sensitiveDataResult);
+      }
+
       setProfileData({
-        first_name: data.first_name || "",
-        last_name: data.last_name || "",
-        company_name: data.company_name || "",
-        phone: data.phone || "",
-        job_title: data.job_title || "",
-        department: data.department || "",
+        first_name: profileData.first_name || "",
+        last_name: profileData.last_name || "",
+        company_name: profileData.company_name || "",
+        phone: sensitiveDataResult?.phone || "",
+        job_title: profileData.job_title || "",
+        department: profileData.department || "",
         bio: "",
         specializations: [],
         notification_preferences: {
@@ -110,19 +131,37 @@ const BrokerProfile = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No authenticated user');
 
-      const { error } = await supabase
+      // Update basic profile data
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({
           first_name: profileData.first_name,
           last_name: profileData.last_name,
           company_name: profileData.company_name,
-          phone: profileData.phone,
           job_title: profileData.job_title,
           department: profileData.department
         })
         .eq('user_id', user.id);
 
-      if (error) throw error;
+      if (profileError) throw profileError;
+
+      // Update sensitive data separately
+      const { error: sensitiveError } = await supabase
+        .from('profile_sensitive_data')
+        .upsert({
+          user_id: user.id,
+          phone: profileData.phone || null
+        });
+
+      if (sensitiveError) throw sensitiveError;
+
+      // Log the profile access for audit purposes
+      await supabase.rpc('log_profile_access', {
+        p_accessed_user_id: user.id,
+        p_access_type: 'update',
+        p_accessed_fields: ['first_name', 'last_name', 'company_name', 'job_title', 'department', 'phone'],
+        p_access_reason: 'User profile update'
+      });
 
       toast({
         title: "Success",
