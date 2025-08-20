@@ -442,6 +442,122 @@ export type Database = {
           },
         ]
       }
+      underwriter_appetite_data: {
+        Row: {
+          additional_products: string[] | null
+          appetite_document_id: string
+          broker_features: Json | null
+          coverage_limits: Json | null
+          created_at: string
+          exclusions: string[] | null
+          financial_ratings: Json | null
+          geographic_coverage: string[] | null
+          id: string
+          maximum_premium: number | null
+          minimum_premium: number | null
+          policy_features: Json | null
+          risk_appetite: string | null
+          specialty_focus: string[] | null
+          target_sectors: string[] | null
+          underwriter_name: string
+          updated_at: string
+        }
+        Insert: {
+          additional_products?: string[] | null
+          appetite_document_id: string
+          broker_features?: Json | null
+          coverage_limits?: Json | null
+          created_at?: string
+          exclusions?: string[] | null
+          financial_ratings?: Json | null
+          geographic_coverage?: string[] | null
+          id?: string
+          maximum_premium?: number | null
+          minimum_premium?: number | null
+          policy_features?: Json | null
+          risk_appetite?: string | null
+          specialty_focus?: string[] | null
+          target_sectors?: string[] | null
+          underwriter_name: string
+          updated_at?: string
+        }
+        Update: {
+          additional_products?: string[] | null
+          appetite_document_id?: string
+          broker_features?: Json | null
+          coverage_limits?: Json | null
+          created_at?: string
+          exclusions?: string[] | null
+          financial_ratings?: Json | null
+          geographic_coverage?: string[] | null
+          id?: string
+          maximum_premium?: number | null
+          minimum_premium?: number | null
+          policy_features?: Json | null
+          risk_appetite?: string | null
+          specialty_focus?: string[] | null
+          target_sectors?: string[] | null
+          underwriter_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "underwriter_appetite_data_appetite_document_id_fkey"
+            columns: ["appetite_document_id"]
+            isOneToOne: false
+            referencedRelation: "underwriter_appetites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      underwriter_appetites: {
+        Row: {
+          created_at: string
+          document_type: string
+          file_size: number | null
+          file_type: string
+          filename: string
+          id: string
+          processing_error: string | null
+          source_url: string | null
+          status: string
+          storage_path: string
+          underwriter_name: string
+          updated_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          document_type?: string
+          file_size?: number | null
+          file_type: string
+          filename: string
+          id?: string
+          processing_error?: string | null
+          source_url?: string | null
+          status?: string
+          storage_path: string
+          underwriter_name: string
+          updated_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          document_type?: string
+          file_size?: number | null
+          file_type?: string
+          filename?: string
+          id?: string
+          processing_error?: string | null
+          source_url?: string | null
+          status?: string
+          storage_path?: string
+          underwriter_name?: string
+          updated_at?: string
+          uploaded_by?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

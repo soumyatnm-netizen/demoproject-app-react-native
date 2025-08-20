@@ -3,10 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, FileText, BarChart3, TrendingUp, Upload, Users } from "lucide-react";
+import { ArrowLeft, FileText, BarChart3, TrendingUp, Upload, Users, Building2, Target } from "lucide-react";
 import FileUpload from "./FileUpload";
 import ComparisonView from "./ComparisonView";
 import CompanyManagement from "./CompanyManagement";
+import UnderwriterAppetiteManager from "./UnderwriterAppetiteManager";
+import UnderwriterMatchingView from "./UnderwriterMatchingView";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -33,6 +35,8 @@ interface StructuredQuote {
   deductible_amount: number;
   inclusions: string[];
   exclusions: string[];
+  industry: string;
+  revenue_band: string;
   created_at: string;
 }
 
@@ -218,9 +222,11 @@ const Dashboard = ({ onBack }: DashboardProps) => {
 
         {/* Main Content */}
         <Tabs defaultValue="upload" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="upload">Upload & Process</TabsTrigger>
             <TabsTrigger value="compare">Compare Quotes</TabsTrigger>
+            <TabsTrigger value="matching">Smart Matching</TabsTrigger>
+            <TabsTrigger value="underwriters">Underwriter Appetites</TabsTrigger>
             <TabsTrigger value="team">Team Management</TabsTrigger>
             <TabsTrigger value="intelligence">Market Intelligence</TabsTrigger>
           </TabsList>
@@ -280,6 +286,14 @@ const Dashboard = ({ onBack }: DashboardProps) => {
 
           <TabsContent value="compare">
             <ComparisonView quotes={quotes} onRefresh={fetchData} />
+          </TabsContent>
+
+          <TabsContent value="matching">
+            <UnderwriterMatchingView quotes={quotes} />
+          </TabsContent>
+
+          <TabsContent value="underwriters">
+            <UnderwriterAppetiteManager />
           </TabsContent>
 
           <TabsContent value="team">

@@ -11,5 +11,8 @@ enable_signup = true
 [functions.process-document]
 verify_jwt = false
 
+[functions.process-appetite-document]
+verify_jwt = false
+
 [functions.auth-email]
 verify_jwt = false
