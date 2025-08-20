@@ -23,10 +23,10 @@ const Index = () => {
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Shield className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold text-foreground">CoverCompass</h1>
-          </div>
+        <div className="flex items-center space-x-2">
+          <img src="/lovable-uploads/cd40fcf4-7e23-4ca5-9781-dcb03881a281.png" alt="CoverCompass" className="h-8 w-8" />
+          <h1 className="text-2xl font-bold text-foreground">CoverCompass</h1>
+        </div>
           <Button onClick={() => setCurrentView('dashboard')}>
             Get Started
           </Button>
@@ -183,10 +183,10 @@ const Index = () => {
       {/* Footer */}
       <footer className="py-12 border-t">
         <div className="container mx-auto px-4 text-center">
-          <div className="flex items-center justify-center space-x-2 mb-4">
-            <Shield className="h-6 w-6 text-primary" />
-            <span className="font-semibold">CoverCompass</span>
-          </div>
+        <div className="flex items-center justify-center space-x-2 mb-4">
+          <img src="/lovable-uploads/cd40fcf4-7e23-4ca5-9781-dcb03881a281.png" alt="CoverCompass" className="h-6 w-6" />
+          <span className="font-semibold">CoverCompass</span>
+        </div>
           <p className="text-sm text-muted-foreground">
             The placement intelligence layer for insurance broking
           </p>
