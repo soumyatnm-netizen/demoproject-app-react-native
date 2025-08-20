@@ -19,9 +19,18 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isAdminSignUp, setIsAdminSignUp] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [inviteData, setInviteData] = useState<any>(null);
+  
+  // Admin signup fields
+  const [companyName, setCompanyName] = useState("");
+  const [adminFirstName, setAdminFirstName] = useState("");
+  const [adminLastName, setAdminLastName] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
+  const [companyDomain, setCompanyDomain] = useState("");
+  
   const { toast } = useToast();
 
   useEffect(() => {
@@ -40,7 +49,15 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
         // Handle post-signup profile creation
         if (event === 'SIGNED_IN' && session?.user) {
           setTimeout(async () => {
-            await createOrUpdateProfile(session.user, inviteData);
+            const adminSignUpData = isAdminSignUp ? {
+              companyName,
+              firstName: adminFirstName,
+              lastName: adminLastName,
+              jobTitle,
+              companyDomain
+            } : null;
+            
+            await createOrUpdateProfile(session.user, inviteData, adminSignUpData);
           }, 100);
         }
       }
@@ -49,7 +66,7 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
     return () => subscription.unsubscribe();
   }, [inviteData]);
 
-  const createOrUpdateProfile = async (user: any, inviteInfo?: any) => {
+  const createOrUpdateProfile = async (user: any, inviteInfo?: any, adminData?: any) => {
     try {
       // Check if profile already exists
       const { data: existingProfile } = await supabase
@@ -59,8 +76,7 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
         .single();
 
       if (!existingProfile) {
-        // Create new profile
-        const profileData: any = {
+        let profileData: any = {
           user_id: user.id,
           subscription_tier: 'basic',
         };
@@ -81,6 +97,26 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
             })
             .eq('invite_code', inviteInfo.invite_code);
         }
+        // If user is admin creating a company
+        else if (adminData) {
+          // First create the company
+          const { data: newCompany, error: companyError } = await supabase
+            .from('broker_companies')
+            .insert({
+              name: adminData.companyName,
+              domain: adminData.companyDomain || null,
+            })
+            .select()
+            .single();
+
+          if (companyError) throw companyError;
+
+          profileData.company_id = newCompany.id;
+          profileData.role = 'company_admin';
+          profileData.first_name = adminData.firstName;
+          profileData.last_name = adminData.lastName;
+          profileData.job_title = adminData.jobTitle;
+        }
 
         const { error } = await supabase
           .from('profiles')
@@ -88,6 +124,11 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
 
         if (error) {
           console.error('Error creating profile:', error);
+        } else if (adminData) {
+          toast({
+            title: "Company Created!",
+            description: `${adminData.companyName} has been set up successfully. You can now invite team members.`,
+          });
         }
       }
     } catch (error) {
@@ -212,23 +253,28 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
     setAuthLoading(true);
 
     try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+      if (isSignUp || isAdminSignUp) {
+        const signUpData: any = {
           email,
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/`,
             data: {
-              invite_code: inviteCode || null
+              invite_code: inviteCode || null,
+              is_admin_signup: isAdminSignUp || false
             }
           }
-        });
+        };
+
+        const { error } = await supabase.auth.signUp(signUpData);
         if (error) throw error;
         
         toast({
           title: "Success",
           description: inviteData 
             ? `Account created! You'll be added to ${inviteData.company.name}.`
+            : isAdminSignUp
+            ? "Company admin account created! Please check your email to confirm."
             : "Please check your email to confirm your account",
         });
       } else {
@@ -301,15 +347,18 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs value={isSignUp ? "signup" : "signin"} className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="signin" onClick={() => setIsSignUp(false)}>
-                    Sign In
-                  </TabsTrigger>
-                  <TabsTrigger value="signup" onClick={() => setIsSignUp(true)}>
-                    Sign Up
-                  </TabsTrigger>
-                </TabsList>
+              <Tabs value={isAdminSignUp ? "admin" : isSignUp ? "signup" : "signin"} className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="signin" onClick={() => { setIsSignUp(false); setIsAdminSignUp(false); }}>
+                Sign In
+              </TabsTrigger>
+              <TabsTrigger value="signup" onClick={() => { setIsSignUp(true); setIsAdminSignUp(false); }}>
+                Sign Up
+              </TabsTrigger>
+              <TabsTrigger value="admin" onClick={() => { setIsSignUp(true); setIsAdminSignUp(true); }}>
+                Admin Setup
+              </TabsTrigger>
+            </TabsList>
                 
                 <TabsContent value="signin" className="space-y-4 mt-4">
                   <form onSubmit={handleAuth} className="space-y-4">
@@ -428,6 +477,141 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                         </>
                       ) : (
                         "Create Account"
+                      )}
+                    </Button>
+                    
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-card px-2 text-muted-foreground">Or</span>
+                      </div>
+                    </div>
+                    
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      className="w-full" 
+                      onClick={handleTestAccount}
+                      disabled={authLoading}
+                    >
+                      {authLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating Test Account...
+                        </>
+                      ) : (
+                        "🚀 Try Test Account"
+                      )}
+                    </Button>
+                  </form>
+                </TabsContent>
+                
+                <TabsContent value="admin" className="space-y-4 mt-4">
+                  <div className="text-center mb-4">
+                    <h3 className="text-lg font-semibold">Create Company Admin Account</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Set up your broker company and invite team members
+                    </p>
+                  </div>
+                  
+                  <form onSubmit={handleAuth} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="admin-first-name">First Name</Label>
+                        <Input
+                          id="admin-first-name"
+                          type="text"
+                          placeholder="John"
+                          value={adminFirstName}
+                          onChange={(e) => setAdminFirstName(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="admin-last-name">Last Name</Label>
+                        <Input
+                          id="admin-last-name"
+                          type="text"
+                          placeholder="Smith"
+                          value={adminLastName}
+                          onChange={(e) => setAdminLastName(e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="admin-email">Email Address</Label>
+                      <Input
+                        id="admin-email"
+                        type="email"
+                        placeholder="admin@company.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="admin-password">Password</Label>
+                      <Input
+                        id="admin-password"
+                        type="password"
+                        placeholder="Choose a strong password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="company-name">Company Name</Label>
+                      <Input
+                        id="company-name"
+                        type="text"
+                        placeholder="Aon, Marsh, Willis Towers Watson..."
+                        value={companyName}
+                        onChange={(e) => setCompanyName(e.target.value)}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="job-title">Your Job Title</Label>
+                      <Input
+                        id="job-title"
+                        type="text"
+                        placeholder="Senior Broker, Team Lead, Director..."
+                        value={jobTitle}
+                        onChange={(e) => setJobTitle(e.target.value)}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="company-domain">Company Email Domain (Optional)</Label>
+                      <Input
+                        id="company-domain"
+                        type="text"
+                        placeholder="aon.com, marsh.com..."
+                        value={companyDomain}
+                        onChange={(e) => setCompanyDomain(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        This helps with automatic team member verification
+                      </p>
+                    </div>
+                    
+                    <Button type="submit" className="w-full" disabled={authLoading}>
+                      {authLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating Company Admin Account...
+                        </>
+                      ) : (
+                        "Create Company & Admin Account"
                       )}
                     </Button>
                     
