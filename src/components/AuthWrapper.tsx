@@ -198,38 +198,50 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
         password: testPassword,
       });
 
-      if (signInError && signInError.message.includes('Invalid login credentials')) {
-        // Test account doesn't exist, create it
-        const { error: signUpError } = await supabase.auth.signUp({
-          email: testEmail,
-          password: testPassword,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: {
-              test_account: true
-            }
-          }
-        });
-
-        if (signUpError) throw signUpError;
-
-        // If signup requires email confirmation, try signing in immediately
-        // (this works if email confirmation is disabled)
-        const { error: immediateSignInError } = await supabase.auth.signInWithPassword({
-          email: testEmail,
-          password: testPassword,
-        });
-
-        if (immediateSignInError && !immediateSignInError.message.includes('Email not confirmed')) {
-          throw immediateSignInError;
+      if (signInError) {
+        // Check if it's an email not confirmed error
+        if (signInError.message.includes('Email not confirmed')) {
+          toast({
+            title: "Demo Account Ready",
+            description: "Test account exists but needs confirmation. For demo purposes, please contact admin or use regular signup.",
+            variant: "destructive",
+          });
+          return;
         }
+        
+        // Check if account doesn't exist
+        if (signInError.message.includes('Invalid login credentials')) {
+          // Test account doesn't exist, create it
+          const { data, error: signUpError } = await supabase.auth.signUp({
+            email: testEmail,
+            password: testPassword,
+            options: {
+              emailRedirectTo: `${window.location.origin}/`,
+              data: {
+                test_account: true,
+                skip_confirmation: true
+              }
+            }
+          });
 
-        toast({
-          title: "Test Account Created",
-          description: "Welcome to CoverCompass! You're now signed in with a demo account.",
-        });
-      } else if (signInError) {
-        throw signInError;
+          if (signUpError) throw signUpError;
+
+          // Check if the user was immediately confirmed (when email confirmation is disabled)
+          if (data.user && !data.user.email_confirmed_at) {
+            toast({
+              title: "Test Account Created",
+              description: "Demo account created! Please check your email to confirm, or ask admin to disable email confirmation for instant access.",
+            });
+            return;
+          }
+
+          toast({
+            title: "Demo Access Ready",
+            description: "Welcome to CoverCompass! You're now signed in with a demo account.",
+          });
+        } else {
+          throw signInError;
+        }
       } else {
         toast({
           title: "Welcome Back",
@@ -239,8 +251,8 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
     } catch (error: any) {
       console.error('Test account error:', error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to create test account",
+        title: "Demo Access Issue",
+        description: "For instant demo access, please ask admin to disable 'Confirm email' in Supabase Auth settings, or use regular signup.",
         variant: "destructive",
       });
     } finally {
