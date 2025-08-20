@@ -357,6 +357,8 @@ export type Database = {
         Row: {
           appetite_score: number | null
           avg_premium_rate: number | null
+          company_id: string
+          created_by: string | null
           data_points: number | null
           id: string
           industry: string | null
@@ -372,6 +374,8 @@ export type Database = {
         Insert: {
           appetite_score?: number | null
           avg_premium_rate?: number | null
+          company_id: string
+          created_by?: string | null
           data_points?: number | null
           id?: string
           industry?: string | null
@@ -387,6 +391,8 @@ export type Database = {
         Update: {
           appetite_score?: number | null
           avg_premium_rate?: number | null
+          company_id?: string
+          created_by?: string | null
           data_points?: number | null
           id?: string
           industry?: string | null
@@ -399,7 +405,15 @@ export type Database = {
           typical_limits?: Json | null
           win_rate?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "market_intelligence_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "broker_companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       market_predictions: {
         Row: {
@@ -995,6 +1009,21 @@ export type Database = {
       cleanup_old_audit_data: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      create_market_intelligence: {
+        Args: {
+          p_appetite_score?: number
+          p_avg_premium_rate?: number
+          p_industry?: string
+          p_insurer_name: string
+          p_preferences?: Json
+          p_product_type: string
+          p_revenue_band_max?: number
+          p_revenue_band_min?: number
+          p_typical_limits?: Json
+          p_win_rate?: number
+        }
+        Returns: string
       }
       generate_invite_code: {
         Args: Record<PropertyKey, never>
