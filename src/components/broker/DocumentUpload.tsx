@@ -158,9 +158,14 @@ export const DocumentUpload = ({ open, onOpenChange, onClientExtracted }: Docume
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'image/*': ['.jpeg', '.jpg', '.png', '.gif']
+      'image/jpeg': ['.jpg', '.jpeg'],
+      'image/png': ['.png'],
+      'image/gif': ['.gif']
     },
     maxSize: 10 * 1024 * 1024, // 10MB
+    multiple: true,
+    noClick: false,
+    noKeyboard: false
   });
 
   const removeFile = (file: File) => {
