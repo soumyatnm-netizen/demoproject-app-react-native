@@ -156,7 +156,7 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: 'gpt-4o-mini',
           messages: [
             {
               role: 'user',
@@ -222,12 +222,13 @@ serve(async (req) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'gpt-4.1-2025-04-14',
+            model: 'gpt-4o-mini',
             messages: [
               { role: 'system', content: 'Extract structured client details from provided document text. Always return JSON only.' },
               { role: 'user', content: `${buildPrompt()}\n\nDocument Text:\n${plainText.slice(0, 15000)}` }
             ],
-            max_completion_tokens: 2000
+            max_tokens: 2000,
+            temperature: 0.1
           }),
         });
 
