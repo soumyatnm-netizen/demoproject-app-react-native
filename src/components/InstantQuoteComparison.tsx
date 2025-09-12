@@ -461,6 +461,57 @@ const InstantQuoteComparison = () => {
         throw new Error("Client data not found");
       }
 
+      // Create container with CoverCompass header + existing web content
+      const printContainer = document.createElement('div');
+      printContainer.style.position = 'absolute';
+      printContainer.style.left = '-9999px';
+      printContainer.style.width = '800px';
+      printContainer.style.backgroundColor = 'white';
+      printContainer.style.fontFamily = 'system-ui, sans-serif';
+      
+      // Get the current page sections
+      const sections = document.querySelectorAll('.space-y-6 > *');
+      let contentHTML = '';
+      sections.forEach(section => {
+        if (section.textContent?.includes('Coverage Comparison') || section.textContent?.includes('Quote Rankings')) {
+          contentHTML += section.outerHTML;
+        }
+      });
+      
+      printContainer.innerHTML = `
+        <div style="background: linear-gradient(135deg, #3b82f6, #1e40af); color: white; padding: 32px; margin-bottom: 32px;">
+          <h1 style="font-size: 32px; font-weight: bold;">CoverCompass</h1>
+          <p style="font-size: 16px; opacity: 0.9;">Insurance Quote Comparison Report</p>
+        </div>
+        <div style="background: #f8fafc; padding: 24px; border-radius: 12px; margin-bottom: 32px;">
+          <h3 style="font-size: 18px; margin-bottom: 16px;">📋 Client Information</h3>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 14px;">
+            <div><strong>Client:</strong> ${selectedClientData.client_name}</div>
+            <div><strong>Date:</strong> ${new Date().toLocaleDateString()}</div>
+            ${selectedClientData.industry ? `<div><strong>Industry:</strong> ${selectedClientData.industry}</div>` : ''}
+            <div><strong>Quotes Analyzed:</strong> ${rankings.length}</div>
+          </div>
+        </div>
+        ${contentHTML}
+      `;
+      
+      document.body.appendChild(printContainer);
+      const canvas = await html2canvas(printContainer, { scale: 1.5, backgroundColor: '#fff' });
+      document.body.removeChild(printContainer);
+      
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 200;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 5, 5, imgWidth, imgHeight);
+      
+      const fileName = `CoverCompass_Analysis_${selectedClientData.client_name.replace(/\s+/g, '_')}.pdf`;
+      pdf.save(fileName);
+
+      toast({
+        title: "✅ Report Generated",
+        description: `Your CoverCompass report has been downloaded!`,
+      });
+
       const currentRankings = scoredRankings.length > 0 ? scoredRankings : rankings;
 
       // Create PDF with proper A4 dimensions
