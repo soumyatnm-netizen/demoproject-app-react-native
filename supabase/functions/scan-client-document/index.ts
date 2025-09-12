@@ -94,9 +94,18 @@ serve(async (req) => {
       throw new Error('Failed to download document');
     }
 
-    // Convert the file to base64 for OpenAI
+    // Convert the file to base64 for OpenAI (handle large files properly)
     const arrayBuffer = await fileData.arrayBuffer();
-    const base64Data = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const bytes = new Uint8Array(arrayBuffer);
+    
+    // Convert to base64 in chunks to avoid call stack overflow
+    let binaryString = '';
+    const chunkSize = 8192; // Process in 8KB chunks
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.slice(i, i + chunkSize);
+      binaryString += String.fromCharCode.apply(null, Array.from(chunk));
+    }
+    const base64Data = btoa(binaryString);
     
     // Create the OpenAI prompt for client data extraction
     const prompt = `
