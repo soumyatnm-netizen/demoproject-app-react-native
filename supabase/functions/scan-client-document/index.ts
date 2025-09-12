@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import * as zip from 'https://deno.land/x/zipjs@2.7.34/index.js';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -94,21 +95,8 @@ serve(async (req) => {
       throw new Error('Failed to download document');
     }
 
-    // Convert the file to base64 for OpenAI (handle large files properly)
-    const arrayBuffer = await fileData.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
-    
-    // Convert to base64 in chunks to avoid call stack overflow
-    let binaryString = '';
-    const chunkSize = 8192; // Process in 8KB chunks
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-      const chunk = bytes.slice(i, i + chunkSize);
-      binaryString += String.fromCharCode.apply(null, Array.from(chunk));
-    }
-    const base64Data = btoa(binaryString);
-    
-    // Create the OpenAI prompt for client data extraction
-    const prompt = `
+    // Helpers
+    const buildPrompt = () => `
     You are a document analysis AI. Extract client/business information from this insurance policy or quote document.
 
     Extract the following information if available in the document:
@@ -141,103 +129,151 @@ serve(async (req) => {
     For revenue_band, use format like "1-5m" for £1M - £5M.
     For risk_profile, return one of: "low", "medium", "high".
     For coverage_requirements, return as array of strings.
-
-    Example format:
-    {
-      "client_name": "ABC Ltd",
-      "contact_email": "info@abc.com",
-      "contact_phone": "+44 123 456 7890",
-      "coverage_requirements": ["Public Liability", "Professional Indemnity"],
-      "risk_profile": "medium",
-      "industry": "technology",
-      "employee_count": 50,
-      "revenue_band": "5-10m",
-      "main_address": "123 Business Street, London",
-      "postcode": "SW1A 1AA"
-    }
     `;
 
-    // Call OpenAI API with document image
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: prompt
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:${document.file_type};base64,${base64Data}`
-                }
-              }
-            ]
-          }
-        ],
-        max_tokens: 2000,
-        temperature: 0.1
-      }),
-    });
+    const mime = (document.file_type || '').toLowerCase();
+    const filename = (document.filename || '').toLowerCase();
 
-    if (!openAIResponse.ok) {
-      const errorText = await openAIResponse.text();
-      console.error('OpenAI API error:', errorText);
-      throw new Error(`OpenAI API error: ${openAIResponse.status}`);
+    let extractedText: string | null = null;
+
+    if (mime.startsWith('image/')) {
+      // IMAGE FLOW: convert to base64 in safe chunks and call GPT-4o vision
+      const arrayBuffer = await fileData.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binaryString = '';
+      const chunkSize = 8192;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        const sub = bytes.subarray(i, i + chunkSize);
+        // Avoid apply on very large arrays
+        for (let j = 0; j < sub.length; j++) binaryString += String.fromCharCode(sub[j]);
+      }
+      const base64Data = btoa(binaryString);
+
+      const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: buildPrompt() },
+                { type: 'image_url', image_url: { url: `data:${document.file_type};base64,${base64Data}` } }
+              ]
+            }
+          ],
+          max_tokens: 2000,
+          temperature: 0.1
+        }),
+      });
+
+      if (!openAIResponse.ok) {
+        const err = await openAIResponse.text();
+        console.error('OpenAI (image) error:', err);
+        await supabase.from('documents').update({ status: 'error', processing_error: 'AI vision failed to analyze image' }).eq('id', documentId);
+        return new Response(JSON.stringify({ success: false, error: 'AI failed to analyze image document.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      }
+
+      const openAIResult = await openAIResponse.json();
+      extractedText = openAIResult.choices?.[0]?.message?.content || null;
+
+    } else if (filename.endsWith('.docx') || mime.includes('wordprocessingml')) {
+      // DOCX FLOW: extract text from word/document.xml using zip.js
+      let plainText = '';
+      try {
+        const zipReader = new ZipReader(new BlobReader(fileData));
+        const entries = await zipReader.getEntries();
+        const docXml = entries.find((e: any) => e.filename === 'word/document.xml');
+        if (docXml) {
+          const xmlText: string = await docXml.getData(new TextWriter());
+          plainText = xmlText
+            .replace(/<w:p[^>]*>/g, '\n')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/\s+/g, ' ')
+            .trim();
+        }
+        await zipReader.close();
+      } catch (e) {
+        console.error('DOCX extract error:', e);
+      }
+
+      if (!plainText) {
+        await supabase.from('documents').update({ status: 'error', processing_error: 'Unable to read .docx content' }).eq('id', documentId);
+        return new Response(JSON.stringify({ success: false, error: 'Unable to read .docx content.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      }
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4.1-2025-04-14',
+          messages: [
+            { role: 'system', content: 'Extract structured client details from provided document text. Always return JSON only.' },
+            { role: 'user', content: `${buildPrompt()}\n\nDocument Text (truncated):\n${plainText.slice(0, 30000)}` }
+          ],
+          max_completion_tokens: 2000
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.text();
+        console.error('OpenAI (docx) error:', err);
+        await supabase.from('documents').update({ status: 'error', processing_error: 'AI failed to analyze DOCX' }).eq('id', documentId);
+        return new Response(JSON.stringify({ success: false, error: 'AI failed to analyze DOCX.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      }
+
+      const ai = await response.json();
+      extractedText = ai.choices?.[0]?.message?.content || null;
+
+    } else if (filename.endsWith('.pdf') || mime === 'application/pdf') {
+      // PDF FLOW: not yet supported robustly - return friendly message
+      await supabase.from('documents').update({ status: 'error', processing_error: 'PDF parsing not supported yet' }).eq('id', documentId);
+      return new Response(JSON.stringify({ success: false, error: 'PDF scanning is not yet supported. Please upload a DOCX or a clear image.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+
+    } else {
+      await supabase.from('documents').update({ status: 'error', processing_error: 'Unsupported file type' }).eq('id', documentId);
+      return new Response(JSON.stringify({ success: false, error: 'Unsupported file type. Please upload a DOCX, PNG or JPG.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
-
-    const openAIResult = await openAIResponse.json();
-    const extractedText = openAIResult.choices?.[0]?.message?.content;
 
     if (!extractedText) {
-      throw new Error('No content extracted from document');
+      await supabase.from('documents').update({ status: 'error', processing_error: 'No content extracted' }).eq('id', documentId);
+      return new Response(JSON.stringify({ success: false, error: 'No content extracted from document.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
-
-    console.log('Raw OpenAI response:', extractedText);
 
     // Parse the JSON response
     let extractedData: ClientExtractedData;
     try {
-      // Clean the response to extract JSON
       const jsonMatch = extractedText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('No JSON found in response');
       }
-      
       extractedData = JSON.parse(jsonMatch[0]);
     } catch (parseError) {
       console.error('Failed to parse JSON:', parseError);
       console.error('Raw text:', extractedText);
-      throw new Error('Failed to parse extracted data as JSON');
+      await supabase.from('documents').update({ status: 'error', processing_error: 'AI returned unparseable content' }).eq('id', documentId);
+      return new Response(JSON.stringify({ success: false, error: 'AI returned unparseable content.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
-    // Update document status
+    // Mark as processed on success
     await supabase
       .from('documents')
-      .update({ 
-        status: 'processed',
-        processing_error: null 
-      })
+      .update({ status: 'processed', processing_error: null })
       .eq('id', documentId);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        extractedData,
-        documentId 
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200
-      }
+      JSON.stringify({ success: true, extractedData, documentId }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
 
   } catch (error) {
