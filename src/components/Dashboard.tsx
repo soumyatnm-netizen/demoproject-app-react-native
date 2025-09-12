@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, FileText, BarChart3, TrendingUp, Upload, Users, Building2, Target, Star } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ArrowLeft, FileText, BarChart3, TrendingUp, Upload, Users, Building2, Target, Star, Settings } from "lucide-react";
 import FileUpload from "./FileUpload";
 import { TestOpenAI } from "./TestOpenAI";
 import ComparisonView from "./ComparisonView";
@@ -66,6 +67,7 @@ const Dashboard = ({ onBack }: DashboardProps) => {
   const [showProcessingSuccess, setShowProcessingSuccess] = useState<StructuredQuote | null>(null);
   const [selectedDocumentForMatching, setSelectedDocumentForMatching] = useState<{ id: string; name: string } | null>(null);
   const [currentView, setCurrentView] = useState<'dashboard' | 'broker-portal' | 'admin-portal'>('dashboard');
+  const [showOpenAITest, setShowOpenAITest] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -230,15 +232,27 @@ const Dashboard = ({ onBack }: DashboardProps) => {
                 <h1 className="text-2xl font-bold text-foreground">CoverCompass Dashboard</h1>
               </div>
             </div>
-          <Badge variant="secondary">Beta</Badge>
+            <div className="flex items-center space-x-2">
+              <Dialog open={showOpenAITest} onOpenChange={setShowOpenAITest}>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <Settings className="h-4 w-4 mr-2" />
+                    API Test
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>API Configuration Test</DialogTitle>
+                  </DialogHeader>
+                  <TestOpenAI />
+                </DialogContent>
+              </Dialog>
+              <Badge variant="secondary">Beta</Badge>
+            </div>
         </div>
       </header>
 
       <div className="container mx-auto px-4 py-8">
-        {/* OpenAI Test Component */}
-        <div className="mb-8">
-          <TestOpenAI />
-        </div>
         {/* Portal Access Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <Card className="cursor-pointer hover:shadow-lg transition-shadow bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20" onClick={() => setCurrentView('broker-portal')}>
