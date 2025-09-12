@@ -495,10 +495,18 @@ const InstantQuoteComparison = () => {
                 <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
                   <div className="flex items-center space-x-2 mb-2">
                     <Zap className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium text-primary">All quotes ready for instant comparison</span>
+                    <span className="text-sm font-medium text-primary">
+                      {uploadedQuotes.length === 1 
+                        ? "Quote ready for analysis" 
+                        : `All ${uploadedQuotes.length} quotes ready for comparison`
+                      }
+                    </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Click "Compare Quotes Instantly" below to analyze coverage, limits, exclusions, and competitiveness across all {uploadedQuotes.length} quotes.
+                    {uploadedQuotes.length === 1 
+                      ? "Our AI will analyze your quote for coverage details and recommendations."
+                      : `Click "Compare Quotes Instantly" below to analyze coverage, limits, exclusions, and competitiveness across all ${uploadedQuotes.length} quotes.`
+                    }
                   </p>
                 </div>
               </div>
