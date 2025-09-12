@@ -60,6 +60,23 @@ const InstantQuoteComparison = () => {
 
   useEffect(() => {
     fetchClients();
+    
+    // Prevent default browser behavior for drag and drop
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+    };
+    
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+    };
+    
+    document.addEventListener('dragover', handleDragOver);
+    document.addEventListener('drop', handleDrop);
+    
+    return () => {
+      document.removeEventListener('dragover', handleDragOver);
+      document.removeEventListener('drop', handleDrop);
+    };
   }, []);
 
   const fetchClients = async () => {
@@ -385,11 +402,21 @@ const InstantQuoteComparison = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className={`border-2 border-dashed rounded-lg p-8 text-center ${
-              uploadedQuotes.length >= 5 
-                ? 'border-gray-300 bg-gray-50 cursor-not-allowed' 
-                : 'border-muted-foreground/25 cursor-pointer hover:border-primary/50'
-            }`}>
+            <div 
+              className={`border-2 border-dashed rounded-lg p-8 text-center ${
+                uploadedQuotes.length >= 5 
+                  ? 'border-gray-300 bg-gray-50 cursor-not-allowed' 
+                  : 'border-muted-foreground/25 cursor-pointer hover:border-primary/50'
+              }`}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (uploadedQuotes.length >= 5) return;
+                const files = e.dataTransfer.files;
+                handleFileUpload(files);
+              }}
+              onDragOver={(e) => e.preventDefault()}
+              onDragEnter={(e) => e.preventDefault()}
+            >
               <Upload className={`h-8 w-8 mx-auto mb-2 ${
                 uploadedQuotes.length >= 5 ? 'text-gray-400' : 'text-muted-foreground'
               }`} />
@@ -401,10 +428,10 @@ const InstantQuoteComparison = () => {
               ) : (
                 <Label htmlFor="quote-upload" className="cursor-pointer">
                   <span className="text-sm font-medium">
-                    {uploadedQuotes.length === 0 ? 'Click to upload first quote' : 'Click to add another quote'}
+                    {uploadedQuotes.length === 0 ? 'Click to upload quotes' : 'Click to add more quotes'}
                   </span>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Add PDF files one by one ({uploadedQuotes.length}/5 uploaded)
+                    Add multiple PDF files at once ({uploadedQuotes.length}/5 uploaded)
                   </p>
                 </Label>
               )}
@@ -412,6 +439,7 @@ const InstantQuoteComparison = () => {
                 id="quote-upload"
                 type="file"
                 accept=".pdf"
+                multiple
                 onChange={(e) => handleFileUpload(e.target.files)}
                 className="hidden"
                 disabled={uploadedQuotes.length >= 5}
