@@ -59,13 +59,19 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
+    console.log('Starting scan-client-document function');
+    
     if (!openAIApiKey) {
+      console.error('OpenAI API key not configured');
       throw new Error('OpenAI API key not configured');
     }
 
     if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Supabase configuration missing');
       throw new Error('Supabase configuration missing');
     }
+
+    console.log('All API keys configured successfully');
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
@@ -184,10 +190,14 @@ serve(async (req) => {
     } else if (filename.endsWith('.docx') || mime.includes('wordprocessingml')) {
       // DOCX FLOW: extract text from word/document.xml using JSZip
       try {
+        console.log('Starting DOCX processing for file:', document.filename);
         const arrayBuffer = await fileData.arrayBuffer();
+        console.log('File size (bytes):', arrayBuffer.byteLength);
         
         // Load the DOCX file as a ZIP using JSZip
+        console.log('Loading DOCX as ZIP...');
         const zip = await JSZip.loadAsync(arrayBuffer);
+        console.log('ZIP loaded successfully, looking for document.xml...');
         
         // Find and read the document.xml file
         const documentXmlFile = zip.file('word/document.xml');
@@ -211,8 +221,13 @@ serve(async (req) => {
           .trim();
 
         if (!plainText || plainText.length < 10) {
+          console.error('No meaningful text content found. Text length:', plainText?.length);
+          console.error('Extracted text preview:', plainText?.substring(0, 200));
           throw new Error('No meaningful text content found in DOCX');
         }
+        
+        console.log('Successfully extracted text. Length:', plainText.length);
+        console.log('Text preview:', plainText.substring(0, 200));
 
         // Call OpenAI with extracted text
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -235,6 +250,8 @@ serve(async (req) => {
         if (!response.ok) {
           const err = await response.text();
           console.error('OpenAI (docx) error:', err);
+          console.error('OpenAI Response status:', response.status);
+          console.error('OpenAI Response headers:', Object.fromEntries(response.headers.entries()));
           throw new Error('AI failed to analyze DOCX content');
         }
 
