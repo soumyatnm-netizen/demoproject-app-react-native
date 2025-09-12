@@ -1,6 +1,9 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// @deno-types="https://esm.sh/pdfjs-dist@4.0.379/types/src/pdf.d.ts"
+import * as pdfjsLib from "https://esm.sh/pdfjs-dist@4.0.379/build/pdf.min.mjs";
+import { unzipSync } from "https://deno.land/x/compress@v0.4.5/zip/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -181,21 +184,147 @@ serve(async (req) => {
       extractedText = openAIResult.choices?.[0]?.message?.content || null;
 
     } else if (filename.endsWith('.docx') || mime.includes('wordprocessingml')) {
-      // DOCX FLOW: currently unsupported in this environment – respond gracefully
-      await supabase
-        .from('documents')
-        .update({ status: 'error', processing_error: 'DOCX parsing not supported yet' })
-        .eq('id', documentId);
+      // DOCX FLOW: extract text from word/document.xml
+      try {
+        const arrayBuffer = await fileData.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+        
+        // Extract the zip file
+        const unzipped = unzipSync(uint8Array);
+        
+        // Find and read the document.xml file
+        const documentXmlFile = unzipped.find(file => file.name === 'word/document.xml');
+        if (!documentXmlFile) {
+          throw new Error('No document.xml found in DOCX file');
+        }
+        
+        const xmlContent = new TextDecoder().decode(documentXmlFile.content);
+        
+        // Extract text from XML (remove tags and decode entities)
+        let plainText = xmlContent
+          .replace(/<w:p[^>]*>/g, '\n')  // Paragraph breaks
+          .replace(/<w:br[^>]*>/g, '\n') // Line breaks
+          .replace(/<[^>]+>/g, ' ')      // Remove all XML tags
+          .replace(/&amp;/g, '&')       // Decode HTML entities
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&apos;/g, "'")
+          .replace(/\s+/g, ' ')         // Normalize whitespace
+          .trim();
 
-      return new Response(
-        JSON.stringify({ success: false, error: 'DOCX scanning is not yet supported. Please upload a clear image (PNG/JPG).'}),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
+        if (!plainText || plainText.length < 10) {
+          throw new Error('No meaningful text content found in DOCX');
+        }
+
+        // Call OpenAI with extracted text
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4.1-2025-04-14',
+            messages: [
+              { role: 'system', content: 'Extract structured client details from provided document text. Always return JSON only.' },
+              { role: 'user', content: `${buildPrompt()}\n\nDocument Text:\n${plainText.slice(0, 15000)}` }
+            ],
+            max_completion_tokens: 2000
+          }),
+        });
+
+        if (!response.ok) {
+          const err = await response.text();
+          console.error('OpenAI (docx) error:', err);
+          throw new Error('AI failed to analyze DOCX content');
+        }
+
+        const ai = await response.json();
+        extractedText = ai.choices?.[0]?.message?.content || null;
+
+      } catch (docxError) {
+        console.error('DOCX processing error:', docxError);
+        await supabase
+          .from('documents')
+          .update({ status: 'error', processing_error: `DOCX parsing failed: ${docxError.message}` })
+          .eq('id', documentId);
+
+        return new Response(
+          JSON.stringify({ success: false, error: `DOCX processing failed: ${docxError.message}` }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        );
+      }
 
     } else if (filename.endsWith('.pdf') || mime === 'application/pdf') {
-      // PDF FLOW: not yet supported robustly - return friendly message
-      await supabase.from('documents').update({ status: 'error', processing_error: 'PDF parsing not supported yet' }).eq('id', documentId);
-      return new Response(JSON.stringify({ success: false, error: 'PDF scanning is not yet supported. Please upload a DOCX or a clear image.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      // PDF FLOW: extract text using PDF.js
+      try {
+        const arrayBuffer = await fileData.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+        
+        // Configure PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "https://esm.sh/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs";
+        
+        // Load PDF document
+        const loadingTask = pdfjsLib.getDocument({ data: uint8Array });
+        const pdf = await loadingTask.promise;
+        
+        let fullText = '';
+        
+        // Extract text from each page
+        for (let pageNum = 1; pageNum <= Math.min(pdf.numPages, 10); pageNum++) { // Limit to first 10 pages
+          const page = await pdf.getPage(pageNum);
+          const textContent = await page.getTextContent();
+          
+          const pageText = textContent.items
+            .map((item: any) => item.str)
+            .join(' ');
+          
+          fullText += pageText + '\n';
+        }
+        
+        if (!fullText.trim() || fullText.length < 10) {
+          throw new Error('No meaningful text content found in PDF');
+        }
+
+        // Call OpenAI with extracted text
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4.1-2025-04-14',
+            messages: [
+              { role: 'system', content: 'Extract structured client details from provided document text. Always return JSON only.' },
+              { role: 'user', content: `${buildPrompt()}\n\nDocument Text:\n${fullText.slice(0, 15000)}` }
+            ],
+            max_completion_tokens: 2000
+          }),
+        });
+
+        if (!response.ok) {
+          const err = await response.text();
+          console.error('OpenAI (pdf) error:', err);
+          throw new Error('AI failed to analyze PDF content');
+        }
+
+        const ai = await response.json();
+        extractedText = ai.choices?.[0]?.message?.content || null;
+
+      } catch (pdfError) {
+        console.error('PDF processing error:', pdfError);
+        await supabase
+          .from('documents')
+          .update({ status: 'error', processing_error: `PDF parsing failed: ${pdfError.message}` })
+          .eq('id', documentId);
+
+        return new Response(
+          JSON.stringify({ success: false, error: `PDF processing failed: ${pdfError.message}` }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        );
+      }
 
     } else {
       await supabase.from('documents').update({ status: 'error', processing_error: 'Unsupported file type' }).eq('id', documentId);
