@@ -1047,21 +1047,21 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
-          emergency_contact?: never
+          emergency_contact?: Json | null
           id?: string | null
-          personal_address?: never
-          phone?: never
-          sensitive_notes?: never
+          personal_address?: string | null
+          phone?: string | null
+          sensitive_notes?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
         Update: {
           created_at?: string | null
-          emergency_contact?: never
+          emergency_contact?: Json | null
           id?: string | null
-          personal_address?: never
-          phone?: never
-          sensitive_notes?: never
+          personal_address?: string | null
+          phone?: string | null
+          sensitive_notes?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
