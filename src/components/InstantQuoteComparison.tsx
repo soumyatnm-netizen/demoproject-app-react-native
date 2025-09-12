@@ -545,6 +545,19 @@ const InstantQuoteComparison = () => {
               )}
             </Button>
             
+            {(!selectedClient || uploadedQuotes.length === 0) && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <div className="flex items-center space-x-2">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                  <span className="text-sm font-medium text-yellow-800">Requirements Missing</span>
+                </div>
+                <ul className="text-xs text-yellow-700 mt-1 space-y-1">
+                  {!selectedClient && <li>• Please select a client in Step 1</li>}
+                  {uploadedQuotes.length === 0 && <li>• Please upload at least one quote in Step 2</li>}
+                </ul>
+              </div>
+            )}
+            
             {isProcessing && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
