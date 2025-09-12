@@ -1,6 +1,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Shield, CheckCircle, AlertTriangle, Crown } from "lucide-react";
+import { getInsurerInfo } from "@/lib/insurers";
 
 interface QuoteRanking {
   quote_id: string;
@@ -88,13 +89,25 @@ const CoverageComparisonTable = ({ rankings }: CoverageComparisonTableProps) => 
                 <Icon className="h-4 w-4 text-primary" />
                 <h4 className="font-medium text-sm">{coverage.label}</h4>
               </div>
-              <div className="space-y-2">
+               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Best Coverage:</span>
-                  <Badge variant="outline" className="text-xs">
-                    <Crown className="h-3 w-3 mr-1" />
-                    {bestInsurer?.insurer_name}
-                  </Badge>
+                  <div className="flex items-center space-x-1">
+                    {(() => {
+                      const insurerInfo = getInsurerInfo(bestInsurer?.insurer_name || "");
+                      return insurerInfo.logo ? (
+                        <img 
+                          src={insurerInfo.logo} 
+                          alt={insurerInfo.altText}
+                          className="h-4 w-4 object-contain rounded"
+                        />
+                      ) : null;
+                    })()}
+                    <Badge variant="outline" className="text-xs">
+                      <Crown className="h-3 w-3 mr-1" />
+                      {bestInsurer?.insurer_name}
+                    </Badge>
+                  </div>
                 </div>
                 <div className="text-lg font-bold text-primary">
                   {bestInsurer?.[coverage.key as keyof typeof bestInsurer] || "N/A"}
@@ -125,14 +138,33 @@ const CoverageComparisonTable = ({ rankings }: CoverageComparisonTableProps) => 
                 <TableCell>
                   <div className="flex items-center space-x-2">
                     {index === 0 && <Crown className="h-4 w-4 text-yellow-500" />}
-                    <div>
-                      <div className="font-medium">{quote.insurer_name}</div>
-                      <Badge 
-                        variant={index === 0 ? "default" : "secondary"} 
-                        className="text-xs"
-                      >
-                        Rank #{quote.rank_position}
-                      </Badge>
+                    <div className="flex items-center space-x-3">
+                      {/* Insurer Logo */}
+                      {(() => {
+                        const insurerInfo = getInsurerInfo(quote.insurer_name);
+                        return insurerInfo.logo ? (
+                          <img 
+                            src={insurerInfo.logo} 
+                            alt={insurerInfo.altText}
+                            className="h-8 w-8 object-contain rounded"
+                          />
+                        ) : (
+                          <div className="h-8 w-8 bg-primary/10 rounded flex items-center justify-center">
+                            <span className="text-xs font-medium text-primary">
+                              {quote.insurer_name.substring(0, 2).toUpperCase()}
+                            </span>
+                          </div>
+                        );
+                      })()}
+                      <div>
+                        <div className="font-medium">{quote.insurer_name}</div>
+                        <Badge 
+                          variant={index === 0 ? "default" : "secondary"} 
+                          className="text-xs"
+                        >
+                          Rank #{quote.rank_position}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
                 </TableCell>

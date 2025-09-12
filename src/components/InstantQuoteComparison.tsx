@@ -26,6 +26,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import CoverageComparisonTable from "./CoverageComparisonTable";
+import { getInsurerInfo } from "@/lib/insurers";
 
 interface QuoteRanking {
   quote_id: string;
@@ -589,6 +590,23 @@ const InstantQuoteComparison = () => {
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center space-x-3">
                         {getRankIcon(ranking.rank_position)}
+                        {/* Insurer Logo */}
+                        {(() => {
+                          const insurerInfo = getInsurerInfo(ranking.insurer_name);
+                          return insurerInfo.logo ? (
+                            <img 
+                              src={insurerInfo.logo} 
+                              alt={insurerInfo.altText}
+                              className="h-10 w-10 object-contain rounded"
+                            />
+                          ) : (
+                            <div className="h-10 w-10 bg-primary/10 rounded flex items-center justify-center">
+                              <span className="text-sm font-medium text-primary">
+                                {ranking.insurer_name.substring(0, 2).toUpperCase()}
+                              </span>
+                            </div>
+                          );
+                        })()}
                         <div>
                           <h3 className="text-lg font-semibold">{ranking.insurer_name}</h3>
                           <div className="flex items-center space-x-2 mt-1">
