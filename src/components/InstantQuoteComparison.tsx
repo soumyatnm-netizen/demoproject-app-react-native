@@ -21,12 +21,15 @@ import {
   Crown,
   Star,
   Zap,
-  X
+  X,
+  Download
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import CoverageComparisonTable from "./CoverageComparisonTable";
 import { getInsurerInfo } from "@/lib/insurers";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface QuoteRanking {
   quote_id: string;
@@ -335,6 +338,164 @@ const InstantQuoteComparison = () => {
     }
   };
 
+  const generatePDFReport = async () => {
+    if (!selectedClient || rankings.length === 0) {
+      toast({
+        title: "Cannot Generate Report",
+        description: "Please complete the comparison first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const selectedClientData = clients.find(c => c.id === selectedClient);
+      if (!selectedClientData) {
+        throw new Error("Client data not found");
+      }
+
+      // Create PDF
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const margin = 20;
+      let yPosition = margin;
+
+      // Add company header
+      pdf.setFontSize(20);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('Insurance Quote Comparison Report', margin, yPosition);
+      yPosition += 15;
+
+      // Add client information
+      pdf.setFontSize(14);
+      pdf.text('Client Information', margin, yPosition);
+      yPosition += 10;
+      
+      pdf.setFontSize(12);
+      pdf.text(`Client Name: ${selectedClientData.client_name}`, margin, yPosition);
+      yPosition += 7;
+      
+      if (selectedClientData.industry) {
+        pdf.text(`Industry: ${selectedClientData.industry}`, margin, yPosition);
+        yPosition += 7;
+      }
+      
+      if (selectedClientData.revenue_band) {
+        pdf.text(`Revenue Band: ${selectedClientData.revenue_band}`, margin, yPosition);
+        yPosition += 7;
+      }
+
+      yPosition += 10;
+
+      // Add analysis summary
+      pdf.setFontSize(14);
+      pdf.text('Quote Analysis Summary', margin, yPosition);
+      yPosition += 10;
+
+      pdf.setFontSize(12);
+      pdf.text(`Total Quotes Analyzed: ${rankings.length}`, margin, yPosition);
+      yPosition += 7;
+      pdf.text(`Analysis Date: ${new Date().toLocaleDateString()}`, margin, yPosition);
+      yPosition += 15;
+
+      // Add rankings table
+      pdf.setFontSize(14);
+      pdf.text('Quote Rankings (Best to Worst)', margin, yPosition);
+      yPosition += 10;
+
+      // Rankings table headers
+      pdf.setFontSize(10);
+      const headers = ['Rank', 'Insurer', 'Premium', 'Overall Score', 'Recommendation'];
+      const colWidths = [15, 50, 30, 25, 50];
+      let xPos = margin;
+
+      // Draw table headers
+      headers.forEach((header, index) => {
+        pdf.text(header, xPos, yPosition);
+        xPos += colWidths[index];
+      });
+      yPosition += 7;
+
+      // Draw horizontal line
+      pdf.line(margin, yPosition - 2, pageWidth - margin, yPosition - 2);
+      yPosition += 5;
+
+      // Add rankings data
+      rankings.forEach((ranking, index) => {
+        xPos = margin;
+        const rowData = [
+          `#${index + 1}`,
+          ranking.insurer_name,
+          `£${ranking.premium_amount?.toLocaleString() || 'N/A'}`,
+          `${ranking.overall_score}%`,
+          ranking.recommendation_category || 'Standard'
+        ];
+
+        rowData.forEach((data, colIndex) => {
+          // Wrap text if too long
+          const text = data.length > 15 ? data.substring(0, 15) + '...' : data;
+          pdf.text(text, xPos, yPosition);
+          xPos += colWidths[colIndex];
+        });
+        yPosition += 7;
+
+        // Add new page if needed
+        if (yPosition > 270) {
+          pdf.addPage();
+          yPosition = margin;
+        }
+      });
+
+      yPosition += 10;
+
+      // Add key insights
+      if (rankings.length > 0) {
+        pdf.setFontSize(14);
+        pdf.text('Key Insights', margin, yPosition);
+        yPosition += 10;
+
+        pdf.setFontSize(12);
+        const bestQuote = rankings[0];
+        pdf.text(`Best Value: ${bestQuote.insurer_name} at £${bestQuote.premium_amount?.toLocaleString()}`, margin, yPosition);
+        yPosition += 7;
+        pdf.text(`Overall Score: ${bestQuote.overall_score}%`, margin, yPosition);
+        yPosition += 7;
+        
+        if (bestQuote.key_strengths && bestQuote.key_strengths.length > 0) {
+          pdf.text('Key Strengths:', margin, yPosition);
+          yPosition += 5;
+          bestQuote.key_strengths.slice(0, 3).forEach(strength => {
+            pdf.text(`• ${strength}`, margin + 5, yPosition);
+            yPosition += 5;
+          });
+        }
+      }
+
+      // Add footer
+      const currentDate = new Date().toLocaleDateString();
+      pdf.setFontSize(8);
+      pdf.text(`Generated on ${currentDate}`, margin, 285);
+      pdf.text('Confidential - For Client Use Only', pageWidth - margin - 50, 285);
+
+      // Save PDF
+      const fileName = `Insurance_Quote_Comparison_${selectedClientData.client_name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      pdf.save(fileName);
+
+      toast({
+        title: "Report Generated",
+        description: "PDF report has been downloaded successfully",
+      });
+
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({
+        title: "Report Generation Failed", 
+        description: "There was an error generating the PDF report",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Hero Section */}
@@ -580,13 +741,26 @@ const InstantQuoteComparison = () => {
           {/* Coverage Highlights */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Shield className="h-5 w-5" />
-                <span>Coverage Comparison Highlights</span>
-              </CardTitle>
-              <CardDescription>
-                Key coverage limits and which quote provides the best protection
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Shield className="h-5 w-5" />
+                    <span>Coverage Comparison Highlights</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Key coverage limits and which quote provides the best protection
+                  </CardDescription>
+                </div>
+                <Button 
+                  onClick={generatePDFReport}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center space-x-2"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Generate Report</span>
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <CoverageComparisonTable rankings={rankings} />
