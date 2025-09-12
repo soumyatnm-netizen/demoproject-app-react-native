@@ -257,16 +257,28 @@ serve(async (req) => {
 
         const ai = await response.json();
         extractedText = ai.choices?.[0]?.message?.content || null;
+        
+        console.log('OpenAI API call successful. Response length:', extractedText?.length);
 
       } catch (docxError) {
         console.error('DOCX processing error:', docxError);
+        console.error('Error stack:', docxError.stack);
+        
+        // Update document status with specific error
         await supabase
           .from('documents')
-          .update({ status: 'error', processing_error: `DOCX parsing failed: ${docxError.message}` })
+          .update({ 
+            status: 'error', 
+            processing_error: `DOCX parsing failed: ${docxError.message}` 
+          })
           .eq('id', documentId);
 
         return new Response(
-          JSON.stringify({ success: false, error: `DOCX processing failed: ${docxError.message}` }),
+          JSON.stringify({ 
+            success: false, 
+            error: `DOCX processing failed: ${docxError.message}`,
+            details: docxError.stack
+          }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
         );
       }

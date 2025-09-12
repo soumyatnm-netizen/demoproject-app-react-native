@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, FileText, BarChart3, TrendingUp, Upload, Users, Building2, Target, Star } from "lucide-react";
 import FileUpload from "./FileUpload";
+import { TestOpenAI } from "./TestOpenAI";
 import ComparisonView from "./ComparisonView";
 import CompanyManagement from "./CompanyManagement";
 import ClientReportGenerator from "./ClientReportGenerator";
@@ -234,6 +235,10 @@ const Dashboard = ({ onBack }: DashboardProps) => {
       </header>
 
       <div className="container mx-auto px-4 py-8">
+        {/* OpenAI Test Component */}
+        <div className="mb-8">
+          <TestOpenAI />
+        </div>
         {/* Portal Access Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <Card className="cursor-pointer hover:shadow-lg transition-shadow bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20" onClick={() => setCurrentView('broker-portal')}>
