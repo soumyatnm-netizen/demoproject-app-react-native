@@ -151,27 +151,29 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
   };
 
   const handleClientExtracted = (extractedData: any) => {
-    // Map extracted data to newClient format
+    // Map extracted data to newClient format - using actual API field names
     const mappedClient = {
-      client_name: extractedData.client_name || "",
-      industry: extractedData.industry || "",
-      revenue_band: extractedData.revenue_band || "",
-      employee_count: extractedData.employee_count?.toString() || extractedData.total_employees?.toString() || "",
-      risk_profile: extractedData.risk_profile || "",
-      coverage_requirements: Array.isArray(extractedData.coverage_requirements) 
+      client_name: extractedData["Business/Client name"] || extractedData.client_name || "",
+      industry: extractedData["Industry"] || extractedData.industry || "",
+      revenue_band: extractedData["Revenue Band"] || extractedData.revenue_band || "",
+      employee_count: extractedData["Employee Count"]?.toString() || extractedData["Total number of employees"]?.toString() || extractedData.employee_count?.toString() || "",
+      risk_profile: extractedData["Risk Profile"] || extractedData.risk_profile || "",
+      coverage_requirements: Array.isArray(extractedData["Coverage Requirements"]) 
+        ? extractedData["Coverage Requirements"].join(', ')
+        : Array.isArray(extractedData.coverage_requirements)
         ? extractedData.coverage_requirements.join(', ') 
-        : extractedData.coverage_requirements || "",
-      contact_email: extractedData.contact_email || "",
-      contact_phone: extractedData.contact_phone || "",
-      notes: `Auto-extracted from document${extractedData.website ? `\nWebsite: ${extractedData.website}` : ''}`,
-      main_address: extractedData.main_address || "",
-      postcode: extractedData.postcode || "",
-      date_established: extractedData.date_established || "",
-      organisation_type: extractedData.organisation_type || "",
-      website: extractedData.website || "",
-      years_experience: extractedData.years_experience?.toString() || "",
-      total_employees: extractedData.total_employees?.toString() || extractedData.employee_count?.toString() || "",
-      wage_roll: extractedData.wage_roll?.toString() || ""
+        : extractedData["Coverage Requirements"] || extractedData.coverage_requirements || "",
+      contact_email: extractedData["Contact Email"] || extractedData.contact_email || "",
+      contact_phone: extractedData["Contact Phone"] || extractedData.contact_phone || "",
+      notes: `Auto-extracted from document${extractedData["Website"] || extractedData.website ? `\nWebsite: ${extractedData["Website"] || extractedData.website}` : ''}`,
+      main_address: extractedData["Main address"] || extractedData.main_address || "",
+      postcode: extractedData["Postcode"] || extractedData.postcode || "",
+      date_established: extractedData["Date business established"] || extractedData.date_established || "",
+      organisation_type: extractedData["Type of organisation"] || extractedData.organisation_type || "",
+      website: extractedData["Website"] || extractedData.website || "",
+      years_experience: (extractedData["Relevant years of experience"] || extractedData.years_experience)?.toString() || "",
+      total_employees: (extractedData["Total number of employees"] || extractedData["Employee Count"] || extractedData.total_employees)?.toString() || "",
+      wage_roll: (extractedData["Total wage roll"] || extractedData.wage_roll)?.toString() || ""
     };
 
     setNewClient(mappedClient);
