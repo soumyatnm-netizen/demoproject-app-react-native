@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import CoverageComparisonTable from "./CoverageComparisonTable";
 
 interface QuoteRanking {
   quote_id: string;
@@ -551,18 +552,35 @@ const InstantQuoteComparison = () => {
         </CardContent>
       </Card>
 
-      {/* Results */}
+      {/* Coverage Comparison Results */}
       {analysisComplete && rankings.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <TrendingUp className="h-5 w-5" />
-              <span>Quote Rankings - Best to Worst</span>
-            </CardTitle>
-            <CardDescription>
-              Ranked by overall coverage quality, competitiveness, and value
-            </CardDescription>
-          </CardHeader>
+        <>
+          {/* Coverage Highlights */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Shield className="h-5 w-5" />
+                <span>Coverage Comparison Highlights</span>
+              </CardTitle>
+              <CardDescription>
+                Key coverage limits and which quote provides the best protection
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CoverageComparisonTable rankings={rankings} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <TrendingUp className="h-5 w-5" />
+                <span>Quote Rankings - Best to Worst</span>
+              </CardTitle>
+              <CardDescription>
+                Ranked by overall coverage quality, competitiveness, and value
+              </CardDescription>
+            </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {rankings.map((ranking, index) => (
@@ -657,7 +675,8 @@ const InstantQuoteComparison = () => {
               ))}
             </div>
           </CardContent>
-        </Card>
+          </Card>
+        </>
       )}
     </div>
   );
