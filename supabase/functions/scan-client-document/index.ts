@@ -1,7 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import * as zip from 'https://deno.land/x/zipjs@2.7.34/index.js';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -182,58 +181,16 @@ serve(async (req) => {
       extractedText = openAIResult.choices?.[0]?.message?.content || null;
 
     } else if (filename.endsWith('.docx') || mime.includes('wordprocessingml')) {
-      // DOCX FLOW: extract text from word/document.xml using zip.js
-      let plainText = '';
-      try {
-        const zipReader = new ZipReader(new BlobReader(fileData));
-        const entries = await zipReader.getEntries();
-        const docXml = entries.find((e: any) => e.filename === 'word/document.xml');
-        if (docXml) {
-          const xmlText: string = await docXml.getData(new TextWriter());
-          plainText = xmlText
-            .replace(/<w:p[^>]*>/g, '\n')
-            .replace(/<[^>]+>/g, ' ')
-            .replace(/&amp;/g, '&')
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/\s+/g, ' ')
-            .trim();
-        }
-        await zipReader.close();
-      } catch (e) {
-        console.error('DOCX extract error:', e);
-      }
+      // DOCX FLOW: currently unsupported in this environment – respond gracefully
+      await supabase
+        .from('documents')
+        .update({ status: 'error', processing_error: 'DOCX parsing not supported yet' })
+        .eq('id', documentId);
 
-      if (!plainText) {
-        await supabase.from('documents').update({ status: 'error', processing_error: 'Unable to read .docx content' }).eq('id', documentId);
-        return new Response(JSON.stringify({ success: false, error: 'Unable to read .docx content.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
-      }
-
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4.1-2025-04-14',
-          messages: [
-            { role: 'system', content: 'Extract structured client details from provided document text. Always return JSON only.' },
-            { role: 'user', content: `${buildPrompt()}\n\nDocument Text (truncated):\n${plainText.slice(0, 30000)}` }
-          ],
-          max_completion_tokens: 2000
-        }),
-      });
-
-      if (!response.ok) {
-        const err = await response.text();
-        console.error('OpenAI (docx) error:', err);
-        await supabase.from('documents').update({ status: 'error', processing_error: 'AI failed to analyze DOCX' }).eq('id', documentId);
-        return new Response(JSON.stringify({ success: false, error: 'AI failed to analyze DOCX.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
-      }
-
-      const ai = await response.json();
-      extractedText = ai.choices?.[0]?.message?.content || null;
+      return new Response(
+        JSON.stringify({ success: false, error: 'DOCX scanning is not yet supported. Please upload a clear image (PNG/JPG).'}),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
 
     } else if (filename.endsWith('.pdf') || mime === 'application/pdf') {
       // PDF FLOW: not yet supported robustly - return friendly message
