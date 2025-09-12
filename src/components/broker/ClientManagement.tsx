@@ -214,7 +214,7 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
           
           <Button variant="outline" onClick={() => setShowUploadDialog(true)}>
             <FileUp className="h-4 w-4 mr-2" />
-            Upload Document
+            AI Client Upload
           </Button>
         </div>
         
