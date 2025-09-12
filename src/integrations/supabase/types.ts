@@ -764,6 +764,42 @@ export type Database = {
         }
         Relationships: []
       }
+      sensitive_data_consent: {
+        Row: {
+          consent_type: string
+          consented_by: string
+          created_at: string
+          expires_at: string | null
+          granted_at: string
+          id: string
+          purpose: string
+          revoked_at: string | null
+          user_id: string
+        }
+        Insert: {
+          consent_type: string
+          consented_by: string
+          created_at?: string
+          expires_at?: string | null
+          granted_at?: string
+          id?: string
+          purpose: string
+          revoked_at?: string | null
+          user_id: string
+        }
+        Update: {
+          consent_type?: string
+          consented_by?: string
+          created_at?: string
+          expires_at?: string | null
+          granted_at?: string
+          id?: string
+          purpose?: string
+          revoked_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       structured_quotes: {
         Row: {
           coverage_limits: Json | null
@@ -1165,6 +1201,19 @@ export type Database = {
           underwriter_name: string
         }[]
       }
+      get_sensitive_data_with_consent: {
+        Args: { access_reason?: string; target_user_id: string }
+        Returns: {
+          created_at: string
+          emergency_contact: Json
+          id: string
+          personal_address: string
+          phone: string
+          sensitive_notes: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
       get_team_member_safe_data: {
         Args: { target_user_id: string }
         Returns: {
@@ -1204,7 +1253,15 @@ export type Database = {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      has_sensitive_data_consent: {
+        Args: { consent_type: string; target_user_id: string }
+        Returns: boolean
+      }
       is_company_admin: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
+      is_hr_admin: {
         Args: { user_id: string }
         Returns: boolean
       }
