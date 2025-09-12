@@ -1329,6 +1329,10 @@ export type Database = {
           recommendation_category: string
         }[]
       }
+      revoke_sensitive_data_consent: {
+        Args: { consent_type: string; hr_user_id: string }
+        Returns: boolean
+      }
       trigger_underwriter_matching: {
         Args: { p_document_id: string }
         Returns: boolean
