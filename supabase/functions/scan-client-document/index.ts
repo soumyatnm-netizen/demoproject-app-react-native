@@ -2,7 +2,6 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import JSZip from "https://esm.sh/jszip@3.10.1";
-import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -255,66 +254,16 @@ serve(async (req) => {
       }
 
     } else if (filename.endsWith('.pdf') || mime === 'application/pdf') {
-      // PDF FLOW: extract text using pdf-lib
-      try {
-        const arrayBuffer = await fileData.arrayBuffer();
-        const uint8Array = new Uint8Array(arrayBuffer);
-        
-        // Load PDF document using pdf-lib
-        const pdf = await PDFDocument.load(uint8Array, { ignoreEncryption: true });
-        const pages = pdf.getPages();
-        
-        let fullText = '';
-        
-        // For pdf-lib, we need to extract text differently
-        // Unfortunately, pdf-lib doesn't have built-in text extraction
-        // So we'll convert to vision API approach for PDFs
-        const base64Data = btoa(String.fromCharCode(...uint8Array));
-        
-        // Use OpenAI Vision API for PDF (treat as image)
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openAIApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o',
-            messages: [
-              {
-                role: 'user',
-                content: [
-                  { type: 'text', text: `${buildPrompt()}\n\nThis is a PDF document. Please extract the client information from it.` },
-                  { type: 'image_url', image_url: { url: `data:application/pdf;base64,${base64Data}` } }
-                ]
-              }
-            ],
-            max_tokens: 2000,
-            temperature: 0.1
-          }),
-        });
+      // PDF FLOW: Not yet supported – respond gracefully
+      await supabase
+        .from('documents')
+        .update({ status: 'error', processing_error: 'PDF parsing not supported yet' })
+        .eq('id', documentId);
 
-        if (!response.ok) {
-          const err = await response.text();
-          console.error('OpenAI (pdf vision) error:', err);
-          throw new Error('AI failed to analyze PDF content');
-        }
-
-        const ai = await response.json();
-        extractedText = ai.choices?.[0]?.message?.content || null;
-
-      } catch (pdfError) {
-        console.error('PDF processing error:', pdfError);
-        await supabase
-          .from('documents')
-          .update({ status: 'error', processing_error: `PDF parsing failed: ${pdfError.message}` })
-          .eq('id', documentId);
-
-        return new Response(
-          JSON.stringify({ success: false, error: `PDF processing failed: ${pdfError.message}` }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-        );
-      }
+      return new Response(
+        JSON.stringify({ success: false, error: 'PDF scanning is not yet supported. Please upload a DOCX or a clear image (PNG/JPG).'}),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
 
     } else {
       await supabase.from('documents').update({ status: 'error', processing_error: 'Unsupported file type' }).eq('id', documentId);

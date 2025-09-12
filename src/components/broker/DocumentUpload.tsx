@@ -167,8 +167,6 @@ export const DocumentUpload = ({ open, onOpenChange, onClientExtracted }: Docume
     },
     accept: {
       'image/*': ['.jpeg', '.jpg', '.png', '.gif'],
-      'application/pdf': ['.pdf'],
-      'application/msword': ['.doc'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
     },
     maxSize: 10 * 1024 * 1024, // 10MB
@@ -213,7 +211,7 @@ export const DocumentUpload = ({ open, onOpenChange, onClientExtracted }: Docume
               Select Files
             </Button>
             <p className="text-xs text-muted-foreground mt-4">
-              Supports: PDF, DOC, DOCX, JPG, PNG, GIF (max 10MB)
+              Supports: DOCX, JPG, PNG, GIF (max 10MB). PDF support coming soon.
             </p>
           </div>
 
