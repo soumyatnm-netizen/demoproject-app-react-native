@@ -2,6 +2,8 @@
 import zurichLogo from "@/assets/insurers/zurich-logo.png";
 import axaLogo from "@/assets/insurers/axa-logo.png";
 import chubbLogo from "@/assets/insurers/chubb-logo.png";
+import rsaLogo from "@/assets/insurers/rsa-logo.png";
+import allianzLogo from "@/assets/insurers/allianz-logo.png";
 
 export interface InsurerInfo {
   name: string;
@@ -48,12 +50,12 @@ export const insurerMapping: Record<string, InsurerInfo> = {
   },
   "Allianz Commercial": {
     name: "Allianz Commercial",
-    logo: "", // Placeholder - add when available
+    logo: allianzLogo,
     altText: "Allianz Commercial logo"
   },
   "RSA Insurance Group": {
     name: "RSA Insurance Group",
-    logo: "", // Placeholder - add when available  
+    logo: rsaLogo,
     altText: "RSA Insurance Group logo"
   },
   "Hiscox Insurance": {
