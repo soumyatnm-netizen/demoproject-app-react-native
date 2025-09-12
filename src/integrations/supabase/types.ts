@@ -1031,7 +1031,53 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      team_member_safe_view: {
+        Row: {
+          company_id: string | null
+          created_at: string | null
+          department: string | null
+          first_name: string | null
+          is_active: boolean | null
+          job_title: string | null
+          last_login_at: string | null
+          last_name: string | null
+          role: Database["public"]["Enums"]["app_role"] | null
+          user_id: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string | null
+          department?: string | null
+          first_name?: string | null
+          is_active?: boolean | null
+          job_title?: string | null
+          last_login_at?: string | null
+          last_name?: string | null
+          role?: Database["public"]["Enums"]["app_role"] | null
+          user_id?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string | null
+          department?: string | null
+          first_name?: string | null
+          is_active?: boolean | null
+          job_title?: string | null
+          last_login_at?: string | null
+          last_name?: string | null
+          role?: Database["public"]["Enums"]["app_role"] | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "broker_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       analyze_quote_coverage: {
@@ -1123,6 +1169,19 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: {
           created_at: string
+          department: string
+          first_name: string
+          is_active: boolean
+          job_title: string
+          last_login_at: string
+          last_name: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }[]
+      }
+      get_team_member_secure: {
+        Args: { target_user_id: string }
+        Returns: {
           department: string
           first_name: string
           is_active: boolean
