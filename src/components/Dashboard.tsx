@@ -384,14 +384,14 @@ const Dashboard = ({ onBack }: DashboardProps) => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Recent Documents</CardTitle>
+                  <CardTitle>All Documents</CardTitle>
                   <CardDescription>
-                    Your recently uploaded documents and their processing status
+                    All your uploaded documents and their processing status
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {documents.slice(0, 5).map((doc) => {
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {documents.map((doc) => {
                       // Find the corresponding structured quote for this document
                       const relatedQuote = quotes.find(q => q.document_id === doc.id);
                       
