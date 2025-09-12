@@ -390,6 +390,9 @@ const Dashboard = ({ onBack }: DashboardProps) => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
+                  <div className="mb-4">
+                    <FileUpload onUploadSuccess={handleUploadSuccess} />
+                  </div>
                   <div className="space-y-3 max-h-96 overflow-y-auto">
                     {documents.filter(doc => doc.status !== 'error').map((doc) => {
                       // Find the corresponding structured quote for this document
