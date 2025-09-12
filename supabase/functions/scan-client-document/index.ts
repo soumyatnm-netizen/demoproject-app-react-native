@@ -55,11 +55,19 @@ serve(async (req) => {
   }
 
   try {
-    const openAIApiKey = Deno.env.get('OPEN_AI_DOCUMENT_SCANNER');
+    const openAIApiKey =
+      Deno.env.get('OPEN_AI_DOCUMENT_SCANNER') ||
+      Deno.env.get('OPENAI_DOCUMENT_SCANNER') ||
+      Deno.env.get('DOCUMENT_SCANNER_OPENAI_KEY') ||
+      Deno.env.get('DOCUMENT_SCANNER_OPEN_AI') ||
+      Deno.env.get('COVERCOMPASS_OPENAI') ||
+      Deno.env.get('COVERCOMPASS_OPEN_AI') ||
+      Deno.env.get('OPENAI_API_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     console.log('Starting scan-client-document function');
+    console.log('OpenAI key source:', ['OPEN_AI_DOCUMENT_SCANNER','OPENAI_DOCUMENT_SCANNER','DOCUMENT_SCANNER_OPENAI_KEY','DOCUMENT_SCANNER_OPEN_AI','COVERCOMPASS_OPENAI','COVERCOMPASS_OPEN_AI','OPENAI_API_KEY'].find(k => !!Deno.env.get(k)) || 'not found');
     
     if (!openAIApiKey) {
       console.error('OpenAI API key not configured');

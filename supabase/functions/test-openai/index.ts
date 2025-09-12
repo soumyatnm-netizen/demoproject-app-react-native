@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const openAIApiKey = Deno.env.get('OPEN_AI_DOCUMENT_SCANNER');
+    const openAIApiKey = Deno.env.get('OPEN_AI_DOCUMENT_SCANNER') || Deno.env.get('OPENAI_DOCUMENT_SCANNER') || Deno.env.get('DOCUMENT_SCANNER_OPENAI_KEY') || Deno.env.get('DOCUMENT_SCANNER_OPEN_AI') || Deno.env.get('COVERCOMPASS_OPENAI') || Deno.env.get('COVERCOMPASS_OPEN_AI') || Deno.env.get('OPENAI_API_KEY');
     
     if (!openAIApiKey) {
       return new Response(
