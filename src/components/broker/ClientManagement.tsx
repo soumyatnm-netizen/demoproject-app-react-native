@@ -8,9 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Edit, Eye, Mail, Building2 } from "lucide-react";
+import { Plus, Search, Edit, Eye, Mail, Building2, FileUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { DocumentUpload } from "./DocumentUpload";
 
 interface ClientData {
   id: string;
@@ -30,6 +31,7 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
   const { toast } = useToast();
 
   const [newClient, setNewClient] = useState({
@@ -41,7 +43,15 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
     coverage_requirements: "",
     contact_email: "",
     contact_phone: "",
-    notes: ""
+    notes: "",
+    main_address: "",
+    postcode: "",
+    date_established: "",
+    organisation_type: "",
+    website: "",
+    years_experience: "",
+    total_employees: "",
+    wage_roll: ""
   });
 
   useEffect(() => {
@@ -118,7 +128,15 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
         coverage_requirements: "",
         contact_email: "",
         contact_phone: "",
-        notes: ""
+        notes: "",
+        main_address: "",
+        postcode: "",
+        date_established: "",
+        organisation_type: "",
+        website: "",
+        years_experience: "",
+        total_employees: "",
+        wage_roll: ""
       });
       fetchClients();
       onStatsUpdate();
@@ -130,6 +148,35 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleClientExtracted = (extractedData: any) => {
+    // Map extracted data to newClient format
+    const mappedClient = {
+      client_name: extractedData.client_name || "",
+      industry: extractedData.industry || "",
+      revenue_band: extractedData.revenue_band || "",
+      employee_count: extractedData.employee_count?.toString() || extractedData.total_employees?.toString() || "",
+      risk_profile: extractedData.risk_profile || "",
+      coverage_requirements: Array.isArray(extractedData.coverage_requirements) 
+        ? extractedData.coverage_requirements.join(', ') 
+        : extractedData.coverage_requirements || "",
+      contact_email: extractedData.contact_email || "",
+      contact_phone: extractedData.contact_phone || "",
+      notes: `Auto-extracted from document${extractedData.website ? `\nWebsite: ${extractedData.website}` : ''}`,
+      main_address: extractedData.main_address || "",
+      postcode: extractedData.postcode || "",
+      date_established: extractedData.date_established || "",
+      organisation_type: extractedData.organisation_type || "",
+      website: extractedData.website || "",
+      years_experience: extractedData.years_experience?.toString() || "",
+      total_employees: extractedData.total_employees?.toString() || extractedData.employee_count?.toString() || "",
+      wage_roll: extractedData.wage_roll?.toString() || ""
+    };
+
+    setNewClient(mappedClient);
+    setShowUploadDialog(false);
+    setShowAddDialog(true);
   };
 
   const filteredClients = clients.filter(client =>
@@ -153,13 +200,23 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
           <p className="text-muted-foreground">Manage your client relationships and their insurance needs</p>
         </div>
         
+        <div className="flex space-x-2">
+          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Client
+              </Button>
+            </DialogTrigger>
+          </Dialog>
+          
+          <Button variant="outline" onClick={() => setShowUploadDialog(true)}>
+            <FileUp className="h-4 w-4 mr-2" />
+            Upload Document
+          </Button>
+        </div>
+        
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Client
-            </Button>
-          </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Client</DialogTitle>
@@ -276,6 +333,95 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="main_address">Main Address</Label>
+                  <Input
+                    id="main_address"
+                    value={newClient.main_address}
+                    onChange={(e) => setNewClient({ ...newClient, main_address: e.target.value })}
+                    placeholder="123 Business Street, London"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="postcode">Postcode</Label>
+                  <Input
+                    id="postcode"
+                    value={newClient.postcode}
+                    onChange={(e) => setNewClient({ ...newClient, postcode: e.target.value })}
+                    placeholder="SW1A 1AA"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="date_established">Date Established</Label>
+                  <Input
+                    id="date_established"
+                    value={newClient.date_established}
+                    onChange={(e) => setNewClient({ ...newClient, date_established: e.target.value })}
+                    placeholder="01/01/2010"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="organisation_type">Organisation Type</Label>
+                  <Input
+                    id="organisation_type"
+                    value={newClient.organisation_type}
+                    onChange={(e) => setNewClient({ ...newClient, organisation_type: e.target.value })}
+                    placeholder="Ltd, PLC, Partnership, etc."
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="website">Website</Label>
+                <Input
+                  id="website"
+                  value={newClient.website}
+                  onChange={(e) => setNewClient({ ...newClient, website: e.target.value })}
+                  placeholder="https://www.client.com"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="years_experience">Years Experience</Label>
+                  <Input
+                    id="years_experience"
+                    type="number"
+                    value={newClient.years_experience}
+                    onChange={(e) => setNewClient({ ...newClient, years_experience: e.target.value })}
+                    placeholder="10"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="total_employees">Total Employees</Label>
+                  <Input
+                    id="total_employees"
+                    type="number"
+                    value={newClient.total_employees}
+                    onChange={(e) => setNewClient({ ...newClient, total_employees: e.target.value })}
+                    placeholder="50"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="wage_roll">Total Wage Roll (£)</Label>
+                  <Input
+                    id="wage_roll"
+                    type="number"
+                    value={newClient.wage_roll}
+                    onChange={(e) => setNewClient({ ...newClient, wage_roll: e.target.value })}
+                    placeholder="2500000"
+                  />
+                </div>
+              </div>
+
               <div>
                 <Label htmlFor="notes">Notes</Label>
                 <Textarea
@@ -293,6 +439,12 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
             </div>
           </DialogContent>
         </Dialog>
+
+        <DocumentUpload 
+          open={showUploadDialog} 
+          onOpenChange={setShowUploadDialog}
+          onClientExtracted={handleClientExtracted}
+        />
       </div>
 
       <Card>
