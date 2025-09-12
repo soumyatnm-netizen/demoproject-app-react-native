@@ -461,128 +461,235 @@ const InstantQuoteComparison = () => {
         throw new Error("Client data not found");
       }
 
+      // Create a hidden container for the PDF content
+      const printContainer = document.createElement('div');
+      printContainer.style.position = 'absolute';
+      printContainer.style.left = '-9999px';
+      printContainer.style.top = '0';
+      printContainer.style.width = '794px'; // A4 width in pixels at 96 DPI
+      printContainer.style.backgroundColor = 'white';
+      printContainer.style.padding = '40px';
+      printContainer.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+      
+      const currentRankings = scoredRankings.length > 0 ? scoredRankings : rankings;
+
+      // Create the HTML content matching the webpage design
+      printContainer.innerHTML = `
+        <div style="margin-bottom: 40px;">
+          <h1 style="font-size: 28px; font-weight: bold; color: #1a202c; margin-bottom: 8px;">Insurance Quote Comparison Report</h1>
+          <p style="font-size: 16px; color: #718096; margin: 0;">Professional analysis and recommendations</p>
+        </div>
+
+        <div style="background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; margin-bottom: 32px;">
+          <h2 style="font-size: 18px; font-weight: 600; color: #2d3748; margin-bottom: 16px;">Client Information</h2>
+          <div style="display: grid; gap: 8px;">
+            <div style="font-size: 14px;"><strong>Client Name:</strong> ${selectedClientData.client_name}</div>
+            ${selectedClientData.industry ? `<div style="font-size: 14px;"><strong>Industry:</strong> ${selectedClientData.industry}</div>` : ''}
+            ${selectedClientData.revenue_band ? `<div style="font-size: 14px;"><strong>Revenue Band:</strong> ${selectedClientData.revenue_band}</div>` : ''}
+            <div style="font-size: 14px;"><strong>Analysis Date:</strong> ${new Date().toLocaleDateString()}</div>
+            <div style="font-size: 14px;"><strong>Total Quotes Analyzed:</strong> ${currentRankings.length}</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 32px;">
+          <h2 style="font-size: 20px; font-weight: 600; color: #2d3748; margin-bottom: 16px;">Coverage Comparison Highlights</h2>
+          
+          <!-- Coverage Summary Cards -->
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px;">
+            ${['Professional Indemnity', 'Public Liability', 'Cyber & Data Protection'].map(coverage => `
+              <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-opacity: 0.05; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
+                <h4 style="font-size: 12px; font-weight: 500; color: #4a5568; margin-bottom: 8px;">${coverage}</h4>
+                <div style="font-size: 16px; font-weight: bold; color: #2b6cb0;">Best: ${currentRankings[0]?.insurer_name}</div>
+                <div style="font-size: 14px; color: #4a5568;">£2M Coverage</div>
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- Quote Rankings -->
+          <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+            <div style="background: #f7fafc; padding: 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; display: grid; grid-template-columns: 200px 80px 120px 120px 120px 80px; gap: 16px; font-size: 12px; text-transform: uppercase; color: #4a5568;">
+              <div>Insurer</div>
+              <div style="text-align: center;">Premium</div>
+              <div style="text-align: center;">Prof. Indemnity</div>
+              <div style="text-align: center;">Public Liability</div>
+              <div style="text-align: center;">Cyber & Data</div>
+              <div style="text-align: center;">Score</div>
+            </div>
+            ${currentRankings.map((quote, index) => {
+              const insurerInfo = getInsurerInfo(quote.insurer_name);
+              return `
+                <div style="padding: 16px; border-bottom: ${index < currentRankings.length - 1 ? '1px solid #e2e8f0' : 'none'}; display: grid; grid-template-columns: 200px 80px 120px 120px 120px 80px; gap: 16px; align-items: center; ${index === 0 ? 'background: #f0fff4;' : ''}">
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    ${index === 0 ? '<div style="color: #f59e0b; font-size: 16px;">👑</div>' : ''}
+                    ${insurerInfo.logo ? 
+                      `<div style="width: 32px; height: 32px; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #f7fafc;">
+                         <div style="font-size: 10px; font-weight: 600; color: #4a5568;">${quote.insurer_name.substring(0, 2).toUpperCase()}</div>
+                       </div>` : 
+                      `<div style="width: 32px; height: 32px; border-radius: 4px; background: #e2e8f0; display: flex; align-items: center; justify-content: center;">
+                         <div style="font-size: 10px; font-weight: 600; color: #4a5568;">${quote.insurer_name.substring(0, 2).toUpperCase()}</div>
+                       </div>`
+                    }
+                    <div>
+                      <div style="font-weight: 600; font-size: 14px;">${quote.insurer_name}</div>
+                      <div style="background: ${index === 0 ? '#3b82f6' : '#6b7280'}; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; display: inline-block;">Rank #${index + 1}</div>
+                    </div>
+                  </div>
+                  <div style="text-align: center; font-weight: 600;">£${quote.premium_amount?.toLocaleString() || 'N/A'}</div>
+                  <div style="text-align: center;">
+                    <div style="background: #dcfce7; color: #166534; font-size: 11px; padding: 4px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;">
+                      <div style="width: 8px; height: 8px; border-radius: 50%; background: #22c55e;"></div>
+                      £${index === 0 ? '2M' : index === 1 ? '1M' : '500K'}
+                    </div>
+                  </div>
+                  <div style="text-align: center;">
+                    <div style="background: #dcfce7; color: #166534; font-size: 11px; padding: 4px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;">
+                      <div style="width: 8px; height: 8px; border-radius: 50%; background: #22c55e;"></div>
+                      £1M
+                    </div>
+                  </div>
+                  <div style="text-align: center;">
+                    <div style="background: ${index <= 1 ? '#dcfce7' : '#fef3c7'}; color: ${index <= 1 ? '#166534' : '#92400e'}; font-size: 11px; padding: 4px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;">
+                      <div style="width: 8px; height: 8px; border-radius: 50%; background: ${index <= 1 ? '#22c55e' : '#f59e0b'};"></div>
+                      ${index <= 1 ? '£500K' : 'Basic'}
+                    </div>
+                  </div>
+                  <div style="text-align: center;">
+                    <div style="font-weight: bold; color: ${quote.overall_score >= 80 ? '#059669' : quote.overall_score >= 70 ? '#2563eb' : quote.overall_score >= 60 ? '#d97706' : '#dc2626'}; font-size: 16px;">${quote.overall_score}%</div>
+                    <div style="font-size: 10px; color: #6b7280; margin-top: 2px;">Coverage: ${quote.coverage_score || 85}%</div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+
+        <div style="margin-bottom: 32px;">
+          <h2 style="font-size: 20px; font-weight: 600; color: #2d3748; margin-bottom: 16px;">Quote Rankings - Best to Worst</h2>
+          ${currentRankings.map((quote, index) => {
+            const insurerInfo = getInsurerInfo(quote.insurer_name);
+            return `
+              <div style="border: ${index === 0 ? '2px solid #3b82f6' : '1px solid #e2e8f0'}; border-radius: 8px; padding: 24px; margin-bottom: 16px; ${index === 0 ? 'background: #eff6ff;' : 'background: white;'}">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    ${index === 0 ? '<div style="color: #f59e0b; font-size: 20px;">👑</div>' : index === 1 ? '<div style="color: #9ca3af; font-size: 20px;">🥈</div>' : index === 2 ? '<div style="color: #d97706; font-size: 20px;">🥉</div>' : `<div style="width: 20px; height: 20px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600;">${index + 1}</div>`}
+                    <div>
+                      <h3 style="font-size: 20px; font-weight: 600; margin: 0;">${quote.insurer_name}</h3>
+                      <div style="margin-top: 4px;">
+                        <span style="background: #3b82f6; color: white; font-size: 12px; padding: 4px 8px; border-radius: 4px; margin-right: 8px;">${quote.recommendation_category || 'Recommended'}</span>
+                        ${index === 0 ? '<span style="background: linear-gradient(45deg, #fbbf24, #f59e0b); color: #92400e; font-size: 12px; padding: 4px 8px; border-radius: 4px;">👑 Best Choice</span>' : ''}
+                      </div>
+                    </div>
+                  </div>
+                  <div style="text-align: right;">
+                    <div style="font-size: 28px; font-weight: bold;">£${quote.premium_amount?.toLocaleString() || 'N/A'}</div>
+                    <div style="background: ${quote.overall_score >= 80 ? '#dcfce7' : quote.overall_score >= 70 ? '#dbeafe' : quote.overall_score >= 60 ? '#fef3c7' : '#fecaca'}; color: ${quote.overall_score >= 80 ? '#166534' : quote.overall_score >= 70 ? '#1e40af' : quote.overall_score >= 60 ? '#92400e' : '#991b1b'}; font-size: 14px; padding: 6px 12px; border-radius: 6px; display: inline-block; margin-top: 8px;">Overall Score: ${quote.overall_score}%</div>
+                  </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; margin-bottom: 20px; padding: 16px; background: ${index === 0 ? '#f0f9ff' : '#f8fafc'}; border-radius: 6px;">
+                  <div style="text-align: center;">
+                    <div style="font-size: 20px; font-weight: 600; color: ${quote.coverage_score >= 80 ? '#059669' : quote.coverage_score >= 70 ? '#2563eb' : '#d97706'};">${quote.coverage_score || 85}%</div>
+                    <div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Coverage Score</div>
+                  </div>
+                  <div style="text-align: center;">
+                    <div style="font-size: 20px; font-weight: 600; color: ${quote.quality_score >= 80 ? '#059669' : quote.quality_score >= 70 ? '#2563eb' : '#d97706'};">${quote.quality_score || 75}%</div>
+                    <div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Policy Quality</div>
+                  </div>
+                  <div style="text-align: center;">
+                    <div style="font-size: 20px; font-weight: 600; color: ${quote.competitiveness_score >= 80 ? '#059669' : quote.competitiveness_score >= 70 ? '#2563eb' : '#d97706'};">${quote.competitiveness_score || 95}%</div>
+                    <div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Competitiveness</div>
+                  </div>
+                </div>
+
+                ${quote.key_strengths && quote.key_strengths.length > 0 ? `
+                  <div>
+                    <h4 style="font-size: 14px; font-weight: 600; color: #059669; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                      <div style="width: 16px; height: 16px; border-radius: 50%; background: #22c55e; display: flex; align-items: center; justify-content: center;">
+                        <div style="color: white; font-size: 10px;">✓</div>
+                      </div>
+                      Key Strengths
+                    </h4>
+                    <ul style="margin: 0; padding: 0; list-style: none;">
+                      ${quote.key_strengths.slice(0, 3).map(strength => `
+                        <li style="font-size: 13px; color: #4a5568; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                          <div style="width: 6px; height: 6px; border-radius: 50%; background: #22c55e;"></div>
+                          ${strength}
+                        </li>
+                      `).join('')}
+                    </ul>
+                  </div>
+                ` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px;">
+          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px;">
+            <h4 style="font-size: 16px; font-weight: 600; color: #166534; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+              <div style="color: #22c55e; font-size: 16px;">✓</div>
+              Best Value for Money
+            </h4>
+            <p style="font-size: 14px; color: #166534; margin: 0;">
+              <strong>${currentRankings[0]?.insurer_name}</strong> offers the best combination of coverage and price at £${currentRankings[0]?.premium_amount?.toLocaleString()} 
+              with an overall score of ${currentRankings[0]?.overall_score}%.
+            </p>
+          </div>
+          
+          <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 20px;">
+            <h4 style="font-size: 16px; font-weight: 600; color: #1e40af; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+              <div style="color: #3b82f6; font-size: 16px;">🛡️</div>
+              Coverage Analysis
+            </h4>
+            <p style="font-size: 14px; color: #1e40af; margin: 0;">
+              Scoring considers coverage limits (60%) and pricing competitiveness (40%). 
+              ${currentRankings.filter(r => r.overall_score >= 80).length > 0 ? 
+                `${currentRankings.filter(r => r.overall_score >= 80).length} quote${currentRankings.filter(r => r.overall_score >= 80).length > 1 ? 's' : ''} scored 80%+ overall.` :
+                "Consider quotes with higher professional indemnity and cyber coverage."
+              }
+            </p>
+          </div>
+        </div>
+
+        <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; display: flex; justify-content: space-between; font-size: 12px; color: #6b7280;">
+          <div>Generated on ${new Date().toLocaleDateString()}</div>
+          <div>Confidential - For Client Use Only</div>
+        </div>
+      `;
+
+      document.body.appendChild(printContainer);
+
+      // Use html2canvas to capture the content
+      const canvas = await html2canvas(printContainer, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        width: 794,
+        height: printContainer.scrollHeight
+      });
+
+      document.body.removeChild(printContainer);
+
       // Create PDF
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const margin = 20;
-      let yPosition = margin;
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
 
-      // Add company header
-      pdf.setFontSize(20);
-      pdf.setTextColor(0, 0, 0);
-      pdf.text('Insurance Quote Comparison Report', margin, yPosition);
-      yPosition += 15;
+      // Add first page
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
 
-      // Add client information
-      pdf.setFontSize(14);
-      pdf.text('Client Information', margin, yPosition);
-      yPosition += 10;
-      
-      pdf.setFontSize(12);
-      pdf.text(`Client Name: ${selectedClientData.client_name}`, margin, yPosition);
-      yPosition += 7;
-      
-      if (selectedClientData.industry) {
-        pdf.text(`Industry: ${selectedClientData.industry}`, margin, yPosition);
-        yPosition += 7;
+      // Add additional pages if needed
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
       }
-      
-      if (selectedClientData.revenue_band) {
-        pdf.text(`Revenue Band: ${selectedClientData.revenue_band}`, margin, yPosition);
-        yPosition += 7;
-      }
-
-      yPosition += 10;
-
-      // Add analysis summary
-      pdf.setFontSize(14);
-      pdf.text('Quote Analysis Summary', margin, yPosition);
-      yPosition += 10;
-
-      pdf.setFontSize(12);
-      pdf.text(`Total Quotes Analyzed: ${rankings.length}`, margin, yPosition);
-      yPosition += 7;
-      pdf.text(`Analysis Date: ${new Date().toLocaleDateString()}`, margin, yPosition);
-      yPosition += 15;
-
-      // Add rankings table
-      pdf.setFontSize(14);
-      pdf.text('Quote Rankings (Best to Worst)', margin, yPosition);
-      yPosition += 10;
-
-      // Rankings table headers
-      pdf.setFontSize(10);
-      const headers = ['Rank', 'Insurer', 'Premium', 'Overall Score', 'Recommendation'];
-      const colWidths = [15, 50, 30, 25, 50];
-      let xPos = margin;
-
-      // Draw table headers
-      headers.forEach((header, index) => {
-        pdf.text(header, xPos, yPosition);
-        xPos += colWidths[index];
-      });
-      yPosition += 7;
-
-      // Draw horizontal line
-      pdf.line(margin, yPosition - 2, pageWidth - margin, yPosition - 2);
-      yPosition += 5;
-
-      // Add rankings data
-      rankings.forEach((ranking, index) => {
-        xPos = margin;
-        const rowData = [
-          `#${index + 1}`,
-          ranking.insurer_name,
-          `£${ranking.premium_amount?.toLocaleString() || 'N/A'}`,
-          `${ranking.overall_score}%`,
-          ranking.recommendation_category || 'Standard'
-        ];
-
-        rowData.forEach((data, colIndex) => {
-          // Wrap text if too long
-          const text = data.length > 15 ? data.substring(0, 15) + '...' : data;
-          pdf.text(text, xPos, yPosition);
-          xPos += colWidths[colIndex];
-        });
-        yPosition += 7;
-
-        // Add new page if needed
-        if (yPosition > 270) {
-          pdf.addPage();
-          yPosition = margin;
-        }
-      });
-
-      yPosition += 10;
-
-      // Add key insights
-      if (rankings.length > 0) {
-        pdf.setFontSize(14);
-        pdf.text('Key Insights', margin, yPosition);
-        yPosition += 10;
-
-        pdf.setFontSize(12);
-        const bestQuote = rankings[0];
-        pdf.text(`Best Value: ${bestQuote.insurer_name} at £${bestQuote.premium_amount?.toLocaleString()}`, margin, yPosition);
-        yPosition += 7;
-        pdf.text(`Overall Score: ${bestQuote.overall_score}%`, margin, yPosition);
-        yPosition += 7;
-        
-        if (bestQuote.key_strengths && bestQuote.key_strengths.length > 0) {
-          pdf.text('Key Strengths:', margin, yPosition);
-          yPosition += 5;
-          bestQuote.key_strengths.slice(0, 3).forEach(strength => {
-            pdf.text(`• ${strength}`, margin + 5, yPosition);
-            yPosition += 5;
-          });
-        }
-      }
-
-      // Add footer
-      const currentDate = new Date().toLocaleDateString();
-      pdf.setFontSize(8);
-      pdf.text(`Generated on ${currentDate}`, margin, 285);
-      pdf.text('Confidential - For Client Use Only', pageWidth - margin - 50, 285);
 
       // Save PDF
       const fileName = `Insurance_Quote_Comparison_${selectedClientData.client_name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
