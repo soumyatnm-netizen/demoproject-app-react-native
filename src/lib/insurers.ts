@@ -26,6 +26,11 @@ export const insurerMapping: Record<string, InsurerInfo> = {
     logo: axaLogo,
     altText: "AXA Insurance logo"
   },
+  "AXA Insurance UK": {
+    name: "AXA Insurance UK",
+    logo: axaLogo,
+    altText: "AXA Insurance UK logo"
+  },
   "AXA Commercial": {
     name: "AXA Commercial",
     logo: axaLogo,
@@ -45,6 +50,11 @@ export const insurerMapping: Record<string, InsurerInfo> = {
     name: "Allianz Commercial",
     logo: "", // Placeholder - add when available
     altText: "Allianz Commercial logo"
+  },
+  "RSA Insurance Group": {
+    name: "RSA Insurance Group",
+    logo: "", // Placeholder - add when available  
+    altText: "RSA Insurance Group logo"
   },
   "Hiscox Insurance": {
     name: "Hiscox Insurance", 
@@ -69,7 +79,7 @@ export const getInsurerInfo = (insurerName: string): InsurerInfo => {
     return insurerMapping["Zurich Insurance"];
   }
   if (lowerName.includes('axa')) {
-    return insurerMapping["AXA Insurance"];
+    return insurerMapping["AXA Insurance UK"];
   }
   if (lowerName.includes('chubb')) {
     return insurerMapping["Chubb Insurance"];
@@ -79,6 +89,9 @@ export const getInsurerInfo = (insurerName: string): InsurerInfo => {
   }
   if (lowerName.includes('hiscox')) {
     return insurerMapping["Hiscox Insurance"];
+  }
+  if (lowerName.includes('rsa')) {
+    return insurerMapping["RSA Insurance Group"];
   }
 
   // Default fallback
