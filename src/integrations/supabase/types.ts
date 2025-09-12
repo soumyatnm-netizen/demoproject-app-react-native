@@ -1031,86 +1031,7 @@ export type Database = {
       }
     }
     Views: {
-      profile_sensitive_data_secure: {
-        Row: {
-          created_at: string | null
-          emergency_contact: Json | null
-          id: string | null
-          personal_address: string | null
-          phone: string | null
-          sensitive_notes: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          emergency_contact?: Json | null
-          id?: string | null
-          personal_address?: string | null
-          phone?: string | null
-          sensitive_notes?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          emergency_contact?: Json | null
-          id?: string | null
-          personal_address?: string | null
-          phone?: string | null
-          sensitive_notes?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
-      team_member_safe_view: {
-        Row: {
-          company_id: string | null
-          created_at: string | null
-          department: string | null
-          first_name: string | null
-          is_active: boolean | null
-          job_title: string | null
-          last_login_at: string | null
-          last_name: string | null
-          role: Database["public"]["Enums"]["app_role"] | null
-          user_id: string | null
-        }
-        Insert: {
-          company_id?: string | null
-          created_at?: string | null
-          department?: string | null
-          first_name?: string | null
-          is_active?: boolean | null
-          job_title?: string | null
-          last_login_at?: string | null
-          last_name?: string | null
-          role?: Database["public"]["Enums"]["app_role"] | null
-          user_id?: string | null
-        }
-        Update: {
-          company_id?: string | null
-          created_at?: string | null
-          department?: string | null
-          first_name?: string | null
-          is_active?: boolean | null
-          job_title?: string | null
-          last_login_at?: string | null
-          last_name?: string | null
-          role?: Database["public"]["Enums"]["app_role"] | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "broker_companies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
       analyze_quote_coverage: {
@@ -1151,6 +1072,34 @@ export type Database = {
       generate_secure_invite_code: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_accessible_sensitive_data: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_at: string
+          emergency_contact: Json
+          id: string
+          personal_address: string
+          phone: string
+          sensitive_notes: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
+      get_accessible_team_members: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          company_id: string
+          created_at: string
+          department: string
+          first_name: string
+          is_active: boolean
+          job_title: string
+          last_login_at: string
+          last_name: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }[]
       }
       get_best_underwriter_matches: {
         Args: { p_document_id: string; p_limit?: number }
