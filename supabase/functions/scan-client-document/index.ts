@@ -1,9 +1,8 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-// @deno-types="https://esm.sh/pdfjs-dist@4.0.379/types/src/pdf.d.ts"
-import * as pdfjsLib from "https://esm.sh/pdfjs-dist@4.0.379/build/pdf.min.mjs";
-import { unzipSync } from "https://deno.land/x/compress@v0.4.5/zip/mod.ts";
+import JSZip from "https://esm.sh/jszip@3.10.1";
+import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -184,21 +183,20 @@ serve(async (req) => {
       extractedText = openAIResult.choices?.[0]?.message?.content || null;
 
     } else if (filename.endsWith('.docx') || mime.includes('wordprocessingml')) {
-      // DOCX FLOW: extract text from word/document.xml
+      // DOCX FLOW: extract text from word/document.xml using JSZip
       try {
         const arrayBuffer = await fileData.arrayBuffer();
-        const uint8Array = new Uint8Array(arrayBuffer);
         
-        // Extract the zip file
-        const unzipped = unzipSync(uint8Array);
+        // Load the DOCX file as a ZIP using JSZip
+        const zip = await JSZip.loadAsync(arrayBuffer);
         
         // Find and read the document.xml file
-        const documentXmlFile = unzipped.find(file => file.name === 'word/document.xml');
+        const documentXmlFile = zip.file('word/document.xml');
         if (!documentXmlFile) {
           throw new Error('No document.xml found in DOCX file');
         }
         
-        const xmlContent = new TextDecoder().decode(documentXmlFile.content);
+        const xmlContent = await documentXmlFile.async('text');
         
         // Extract text from XML (remove tags and decode entities)
         let plainText = xmlContent
@@ -257,37 +255,23 @@ serve(async (req) => {
       }
 
     } else if (filename.endsWith('.pdf') || mime === 'application/pdf') {
-      // PDF FLOW: extract text using PDF.js
+      // PDF FLOW: extract text using pdf-lib
       try {
         const arrayBuffer = await fileData.arrayBuffer();
         const uint8Array = new Uint8Array(arrayBuffer);
         
-        // Configure PDF.js
-        pdfjsLib.GlobalWorkerOptions.workerSrc = "https://esm.sh/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs";
-        
-        // Load PDF document
-        const loadingTask = pdfjsLib.getDocument({ data: uint8Array });
-        const pdf = await loadingTask.promise;
+        // Load PDF document using pdf-lib
+        const pdf = await PDFDocument.load(uint8Array, { ignoreEncryption: true });
+        const pages = pdf.getPages();
         
         let fullText = '';
         
-        // Extract text from each page
-        for (let pageNum = 1; pageNum <= Math.min(pdf.numPages, 10); pageNum++) { // Limit to first 10 pages
-          const page = await pdf.getPage(pageNum);
-          const textContent = await page.getTextContent();
-          
-          const pageText = textContent.items
-            .map((item: any) => item.str)
-            .join(' ');
-          
-          fullText += pageText + '\n';
-        }
+        // For pdf-lib, we need to extract text differently
+        // Unfortunately, pdf-lib doesn't have built-in text extraction
+        // So we'll convert to vision API approach for PDFs
+        const base64Data = btoa(String.fromCharCode(...uint8Array));
         
-        if (!fullText.trim() || fullText.length < 10) {
-          throw new Error('No meaningful text content found in PDF');
-        }
-
-        // Call OpenAI with extracted text
+        // Use OpenAI Vision API for PDF (treat as image)
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -295,18 +279,24 @@ serve(async (req) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'gpt-4.1-2025-04-14',
+            model: 'gpt-4o',
             messages: [
-              { role: 'system', content: 'Extract structured client details from provided document text. Always return JSON only.' },
-              { role: 'user', content: `${buildPrompt()}\n\nDocument Text:\n${fullText.slice(0, 15000)}` }
+              {
+                role: 'user',
+                content: [
+                  { type: 'text', text: `${buildPrompt()}\n\nThis is a PDF document. Please extract the client information from it.` },
+                  { type: 'image_url', image_url: { url: `data:application/pdf;base64,${base64Data}` } }
+                ]
+              }
             ],
-            max_completion_tokens: 2000
+            max_tokens: 2000,
+            temperature: 0.1
           }),
         });
 
         if (!response.ok) {
           const err = await response.text();
-          console.error('OpenAI (pdf) error:', err);
+          console.error('OpenAI (pdf vision) error:', err);
           throw new Error('AI failed to analyze PDF content');
         }
 
