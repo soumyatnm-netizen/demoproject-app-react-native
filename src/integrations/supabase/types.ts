@@ -1104,6 +1104,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      generate_secure_invite_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_best_underwriter_matches: {
         Args: { p_document_id: string; p_limit?: number }
         Returns: {
