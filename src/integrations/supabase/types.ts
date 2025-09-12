@@ -1253,6 +1253,15 @@ export type Database = {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      grant_sensitive_data_consent: {
+        Args: {
+          consent_type: string
+          expires_in_days?: number
+          hr_user_id: string
+          purpose: string
+        }
+        Returns: string
+      }
       has_sensitive_data_consent: {
         Args: { consent_type: string; target_user_id: string }
         Returns: boolean
