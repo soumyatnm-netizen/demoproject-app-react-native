@@ -157,15 +157,22 @@ export const DocumentUpload = ({ open, onOpenChange, onClientExtracted }: Docume
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
+    onDropRejected: (fileRejections) => {
+      const reasons = fileRejections.flatMap(r => r.errors.map(e => e.message));
+      toast({
+        title: "File not accepted",
+        description: reasons.join(' ') || "Only JPG, PNG, GIF up to 10MB are supported.",
+        variant: "destructive",
+      });
+    },
     accept: {
-      'image/jpeg': ['.jpg', '.jpeg'],
-      'image/png': ['.png'],
-      'image/gif': ['.gif']
+      'image/*': ['.jpeg', '.jpg', '.png', '.gif']
     },
     maxSize: 10 * 1024 * 1024, // 10MB
     multiple: true,
     noClick: false,
-    noKeyboard: false
+    noKeyboard: false,
+    noDragEventsBubbling: true
   });
 
   const removeFile = (file: File) => {
@@ -185,7 +192,7 @@ export const DocumentUpload = ({ open, onOpenChange, onClientExtracted }: Docume
         <div className="space-y-4">
           <div
             {...getRootProps()}
-            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
               isDragActive 
                 ? 'border-primary bg-primary/5' 
                 : 'border-muted-foreground/25 hover:border-primary hover:bg-primary/5'
