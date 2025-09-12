@@ -391,7 +391,7 @@ const Dashboard = ({ onBack }: DashboardProps) => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {documents.map((doc) => {
+                    {documents.filter(doc => doc.status !== 'error').map((doc) => {
                       // Find the corresponding structured quote for this document
                       const relatedQuote = quotes.find(q => q.document_id === doc.id);
                       
