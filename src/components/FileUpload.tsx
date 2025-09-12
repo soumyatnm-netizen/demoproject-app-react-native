@@ -166,10 +166,10 @@ const FileUpload = ({ onUploadSuccess }: FileUploadProps) => {
               {isDragActive ? 'Drop files here' : 'Upload Insurance Documents'}
             </h3>
             <p className="text-sm mb-4">
-              Drag and drop files here, or click to select files
+              Drag and drop multiple files here, or click to select files
             </p>
             <p className="text-xs text-muted-foreground mb-4">
-              Supports PDF, Word (.docx, .doc), Excel (.xlsx, .xls) up to 10MB each
+              Upload multiple files at once • Supports PDF, Word (.docx, .doc), Excel (.xlsx, .xls) up to 10MB each
             </p>
             <Button variant="outline">
               Browse Files
