@@ -1078,6 +1078,10 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: boolean
       }
+      cleanup_expired_security_data: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       cleanup_old_audit_data: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -1260,6 +1264,15 @@ export type Database = {
           p_access_type: string
           p_accessed_fields?: string[]
           p_accessed_user_id: string
+        }
+        Returns: undefined
+      }
+      log_sensitive_operation: {
+        Args: {
+          p_details?: Json
+          p_operation_type: string
+          p_record_id: string
+          p_table_name: string
         }
         Returns: undefined
       }
