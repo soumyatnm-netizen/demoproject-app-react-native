@@ -30,7 +30,7 @@ import CoverageComparisonTable from "./CoverageComparisonTable";
 import { getInsurerInfo } from "@/lib/insurers";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import coverCompassLogo from "@/assets/covercompass-logo.png";
+import coverCompassLogo from "@/assets/covercompass-logo-new.png";
 
 interface QuoteRanking {
   quote_id: string;
@@ -500,23 +500,37 @@ const InstantQuoteComparison = () => {
       `;
       
       document.body.appendChild(printContainer);
-      const canvas = await html2canvas(printContainer, { scale: 1.5, backgroundColor: '#fff' });
+      
+      // Use a lower scale for better A4 fitting and capture with white background
+      const canvas = await html2canvas(printContainer, { 
+        scale: 0.8, 
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        allowTaint: true,
+        height: printContainer.scrollHeight,
+        width: printContainer.scrollWidth
+      });
       document.body.removeChild(printContainer);
       
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = 210;
       const pageHeight = 297;
-      const margin = 10; // print border
+      const margin = 15; // Increased margins for better fitting
       const maxWidth = pageWidth - margin * 2;
       const maxHeight = pageHeight - margin * 2;
+      
+      // Calculate dimensions to fit A4 properly
       const imgRatio = canvas.width / canvas.height;
       let imgWidth = maxWidth;
       let imgHeight = imgWidth / imgRatio;
+      
+      // If content is too tall, scale it down to fit height
       if (imgHeight > maxHeight) {
         imgHeight = maxHeight;
         imgWidth = imgHeight * imgRatio;
       }
-      const x = margin;
+      
+      const x = margin + (maxWidth - imgWidth) / 2; // Center horizontally
       const y = margin;
       pdf.addImage(canvas.toDataURL('image/png'), 'PNG', x, y, imgWidth, imgHeight);
       
