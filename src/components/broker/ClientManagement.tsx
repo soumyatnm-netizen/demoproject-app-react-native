@@ -34,6 +34,8 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [showClientDetails, setShowClientDetails] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ClientData | null>(null);
+  const [isEditingClient, setIsEditingClient] = useState(false);
+  const [editingClientData, setEditingClientData] = useState<any>(null);
   const { toast } = useToast();
 
   const [newClient, setNewClient] = useState({
@@ -190,7 +192,131 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
 
   const handleViewClient = (client: ClientData) => {
     setSelectedClient(client);
+    setEditingClientData({
+      client_name: client.client_name,
+      industry: client.report_data?.industry || '',
+      revenue_band: client.report_data?.revenue_band || '',
+      employee_count: client.report_data?.employee_count?.toString() || '',
+      risk_profile: client.report_data?.risk_profile || '',
+      contact_email: client.report_data?.contact_info?.email || '',
+      contact_phone: client.report_data?.contact_info?.phone || '',
+      coverage_requirements: Array.isArray(client.report_data?.coverage_requirements) 
+        ? client.report_data.coverage_requirements.join(', ')
+        : client.report_data?.coverage_requirements || '',
+      notes: client.report_data?.notes || '',
+      main_address: client.report_data?.main_address || '',
+      postcode: client.report_data?.postcode || '',
+      date_established: client.report_data?.date_established || '',
+      organisation_type: client.report_data?.organisation_type || '',
+      website: client.report_data?.website || '',
+      years_experience: client.report_data?.years_experience?.toString() || '',
+      total_employees: client.report_data?.total_employees?.toString() || '',
+      wage_roll: client.report_data?.wage_roll?.toString() || '',
+      report_title: client.report_title
+    });
     setShowClientDetails(true);
+  };
+
+  const handleEditClient = () => {
+    setIsEditingClient(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingClient(false);
+    // Reset editing data to original values
+    if (selectedClient) {
+      setEditingClientData({
+        client_name: selectedClient.client_name,
+        industry: selectedClient.report_data?.industry || '',
+        revenue_band: selectedClient.report_data?.revenue_band || '',
+        employee_count: selectedClient.report_data?.employee_count?.toString() || '',
+        risk_profile: selectedClient.report_data?.risk_profile || '',
+        contact_email: selectedClient.report_data?.contact_info?.email || '',
+        contact_phone: selectedClient.report_data?.contact_info?.phone || '',
+        coverage_requirements: Array.isArray(selectedClient.report_data?.coverage_requirements) 
+          ? selectedClient.report_data.coverage_requirements.join(', ')
+          : selectedClient.report_data?.coverage_requirements || '',
+        notes: selectedClient.report_data?.notes || '',
+        main_address: selectedClient.report_data?.main_address || '',
+        postcode: selectedClient.report_data?.postcode || '',
+        date_established: selectedClient.report_data?.date_established || '',
+        organisation_type: selectedClient.report_data?.organisation_type || '',
+        website: selectedClient.report_data?.website || '',
+        years_experience: selectedClient.report_data?.years_experience?.toString() || '',
+        total_employees: selectedClient.report_data?.total_employees?.toString() || '',
+        wage_roll: selectedClient.report_data?.wage_roll?.toString() || '',
+        report_title: selectedClient.report_title
+      });
+    }
+  };
+
+  const handleSaveClient = async () => {
+    if (!selectedClient || !editingClientData) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No authenticated user');
+
+      const updatedClientData = {
+        industry: editingClientData.industry,
+        revenue_band: editingClientData.revenue_band,
+        employee_count: parseInt(editingClientData.employee_count) || 0,
+        risk_profile: editingClientData.risk_profile,
+        coverage_requirements: editingClientData.coverage_requirements.split(',').map((s: string) => s.trim()).filter(Boolean),
+        contact_info: {
+          email: editingClientData.contact_email,
+          phone: editingClientData.contact_phone
+        },
+        notes: editingClientData.notes,
+        main_address: editingClientData.main_address,
+        postcode: editingClientData.postcode,
+        date_established: editingClientData.date_established,
+        organisation_type: editingClientData.organisation_type,
+        website: editingClientData.website,
+        years_experience: editingClientData.years_experience,
+        total_employees: editingClientData.total_employees,
+        wage_roll: editingClientData.wage_roll
+      };
+
+      const { error } = await supabase
+        .from('client_reports')
+        .update({
+          client_name: editingClientData.client_name,
+          report_title: editingClientData.report_title,
+          report_data: updatedClientData
+        })
+        .eq('id', selectedClient.id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Client information updated successfully",
+      });
+
+      // Refresh the clients list and update the selected client
+      await fetchClients();
+      
+      // Update the selected client with new data
+      const updatedClient = {
+        ...selectedClient,
+        client_name: editingClientData.client_name,
+        report_title: editingClientData.report_title,
+        report_data: updatedClientData
+      };
+      setSelectedClient(updatedClient);
+      setIsEditingClient(false);
+      onStatsUpdate();
+
+    } catch (error) {
+      console.error('Error updating client:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update client information",
+        variant: "destructive",
+      });
+    }
   };
 
   if (loading) {
@@ -531,19 +657,45 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
       </Card>
 
       {/* Client Details Modal */}
-      <Dialog open={showClientDetails} onOpenChange={setShowClientDetails}>
+      <Dialog open={showClientDetails} onOpenChange={(open) => {
+        setShowClientDetails(open);
+        if (!open) {
+          setIsEditingClient(false);
+          setSelectedClient(null);
+          setEditingClientData(null);
+        }
+      }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2">
-              <Building2 className="h-5 w-5" />
-              <span>{selectedClient?.client_name}</span>
+            <DialogTitle className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Building2 className="h-5 w-5" />
+                <span>{isEditingClient ? editingClientData?.client_name : selectedClient?.client_name}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                {!isEditingClient ? (
+                  <Button onClick={handleEditClient} size="sm" variant="outline">
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                ) : (
+                  <>
+                    <Button onClick={handleCancelEdit} size="sm" variant="outline">
+                      Cancel
+                    </Button>
+                    <Button onClick={handleSaveClient} size="sm">
+                      Save Changes
+                    </Button>
+                  </>
+                )}
+              </div>
             </DialogTitle>
             <DialogDescription>
-              Comprehensive client profile and information
+              {isEditingClient ? 'Edit client profile and information' : 'Comprehensive client profile and information'}
             </DialogDescription>
           </DialogHeader>
           
-          {selectedClient && (
+          {selectedClient && editingClientData && (
             <div className="space-y-6">
               {/* Basic Information */}
               <Card>
@@ -554,25 +706,88 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div>
                       <Label className="text-sm font-medium text-muted-foreground">Client Name</Label>
-                      <p className="text-sm">{selectedClient.client_name}</p>
+                      {isEditingClient ? (
+                        <Input
+                          value={editingClientData.client_name}
+                          onChange={(e) => setEditingClientData({...editingClientData, client_name: e.target.value})}
+                          className="mt-1"
+                        />
+                      ) : (
+                        <p className="text-sm">{selectedClient.client_name}</p>
+                      )}
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-muted-foreground">Industry</Label>
-                      <p className="text-sm">{selectedClient.report_data?.industry || 'N/A'}</p>
+                      {isEditingClient ? (
+                        <Select value={editingClientData.industry} onValueChange={(value) => setEditingClientData({...editingClientData, industry: value})}>
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="Select industry" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="technology">Technology</SelectItem>
+                            <SelectItem value="manufacturing">Manufacturing</SelectItem>
+                            <SelectItem value="healthcare">Healthcare</SelectItem>
+                            <SelectItem value="retail">Retail</SelectItem>
+                            <SelectItem value="construction">Construction</SelectItem>
+                            <SelectItem value="professional_services">Professional Services</SelectItem>
+                            <SelectItem value="financial_services">Financial Services</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <p className="text-sm">{selectedClient.report_data?.industry || 'N/A'}</p>
+                      )}
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-muted-foreground">Revenue Band</Label>
-                      <p className="text-sm">{selectedClient.report_data?.revenue_band || 'N/A'}</p>
+                      {isEditingClient ? (
+                        <Select value={editingClientData.revenue_band} onValueChange={(value) => setEditingClientData({...editingClientData, revenue_band: value})}>
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="Select revenue band" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="0-1m">£0 - £1M</SelectItem>
+                            <SelectItem value="1-5m">£1M - £5M</SelectItem>
+                            <SelectItem value="5-10m">£5M - £10M</SelectItem>
+                            <SelectItem value="10-50m">£10M - £50M</SelectItem>
+                            <SelectItem value="50m+">£50M+</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <p className="text-sm">{selectedClient.report_data?.revenue_band || 'N/A'}</p>
+                      )}
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-muted-foreground">Employee Count</Label>
-                      <p className="text-sm">{selectedClient.report_data?.employee_count || 'N/A'}</p>
+                      {isEditingClient ? (
+                        <Input
+                          type="number"
+                          value={editingClientData.employee_count}
+                          onChange={(e) => setEditingClientData({...editingClientData, employee_count: e.target.value})}
+                          className="mt-1"
+                        />
+                      ) : (
+                        <p className="text-sm">{selectedClient.report_data?.employee_count || 'N/A'}</p>
+                      )}
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-muted-foreground">Risk Profile</Label>
-                      <Badge variant="outline">
-                        {selectedClient.report_data?.risk_profile || 'N/A'}
-                      </Badge>
+                      {isEditingClient ? (
+                        <Select value={editingClientData.risk_profile} onValueChange={(value) => setEditingClientData({...editingClientData, risk_profile: value})}>
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="Select risk profile" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">Low Risk</SelectItem>
+                            <SelectItem value="medium">Medium Risk</SelectItem>
+                            <SelectItem value="high">High Risk</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Badge variant="outline">
+                          {selectedClient.report_data?.risk_profile || 'N/A'}
+                        </Badge>
+                      )}
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-muted-foreground">Status</Label>
@@ -593,11 +808,28 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label className="text-sm font-medium text-muted-foreground">Email</Label>
-                      <p className="text-sm">{selectedClient.report_data?.contact_info?.email || 'N/A'}</p>
+                      {isEditingClient ? (
+                        <Input
+                          type="email"
+                          value={editingClientData.contact_email}
+                          onChange={(e) => setEditingClientData({...editingClientData, contact_email: e.target.value})}
+                          className="mt-1"
+                        />
+                      ) : (
+                        <p className="text-sm">{selectedClient.report_data?.contact_info?.email || 'N/A'}</p>
+                      )}
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-muted-foreground">Phone</Label>
-                      <p className="text-sm">{selectedClient.report_data?.contact_info?.phone || 'N/A'}</p>
+                      {isEditingClient ? (
+                        <Input
+                          value={editingClientData.contact_phone}
+                          onChange={(e) => setEditingClientData({...editingClientData, contact_phone: e.target.value})}
+                          className="mt-1"
+                        />
+                      ) : (
+                        <p className="text-sm">{selectedClient.report_data?.contact_info?.phone || 'N/A'}</p>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -609,56 +841,95 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                   <CardTitle className="text-lg">Coverage Requirements</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedClient.report_data?.coverage_requirements?.map((requirement: string, index: number) => (
-                      <Badge key={index} variant="secondary">
-                        {requirement}
-                      </Badge>
-                    )) || <p className="text-sm text-muted-foreground">No coverage requirements specified</p>}
-                  </div>
+                  {isEditingClient ? (
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Coverage Requirements</Label>
+                      <Input
+                        value={editingClientData.coverage_requirements}
+                        onChange={(e) => setEditingClientData({...editingClientData, coverage_requirements: e.target.value})}
+                        placeholder="Public Liability, Employers Liability, Professional Indemnity"
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Separate multiple coverages with commas</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedClient.report_data?.coverage_requirements?.map((requirement: string, index: number) => (
+                        <Badge key={index} variant="secondary">
+                          {requirement}
+                        </Badge>
+                      )) || <p className="text-sm text-muted-foreground">No coverage requirements specified</p>}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
               {/* Additional Details */}
-              {(selectedClient.report_data?.main_address || 
-                selectedClient.report_data?.postcode || 
-                selectedClient.report_data?.date_established || 
-                selectedClient.report_data?.organisation_type || 
-                selectedClient.report_data?.website) && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Additional Details</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {selectedClient.report_data?.main_address && (
-                        <div>
-                          <Label className="text-sm font-medium text-muted-foreground">Main Address</Label>
-                          <p className="text-sm">{selectedClient.report_data.main_address}</p>
-                        </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Additional Details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Main Address</Label>
+                      {isEditingClient ? (
+                        <Input
+                          value={editingClientData.main_address}
+                          onChange={(e) => setEditingClientData({...editingClientData, main_address: e.target.value})}
+                          className="mt-1"
+                        />
+                      ) : (
+                        <p className="text-sm">{selectedClient.report_data?.main_address || 'N/A'}</p>
                       )}
-                      {selectedClient.report_data?.postcode && (
-                        <div>
-                          <Label className="text-sm font-medium text-muted-foreground">Postcode</Label>
-                          <p className="text-sm">{selectedClient.report_data.postcode}</p>
-                        </div>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Postcode</Label>
+                      {isEditingClient ? (
+                        <Input
+                          value={editingClientData.postcode}
+                          onChange={(e) => setEditingClientData({...editingClientData, postcode: e.target.value})}
+                          className="mt-1"
+                        />
+                      ) : (
+                        <p className="text-sm">{selectedClient.report_data?.postcode || 'N/A'}</p>
                       )}
-                      {selectedClient.report_data?.date_established && (
-                        <div>
-                          <Label className="text-sm font-medium text-muted-foreground">Date Established</Label>
-                          <p className="text-sm">{selectedClient.report_data.date_established}</p>
-                        </div>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Date Established</Label>
+                      {isEditingClient ? (
+                        <Input
+                          value={editingClientData.date_established}
+                          onChange={(e) => setEditingClientData({...editingClientData, date_established: e.target.value})}
+                          className="mt-1"
+                        />
+                      ) : (
+                        <p className="text-sm">{selectedClient.report_data?.date_established || 'N/A'}</p>
                       )}
-                      {selectedClient.report_data?.organisation_type && (
-                        <div>
-                          <Label className="text-sm font-medium text-muted-foreground">Organisation Type</Label>
-                          <p className="text-sm">{selectedClient.report_data.organisation_type}</p>
-                        </div>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Organisation Type</Label>
+                      {isEditingClient ? (
+                        <Input
+                          value={editingClientData.organisation_type}
+                          onChange={(e) => setEditingClientData({...editingClientData, organisation_type: e.target.value})}
+                          className="mt-1"
+                        />
+                      ) : (
+                        <p className="text-sm">{selectedClient.report_data?.organisation_type || 'N/A'}</p>
                       )}
-                      {selectedClient.report_data?.website && (
-                        <div>
-                          <Label className="text-sm font-medium text-muted-foreground">Website</Label>
-                          <p className="text-sm">
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Website</Label>
+                      {isEditingClient ? (
+                        <Input
+                          value={editingClientData.website}
+                          onChange={(e) => setEditingClientData({...editingClientData, website: e.target.value})}
+                          className="mt-1"
+                        />
+                      ) : (
+                        <p className="text-sm">
+                          {selectedClient.report_data?.website ? (
                             <a 
                               href={selectedClient.report_data.website} 
                               target="_blank" 
@@ -667,43 +938,74 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                             >
                               {selectedClient.report_data.website}
                             </a>
-                          </p>
-                        </div>
-                      )}
-                      {selectedClient.report_data?.years_experience && (
-                        <div>
-                          <Label className="text-sm font-medium text-muted-foreground">Years Experience</Label>
-                          <p className="text-sm">{selectedClient.report_data.years_experience}</p>
-                        </div>
-                      )}
-                      {selectedClient.report_data?.total_employees && (
-                        <div>
-                          <Label className="text-sm font-medium text-muted-foreground">Total Employees</Label>
-                          <p className="text-sm">{selectedClient.report_data.total_employees}</p>
-                        </div>
-                      )}
-                      {selectedClient.report_data?.wage_roll && (
-                        <div>
-                          <Label className="text-sm font-medium text-muted-foreground">Total Wage Roll</Label>
-                          <p className="text-sm">£{Number(selectedClient.report_data.wage_roll).toLocaleString()}</p>
-                        </div>
+                          ) : 'N/A'}
+                        </p>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
-              )}
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Years Experience</Label>
+                      {isEditingClient ? (
+                        <Input
+                          type="number"
+                          value={editingClientData.years_experience}
+                          onChange={(e) => setEditingClientData({...editingClientData, years_experience: e.target.value})}
+                          className="mt-1"
+                        />
+                      ) : (
+                        <p className="text-sm">{selectedClient.report_data?.years_experience || 'N/A'}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Total Employees</Label>
+                      {isEditingClient ? (
+                        <Input
+                          type="number"
+                          value={editingClientData.total_employees}
+                          onChange={(e) => setEditingClientData({...editingClientData, total_employees: e.target.value})}
+                          className="mt-1"
+                        />
+                      ) : (
+                        <p className="text-sm">{selectedClient.report_data?.total_employees || 'N/A'}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Total Wage Roll</Label>
+                      {isEditingClient ? (
+                        <Input
+                          type="number"
+                          value={editingClientData.wage_roll}
+                          onChange={(e) => setEditingClientData({...editingClientData, wage_roll: e.target.value})}
+                          className="mt-1"
+                        />
+                      ) : (
+                        <p className="text-sm">
+                          {selectedClient.report_data?.wage_roll ? 
+                            `£${Number(selectedClient.report_data.wage_roll).toLocaleString()}` : 'N/A'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Notes */}
-              {selectedClient.report_data?.notes && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Notes</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm whitespace-pre-wrap">{selectedClient.report_data.notes}</p>
-                  </CardContent>
-                </Card>
-              )}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Notes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isEditingClient ? (
+                    <Textarea
+                      value={editingClientData.notes}
+                      onChange={(e) => setEditingClientData({...editingClientData, notes: e.target.value})}
+                      placeholder="Additional notes about the client..."
+                      rows={3}
+                    />
+                  ) : (
+                    <p className="text-sm whitespace-pre-wrap">{selectedClient.report_data?.notes || 'No notes available'}</p>
+                  )}
+                </CardContent>
+              </Card>
 
               {/* Report Information */}
               <Card>
@@ -714,7 +1016,15 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label className="text-sm font-medium text-muted-foreground">Report Title</Label>
-                      <p className="text-sm">{selectedClient.report_title}</p>
+                      {isEditingClient ? (
+                        <Input
+                          value={editingClientData.report_title}
+                          onChange={(e) => setEditingClientData({...editingClientData, report_title: e.target.value})}
+                          className="mt-1"
+                        />
+                      ) : (
+                        <p className="text-sm">{selectedClient.report_title}</p>
+                      )}
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-muted-foreground">Created Date</Label>
