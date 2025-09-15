@@ -175,12 +175,12 @@ const AppetiteGuidesViewer = () => {
                     Target Sectors
                   </h4>
                   <div className="flex flex-wrap gap-1">
-                    {guide.appetite_data.target_sectors.slice(0, 3).map((sector, index) => (
+                    {guide.appetite_data.target_sectors?.slice(0, 3).map((sector, index) => (
                       <Badge key={index} variant="secondary" className="text-xs">
                         {sector}
                       </Badge>
                     ))}
-                    {guide.appetite_data.target_sectors.length > 3 && (
+                    {guide.appetite_data.target_sectors && guide.appetite_data.target_sectors.length > 3 && (
                       <Badge variant="outline" className="text-xs">
                         +{guide.appetite_data.target_sectors.length - 3} more
                       </Badge>
@@ -224,12 +224,12 @@ const AppetiteGuidesViewer = () => {
                     Specialty Focus
                   </h4>
                   <div className="flex flex-wrap gap-1">
-                    {guide.appetite_data.specialty_focus.slice(0, 2).map((focus, index) => (
+                    {guide.appetite_data.specialty_focus?.slice(0, 2).map((focus, index) => (
                       <Badge key={index} variant="outline" className="text-xs">
                         {focus}
                       </Badge>
                     ))}
-                    {guide.appetite_data.specialty_focus.length > 2 && (
+                    {guide.appetite_data.specialty_focus && guide.appetite_data.specialty_focus.length > 2 && (
                       <Badge variant="outline" className="text-xs">
                         +{guide.appetite_data.specialty_focus.length - 2} more
                       </Badge>

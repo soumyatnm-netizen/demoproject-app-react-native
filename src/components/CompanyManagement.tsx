@@ -289,7 +289,7 @@ const CompanyManagement = ({ userProfile }: CompanyManagementProps) => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {teamMembers.map((member) => (
+                  {teamMembers?.map((member) => (
                     <TableRow key={member.id}>
                       <TableCell>
                         <div>
@@ -346,7 +346,7 @@ const CompanyManagement = ({ userProfile }: CompanyManagementProps) => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {invites.map((invite) => (
+                    {invites?.map((invite) => (
                       <TableRow key={invite.id}>
                         <TableCell>{invite.email}</TableCell>
                         <TableCell>{getRoleBadge(invite.role)}</TableCell>
