@@ -475,32 +475,61 @@ const InstantQuoteComparison = () => {
       printContainer.style.lineHeight = '1.5';
       
       // Get only the comparison results sections (not the upload/selection steps)
-      const coverageSection = document.querySelector('[data-section="coverage-highlights"]');
-      const rankingsSection = document.querySelector('[data-section="quote-rankings"]');
+      const pdfCoverageSection = document.querySelector('[data-section="coverage-highlights"]');
+      const pdfRankingsSection = document.querySelector('[data-section="quote-rankings"]');
       
       let contentHTML = '';
-      if (coverageSection) {
-        contentHTML += coverageSection.outerHTML;
+      if (pdfCoverageSection) {
+        contentHTML += pdfCoverageSection.outerHTML;
       }
-      if (rankingsSection) {
-        contentHTML += rankingsSection.outerHTML;
+      if (pdfRankingsSection) {
+        contentHTML += pdfRankingsSection.outerHTML;
       }
       
       printContainer.innerHTML = `
-        <div style="background: linear-gradient(135deg, #3b82f6, #1e40af); color: white; padding: 30px; margin-bottom: 30px; display: flex; align-items: center; gap: 20px; border-radius: 12px;">
-          <img src="${coverCompassLogo}" alt="CoverCompass Logo" style="height: 60px; width: auto; object-fit: contain;" />
-          <div>
-            <h1 style="font-size: 32px; font-weight: bold; margin: 0; line-height: 1.2;">CoverCompass</h1>
-            <p style="font-size: 16px; opacity: 0.9; margin: 8px 0 0 0;">Insurance Quote Comparison Report</p>
+        <div style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 40px; margin-bottom: 30px; border-radius: 16px; box-shadow: 0 10px 30px rgba(37, 99, 235, 0.3);">
+          <div style="display: flex; align-items: center; gap: 24px;">
+            <img src="${coverCompassLogo}" alt="CoverCompass Logo" style="height: 70px; width: auto; object-fit: contain;" />
+            <div>
+              <h1 style="font-size: 36px; font-weight: 700; margin: 0; line-height: 1.1; letter-spacing: -0.02em;">CoverCompass</h1>
+              <p style="font-size: 18px; opacity: 0.95; margin: 10px 0 0 0; font-weight: 500;">Insurance Quote Comparison Report</p>
+            </div>
           </div>
         </div>
-        <div style="background: #f8fafc; padding: 24px; border-radius: 12px; margin-bottom: 30px; border: 1px solid #e2e8f0;">
-          <h3 style="font-size: 20px; margin: 0 0 16px 0; color: #1e293b;">📋 Client Information</h3>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 16px;">
-            <div style="padding: 8px 0;"><strong>Client:</strong> ${selectedClientData.client_name}</div>
-            <div style="padding: 8px 0;"><strong>Date:</strong> ${new Date().toLocaleDateString()}</div>
-            ${selectedClientData.industry ? `<div style="padding: 8px 0;"><strong>Industry:</strong> ${selectedClientData.industry}</div>` : ""}
-            <div style="padding: 8px 0;"><strong>Quotes Analyzed:</strong> ${rankings.length}</div>
+        
+        <div style="background: linear-gradient(145deg, #f8fafc, #f1f5f9); padding: 32px; border-radius: 16px; margin-bottom: 30px; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);">
+          <div style="display: flex; align-items: center; margin-bottom: 24px;">
+            <div style="background: #2563eb; color: white; padding: 12px; border-radius: 12px; margin-right: 16px;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <h3 style="font-size: 24px; margin: 0; color: #1e293b; font-weight: 700;">Client Information</h3>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 16px;">
+            <div style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #2563eb;">
+              <div style="color: #64748b; font-size: 14px; font-weight: 500; margin-bottom: 4px;">CLIENT NAME</div>
+              <div style="color: #1e293b; font-weight: 600; font-size: 16px;">${selectedClientData.client_name}</div>
+            </div>
+            <div style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #2563eb;">
+              <div style="color: #64748b; font-size: 14px; font-weight: 500; margin-bottom: 4px;">REPORT DATE</div>
+              <div style="color: #1e293b; font-weight: 600; font-size: 16px;">${new Date().toLocaleDateString('en-GB', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}</div>
+            </div>
+            ${selectedClientData.industry ? `
+            <div style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #2563eb;">
+              <div style="color: #64748b; font-size: 14px; font-weight: 500; margin-bottom: 4px;">INDUSTRY</div>
+              <div style="color: #1e293b; font-weight: 600; font-size: 16px;">${selectedClientData.industry}</div>
+            </div>
+            ` : ""}
+            <div style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #2563eb;">
+              <div style="color: #64748b; font-size: 14px; font-weight: 500; margin-bottom: 4px;">QUOTES ANALYZED</div>
+              <div style="color: #1e293b; font-weight: 600; font-size: 16px;">${rankings.length} Insurance Quotes</div>
+            </div>
           </div>
         </div>
       `;
@@ -517,7 +546,82 @@ const InstantQuoteComparison = () => {
       contentContainer.style.fontSize = '16px';
       contentContainer.style.lineHeight = '1.5';
       
-      contentContainer.innerHTML = contentHTML;
+      // Create better styled content for PDF
+      let styledContent = '';
+      
+      // Find Coverage Comparison section and style it
+      const styledCoverageSection = document.querySelector('[data-section="coverage-highlights"]');
+      if (styledCoverageSection) {
+        const coverageHTML = styledCoverageSection.innerHTML;
+        styledContent += `
+          <div style="margin-bottom: 32px; page-break-inside: avoid;">
+            <div style="background: linear-gradient(145deg, #f0f9ff, #e0f2fe); padding: 24px; border-radius: 12px; border: 2px solid #0ea5e9; box-shadow: 0 6px 20px rgba(14, 165, 233, 0.12);">
+              <div style="display: flex; align-items: center; margin-bottom: 16px;">
+                <div style="background: #0ea5e9; color: white; padding: 8px; border-radius: 8px; margin-right: 12px;">
+                  <div style="width: 16px; height: 16px; background: currentColor; mask: url('data:image/svg+xml,<svg viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z\"/></svg>');"></div>
+                </div>
+                <div>
+                  <h2 style="font-size: 20px; margin: 0; color: #0f172a; font-weight: 700; letter-spacing: -0.01em;">Coverage Comparison Highlights</h2>
+                  <p style="font-size: 12px; color: #64748b; margin: 2px 0 0 0; font-weight: 500;">Key coverage limits and which quote provides the best protection</p>
+                </div>
+              </div>
+              <div style="font-size: 12px; line-height: 1.4; color: #334155;">
+                <style>
+                  .pdf-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+                  .pdf-table th, .pdf-table td { padding: 8px 6px; text-align: left; border: 1px solid #e2e8f0; font-size: 11px; }
+                  .pdf-table th { background: #f8fafc; font-weight: 600; color: #475569; }
+                  .pdf-coverage-card { background: white; padding: 12px; margin: 6px; border-radius: 8px; border: 1px solid #e2e8f0; display: inline-block; width: calc(50% - 12px); }
+                  .pdf-coverage-title { font-weight: 600; color: #1e293b; font-size: 12px; margin-bottom: 6px; }
+                  .pdf-coverage-amount { font-size: 16px; font-weight: 700; color: #0ea5e9; }
+                  .pdf-best-provider { font-size: 10px; color: #64748b; margin-top: 4px; }
+                </style>
+                ${coverageHTML}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      
+      // Find Quote Rankings section and style it  
+      const styledRankingsSection = document.querySelector('[data-section="quote-rankings"]');
+      if (styledRankingsSection) {
+        const rankingsHTML = styledRankingsSection.innerHTML;
+        styledContent += `
+          <div style="margin-bottom: 32px; page-break-inside: avoid;">
+            <div style="background: linear-gradient(145deg, #fefce8, #fef3c7); padding: 24px; border-radius: 12px; border: 2px solid #f59e0b; box-shadow: 0 6px 20px rgba(245, 158, 11, 0.12);">
+              <div style="display: flex; align-items: center; margin-bottom: 16px;">
+                <div style="background: #f59e0b; color: white; padding: 8px; border-radius: 8px; margin-right: 12px;">
+                  <div style="width: 16px; height: 16px; background: currentColor; mask: url('data:image/svg+xml,<svg viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M13 7h8m0 0v8m0-8l-8 8-4-4-6 6\"/></svg>');"></div>
+                </div>
+                <div>
+                  <h2 style="font-size: 20px; margin: 0; color: #0f172a; font-weight: 700; letter-spacing: -0.01em;">Quote Rankings - Best to Worst</h2>
+                  <p style="font-size: 12px; color: #64748b; margin: 2px 0 0 0; font-weight: 500;">Ranked by overall coverage quality, competitiveness, and value</p>
+                </div>
+              </div>
+              <div style="font-size: 12px; line-height: 1.4; color: #334155;">
+                <style>
+                  .pdf-quote-card { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+                  .pdf-quote-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+                  .pdf-insurer-info { display: flex; align-items: center; gap: 8px; }
+                  .pdf-insurer-name { font-size: 14px; font-weight: 600; color: #1e293b; margin: 0; }
+                  .pdf-quote-premium { font-size: 18px; font-weight: 700; color: #059669; text-align: right; }
+                  .pdf-scores { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 12px 0; }
+                  .pdf-score-item { text-align: center; padding: 8px; background: #f8fafc; border-radius: 6px; }
+                  .pdf-score-value { font-size: 14px; font-weight: 600; }
+                  .pdf-score-label { font-size: 10px; color: #64748b; margin-top: 2px; }
+                  .pdf-strengths { margin-top: 12px; }
+                  .pdf-strengths h4 { font-size: 12px; font-weight: 600; color: #059669; margin: 0 0 6px 0; }
+                  .pdf-strengths ul { margin: 0; padding-left: 16px; }
+                  .pdf-strengths li { font-size: 11px; margin-bottom: 3px; }
+                </style>
+                ${rankingsHTML}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      
+      contentContainer.innerHTML = styledContent;
       
       document.body.appendChild(printContainer);
       document.body.appendChild(contentContainer);
