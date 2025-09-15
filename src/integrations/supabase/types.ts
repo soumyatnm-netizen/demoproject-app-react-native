@@ -1105,6 +1105,10 @@ export type Database = {
         }
         Returns: string
       }
+      expire_old_consents: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       generate_invite_code: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -1157,6 +1161,18 @@ export type Database = {
           recommended_premium_range: Json
           risk_assessment: string
           underwriter_name: string
+        }[]
+      }
+      get_masked_sensitive_data: {
+        Args: { target_user_id: string }
+        Returns: {
+          address_masked: string
+          emergency_contact_exists: boolean
+          has_sensitive_notes: boolean
+          id: string
+          last_updated: string
+          phone_masked: string
+          user_id: string
         }[]
       }
       get_sensitive_data_with_consent: {
@@ -1303,6 +1319,15 @@ export type Database = {
       trigger_underwriter_matching: {
         Args: { p_document_id: string }
         Returns: boolean
+      }
+      validate_invite_code: {
+        Args: { p_email: string; p_invite_code: string }
+        Returns: {
+          company_id: string
+          company_name: string
+          is_valid: boolean
+          role: Database["public"]["Enums"]["app_role"]
+        }[]
       }
     }
     Enums: {
