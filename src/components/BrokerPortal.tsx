@@ -33,6 +33,7 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
     emailsSent: 0
   });
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("instant-comparison");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -116,7 +117,7 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
       <div className="container mx-auto px-4 py-8">
         {/* Broker Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setActiveTab("clients")}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">My Clients</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
@@ -170,7 +171,7 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
         </div>
 
         {/* Main Content */}
-        <Tabs defaultValue="instant-comparison" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="instant-comparison">Instant Comparison</TabsTrigger>
             <TabsTrigger value="clients">Client Management</TabsTrigger>
