@@ -462,13 +462,17 @@ const InstantQuoteComparison = () => {
         throw new Error("Client data not found");
       }
 
-      // Create container with CoverCompass header + existing web content
+      // Create a temporary container for printing sized for A4
       const printContainer = document.createElement('div');
       printContainer.style.position = 'absolute';
       printContainer.style.left = '-9999px';
-      printContainer.style.width = '800px';
+      printContainer.style.width = '794px'; // A4 width at 96 DPI (210mm)
+      printContainer.style.minHeight = '1123px'; // A4 height at 96 DPI (297mm)
+      printContainer.style.padding = '40px';
       printContainer.style.backgroundColor = 'white';
       printContainer.style.fontFamily = 'system-ui, sans-serif';
+      printContainer.style.fontSize = '14px';
+      printContainer.style.lineHeight = '1.4';
       
       // Get the current page sections
       const sections = document.querySelectorAll('.space-y-6 > *');
@@ -480,30 +484,32 @@ const InstantQuoteComparison = () => {
       });
       
       printContainer.innerHTML = `
-        <div style="background: linear-gradient(135deg, #3b82f6, #1e40af); color: white; padding: 32px; margin-bottom: 32px; display: flex; align-items: center; gap: 20px;">
-          <img src="${coverCompassLogo}" alt="CoverCompass Logo" style="height: 60px; width: auto; object-fit: contain;" />
+        <div style="background: linear-gradient(135deg, #3b82f6, #1e40af); color: white; padding: 24px; margin-bottom: 24px; display: flex; align-items: center; gap: 16px; border-radius: 8px;">
+          <img src="${coverCompassLogo}" alt="CoverCompass Logo" style="height: 50px; width: auto; object-fit: contain;" />
           <div>
-            <h1 style="font-size: 28px; font-weight: bold; margin: 0;">CoverCompass</h1>
-            <p style="font-size: 16px; opacity: 0.9; margin: 5px 0 0 0;">Insurance Quote Comparison Report</p>
+            <h1 style="font-size: 24px; font-weight: bold; margin: 0; line-height: 1.2;">CoverCompass</h1>
+            <p style="font-size: 14px; opacity: 0.9; margin: 4px 0 0 0;">Insurance Quote Comparison Report</p>
           </div>
         </div>
-        <div style="background: #f8fafc; padding: 24px; border-radius: 12px; margin-bottom: 32px;">
-          <h3 style="font-size: 18px; margin-bottom: 16px;">📋 Client Information</h3>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 14px;">
-            <div><strong>Client:</strong> ${selectedClientData.client_name}</div>
-            <div><strong>Date:</strong> ${new Date().toLocaleDateString()}</div>
-            ${selectedClientData.industry ? `<div><strong>Industry:</strong> ${selectedClientData.industry}</div>` : ''}
-            <div><strong>Quotes Analyzed:</strong> ${rankings.length}</div>
+        <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 24px; border: 1px solid #e2e8f0;">
+          <h3 style="font-size: 16px; margin: 0 0 12px 0; color: #1e293b;">📋 Client Information</h3>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px;">
+            <div style="padding: 4px 0;"><strong>Client:</strong> ${selectedClientData.client_name}</div>
+            <div style="padding: 4px 0;"><strong>Date:</strong> ${new Date().toLocaleDateString()}</div>
+            ${selectedClientData.industry ? `<div style="padding: 4px 0;"><strong>Industry:</strong> ${selectedClientData.industry}</div>` : ''}
+            <div style="padding: 4px 0;"><strong>Quotes Analyzed:</strong> ${rankings.length}</div>
           </div>
         </div>
-        ${contentHTML}
+        <div style="font-size: 12px; line-height: 1.3;">
+          ${contentHTML.replace(/class="[^"]*"/g, '').replace(/style="[^"]*"/g, 'style="margin-bottom: 16px;"')}
+        </div>
       `;
       
       document.body.appendChild(printContainer);
       
-      // Use a lower scale for better A4 fitting and capture with white background
+      // Capture at high quality for crisp PDF output
       const canvas = await html2canvas(printContainer, { 
-        scale: 0.8, 
+        scale: 2, // High quality
         backgroundColor: '#ffffff',
         useCORS: true,
         allowTaint: true,
@@ -515,22 +521,22 @@ const InstantQuoteComparison = () => {
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = 210;
       const pageHeight = 297;
-      const margin = 15; // Increased margins for better fitting
+      const margin = 10; // Minimal margins for maximum content area
       const maxWidth = pageWidth - margin * 2;
       const maxHeight = pageHeight - margin * 2;
       
-      // Calculate dimensions to fit A4 properly
+      // Scale image to use full page width
       const imgRatio = canvas.width / canvas.height;
-      let imgWidth = maxWidth;
+      let imgWidth = maxWidth; // Use full available width
       let imgHeight = imgWidth / imgRatio;
       
-      // If content is too tall, scale it down to fit height
+      // If content is too tall for one page, scale down to fit
       if (imgHeight > maxHeight) {
         imgHeight = maxHeight;
         imgWidth = imgHeight * imgRatio;
       }
       
-      const x = margin + (maxWidth - imgWidth) / 2; // Center horizontally
+      const x = margin;
       const y = margin;
       pdf.addImage(canvas.toDataURL('image/png'), 'PNG', x, y, imgWidth, imgHeight);
       
