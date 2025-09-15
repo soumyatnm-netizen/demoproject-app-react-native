@@ -12,6 +12,9 @@ import { Plus, Search, Edit, Eye, Mail, Building2, FileUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { DocumentUpload } from "./DocumentUpload";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Check, ChevronDown } from "lucide-react";
 
 interface ClientData {
   id: string;
@@ -56,6 +59,38 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
   const getStatusLabel = (status: string) => {
     const statusOption = statusOptions.find(option => option.value === status);
     return statusOption ? statusOption.label : status;
+  };
+
+  const handleStatusChange = async (clientId: string, newStatus: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No authenticated user');
+
+      const { error } = await supabase
+        .from('client_reports')
+        .update({ report_status: newStatus })
+        .eq('id', clientId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Client status updated successfully",
+      });
+
+      // Refresh the clients list
+      await fetchClients();
+      onStatsUpdate();
+
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast({
+        title: "Error", 
+        description: "Failed to update client status",
+        variant: "destructive",
+      });
+    }
   };
 
   const [newClient, setNewClient] = useState({
@@ -651,12 +686,45 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                     ) : '-'}
                   </TableCell>
                   <TableCell>
-                    <Badge 
-                      variant="secondary"
-                      className={`text-white ${getStatusColor(client.report_status || 'draft')}`}
-                    >
-                      {getStatusLabel(client.report_status || 'draft')}
-                    </Badge>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto p-0 hover:bg-transparent"
+                        >
+                          <Badge 
+                            variant="secondary"
+                            className={`text-white ${getStatusColor(client.report_status || 'draft')} cursor-pointer hover:opacity-80 flex items-center gap-1`}
+                          >
+                            {getStatusLabel(client.report_status || 'draft')}
+                            <ChevronDown className="h-3 w-3" />
+                          </Badge>
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-0 bg-background border shadow-lg" align="start">
+                        <Command>
+                          <CommandList>
+                            <CommandGroup>
+                              {statusOptions.map((status) => (
+                                <CommandItem
+                                  key={status.value}
+                                  value={status.value}
+                                  onSelect={() => handleStatusChange(client.id, status.value)}
+                                  className="flex items-center gap-2 cursor-pointer"
+                                >
+                                  <div className={`w-3 h-3 rounded-full ${status.color}`}></div>
+                                  <span>{status.label}</span>
+                                  {client.report_status === status.value && (
+                                    <Check className="ml-auto h-4 w-4" />
+                                  )}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </TableCell>
                   <TableCell>
                     {new Date(client.created_at).toLocaleDateString()}
