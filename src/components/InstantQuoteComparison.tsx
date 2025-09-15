@@ -642,7 +642,7 @@ const InstantQuoteComparison = () => {
                   <div style="font-size: 10px; color: #6b7280; margin-bottom: 4px;">Best Coverage:</div>
                   <div style="font-size: 10px; color: #3b82f6; display: flex; align-items: center;">
                     <span style="margin-right: 4px;">✓</span>
-                    Liberty Specialty Markets
+                    ${rankings.length > 0 ? rankings[0].insurer_name : 'No quotes'}
                   </div>
                 </div>
                 <div style="font-size: 20px; font-weight: 700; color: #1f2937;">£2M</div>
@@ -657,7 +657,7 @@ const InstantQuoteComparison = () => {
                   <div style="font-size: 10px; color: #6b7280; margin-bottom: 4px;">Best Coverage:</div>
                   <div style="font-size: 10px; color: #3b82f6; display: flex; align-items: center;">
                     <span style="margin-right: 4px;">✓</span>
-                    Liberty Specialty Markets
+                    ${rankings.length > 0 ? rankings[0].insurer_name : 'No quotes'}
                   </div>
                 </div>
                 <div style="font-size: 20px; font-weight: 700; color: #1f2937;">£1M</div>
@@ -672,7 +672,7 @@ const InstantQuoteComparison = () => {
                   <div style="font-size: 10px; color: #6b7280; margin-bottom: 4px;">Best Coverage:</div>
                   <div style="font-size: 10px; color: #3b82f6; display: flex; align-items: center;">
                     <span style="margin-right: 4px;">✓</span>
-                    Liberty Specialty Markets
+                    ${rankings.length > 0 ? rankings[0].insurer_name : 'No quotes'}
                   </div>
                 </div>
                 <div style="font-size: 20px; font-weight: 700; color: #1f2937;">£10M</div>
@@ -690,7 +690,7 @@ const InstantQuoteComparison = () => {
                   <div style="font-size: 10px; color: #6b7280; margin-bottom: 4px;">Best Coverage:</div>
                   <div style="font-size: 10px; color: #3b82f6; display: flex; align-items: center;">
                     <span style="margin-right: 4px;">✓</span>
-                    Liberty Specialty Markets
+                    ${rankings.length > 0 ? rankings[0].insurer_name : 'No quotes'}
                   </div>
                 </div>
                 <div style="font-size: 20px; font-weight: 700; color: #1f2937;">£500K</div>
@@ -705,7 +705,7 @@ const InstantQuoteComparison = () => {
                   <div style="font-size: 10px; color: #6b7280; margin-bottom: 4px;">Best Coverage:</div>
                   <div style="font-size: 10px; color: #3b82f6; display: flex; align-items: center;">
                     <span style="margin-right: 4px;">✓</span>
-                    Liberty Specialty Markets
+                    ${rankings.length > 0 ? rankings[0].insurer_name : 'No quotes'}
                   </div>
                 </div>
                 <div style="font-size: 20px; font-weight: 700; color: #1f2937;">£2M</div>
@@ -727,118 +727,36 @@ const InstantQuoteComparison = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td style="padding: 10px 8px; border-bottom: 1px solid #f3f4f6;">
-                      <div style="display: flex; align-items: center; gap: 8px;">
-                        <div style="background: #fbbf24; color: white; padding: 4px 6px; border-radius: 4px; font-size: 9px; font-weight: 600;">LI</div>
-                        <div>
-                          <div style="font-weight: 500; color: #1f2937; font-size: 11px;">Liberty Specialty Markets</div>
-                          <div style="background: #1f2937; color: white; padding: 2px 6px; border-radius: 10px; font-size: 8px; display: inline-block; margin-top: 2px;">Rank #1</div>
+                  ${rankings.map((ranking, index) => `
+                    <tr>
+                      <td style="padding: 10px 8px; border-bottom: 1px solid #f3f4f6;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                          <div style="background: ${index === 0 ? '#fbbf24' : index === 1 ? '#3b82f6' : index === 2 ? '#f97316' : '#6b7280'}; color: white; padding: 4px 6px; border-radius: 4px; font-size: 9px; font-weight: 600;">${ranking.insurer_name.substring(0, 2).toUpperCase()}</div>
+                          <div>
+                            <div style="font-weight: 500; color: #1f2937; font-size: 11px;">${ranking.insurer_name}</div>
+                            <div style="background: ${index === 0 ? '#1f2937' : index === 1 ? '#3b82f6' : index === 2 ? '#0ea5e9' : '#6b7280'}; color: white; padding: 2px 6px; border-radius: 10px; font-size: 8px; display: inline-block; margin-top: 2px;">Rank #${ranking.rank_position}</div>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center; font-weight: 600; border-bottom: 1px solid #f3f4f6;">£4,325</td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
-                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £2M</span>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
-                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £1M</span>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
-                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £10M</span>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
-                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £500K</span>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
-                      <div style="font-weight: 600; color: #16a34a; font-size: 13px;">100%</div>
-                      <div style="font-size: 9px; color: #6b7280;">Coverage: 167% | Price: 7%</div>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 10px 8px; border-bottom: 1px solid #f3f4f6;">
-                      <div style="display: flex; align-items: center; gap: 8px;">
-                        <div style="background: #6b7280; color: white; padding: 4px 6px; border-radius: 4px; font-size: 9px; font-weight: 600;">LI</div>
-                        <div>
-                          <div style="font-weight: 500; color: #1f2937; font-size: 11px;">Liberty Specialty Markets</div>
-                          <div style="background: #3b82f6; color: white; padding: 2px 6px; border-radius: 10px; font-size: 8px; display: inline-block; margin-top: 2px;">Rank #2</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center; font-weight: 600; border-bottom: 1px solid #f3f4f6;">£4,098</td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
-                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £1M</span>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
-                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £1M</span>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
-                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £10M</span>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
-                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £500K</span>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
-                      <div style="font-weight: 600; color: #16a34a; font-size: 13px;">100%</div>
-                      <div style="font-size: 9px; color: #6b7280;">Coverage: 133% | Price: 72%</div>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 10px 8px; border-bottom: 1px solid #f3f4f6;">
-                      <div style="display: flex; align-items: center; gap: 8px;">
-                        <div style="background: #f97316; color: white; padding: 4px 6px; border-radius: 4px; font-size: 9px; font-weight: 600;">AV</div>
-                        <div>
-                          <div style="font-weight: 500; color: #1f2937; font-size: 11px;">Aviva Business</div>
-                          <div style="background: #0ea5e9; color: white; padding: 2px 6px; border-radius: 10px; font-size: 8px; display: inline-block; margin-top: 2px;">Rank #3</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center; font-weight: 600; border-bottom: 1px solid #f3f4f6;">£4,000</td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
-                      <span style="background: #fee2e2; color: #dc2626; padding: 2px 6px; border-radius: 4px; font-size: 9px;">⚠ Not Covered</span>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
-                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £1M</span>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
-                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £10M</span>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
-                      <span style="background: #fef3c7; color: #d97706; padding: 2px 6px; border-radius: 4px; font-size: 9px;">⚬ Basic Cover</span>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
-                      <div style="font-weight: 600; color: #16a34a; font-size: 13px;">90%</div>
-                      <div style="font-size: 9px; color: #6b7280;">Coverage: 83% | Price: 100%</div>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 10px 8px; border-bottom: 1px solid #f3f4f6;">
-                      <div style="display: flex; align-items: center; gap: 8px;">
-                        <div style="background: #6b7280; color: white; padding: 4px 6px; border-radius: 4px; font-size: 9px; font-weight: 600;">QB</div>
-                        <div>
-                          <div style="font-weight: 500; color: #1f2937; font-size: 11px;">QBE European Operations</div>
-                          <div style="background: #6b7280; color: white; padding: 2px 6px; border-radius: 10px; font-size: 8px; display: inline-block; margin-top: 2px;">Rank #4</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center; font-weight: 600; border-bottom: 1px solid #f3f4f6;">£4,350</td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
-                      <span style="background: #fee2e2; color: #dc2626; padding: 2px 6px; border-radius: 4px; font-size: 9px;">⚠ Not Covered</span>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
-                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £1M</span>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
-                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £10M</span>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
-                      <span style="background: #fef3c7; color: #d97706; padding: 2px 6px; border-radius: 4px; font-size: 9px;">⚬ Basic Cover</span>
-                    </td>
-                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
-                      <div style="font-weight: 600; color: #dc2626; font-size: 13px;">50%</div>
-                      <div style="font-size: 9px; color: #6b7280;">Coverage: 83% | Price: 0%</div>
-                    </td>
-                  </tr>
+                      </td>
+                      <td style="padding: 10px 8px; text-align: center; font-weight: 600; border-bottom: 1px solid #f3f4f6;">£${ranking.premium_amount?.toLocaleString() || 'N/A'}</td>
+                      <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                        <span style="background: ${index <= 1 ? '#dcfce7' : '#fee2e2'}; color: ${index <= 1 ? '#166534' : '#dc2626'}; padding: 2px 6px; border-radius: 4px; font-size: 9px;">${index <= 1 ? '✓ £2M' : '⚠ Not Covered'}</span>
+                      </td>
+                      <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                        <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £1M</span>
+                      </td>
+                      <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                        <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £10M</span>
+                      </td>
+                      <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                        <span style="background: ${index <= 1 ? '#dcfce7' : '#fef3c7'}; color: ${index <= 1 ? '#166534' : '#d97706'}; padding: 2px 6px; border-radius: 4px; font-size: 9px;">${index <= 1 ? '✓ £500K' : '⚬ Basic Cover'}</span>
+                      </td>
+                      <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                        <div style="font-weight: 600; color: ${ranking.overall_score >= 80 ? '#16a34a' : ranking.overall_score >= 50 ? '#16a34a' : '#dc2626'}; font-size: 13px;">${ranking.overall_score}%</div>
+                        <div style="font-size: 9px; color: #6b7280;">Coverage: ${ranking.coverage_score}% | Price: ${ranking.competitiveness_score}%</div>
+                      </td>
+                    </tr>
+                  `).join('')}
                 </tbody>
               </table>
             </div>
@@ -851,7 +769,7 @@ const InstantQuoteComparison = () => {
                   <span style="font-weight: 600; color: #166534; font-size: 12px;">Best Value for Money</span>
                 </div>
                 <p style="font-size: 11px; color: #166534; margin: 0; line-height: 1.4;">
-                  <strong>Liberty Specialty Markets</strong> offers the best combination of coverage and price at £4,325 with an overall score of 100%.
+                  <strong>${rankings.length > 0 ? rankings[0].insurer_name : 'No quotes'}</strong> offers the best combination of coverage and price at £${rankings.length > 0 ? rankings[0].premium_amount?.toLocaleString() : 'N/A'} with an overall score of ${rankings.length > 0 ? rankings[0].overall_score : 0}%.
                 </p>
               </div>
               
@@ -861,7 +779,7 @@ const InstantQuoteComparison = () => {
                   <span style="font-weight: 600; color: #1d4ed8; font-size: 12px;">Coverage Analysis</span>
                 </div>
                 <p style="font-size: 11px; color: #1d4ed8; margin: 0; line-height: 1.4;">
-                  Scoring considers coverage limits (60%) and pricing competitiveness (40%). 3 quotes scored 80%+ overall.
+                  Scoring considers coverage limits (60%) and pricing competitiveness (40%). ${rankings.filter(r => r.overall_score >= 80).length} quotes scored 80%+ overall.
                 </p>
               </div>
             </div>
