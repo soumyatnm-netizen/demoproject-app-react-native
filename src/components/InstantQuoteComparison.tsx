@@ -631,50 +631,238 @@ const InstantQuoteComparison = () => {
             </h2>
             <p style="font-size: 12px; color: #6b7280; margin: 0 0 20px 14px; font-weight: 400;">Key coverage limits and which quote provides the best protection</p>
             
-            <!-- Coverage Cards Grid -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+            <!-- Coverage Cards Grid - First Row -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px;">
               <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 16px;">
-                <div style="font-size: 12px; font-weight: 500; color: #374151; margin-bottom: 8px;">Professional Indemnity</div>
-                <div style="font-size: 20px; font-weight: 700; color: #1f2937; margin-bottom: 4px;">£2M</div>
-                <div style="font-size: 10px; color: #3b82f6;">Liberty Specialty Markets</div>
-              </div>
-              <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 16px;">
-                <div style="font-size: 12px; font-weight: 500; color: #374151; margin-bottom: 8px;">Public Liability</div>
-                <div style="font-size: 20px; font-weight: 700; color: #1f2937; margin-bottom: 4px;">£1M</div>
-                <div style="font-size: 10px; color: #3b82f6;">Liberty Specialty Markets</div>
-              </div>
-              <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 16px;">
-                <div style="font-size: 12px; font-weight: 500; color: #374151; margin-bottom: 8px;">Employers Liability</div>
-                <div style="font-size: 20px; font-weight: 700; color: #1f2937; margin-bottom: 4px;">£10M</div>
-                <div style="font-size: 10px; color: #3b82f6;">Liberty Specialty Markets</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Quote Rankings Section -->
-        <div style="margin-bottom: 32px; page-break-inside: avoid;">
-          <div style="padding: 24px; background: white; border: 1px solid #e5e7eb; border-radius: 8px;">
-            <h2 style="font-size: 18px; margin: 0 0 4px 0; color: #1f2937; font-weight: 600; display: flex; align-items: center;">
-              <span style="display: inline-block; width: 6px; height: 6px; background: #3b82f6; border-radius: 50%; margin-right: 8px;"></span>
-              Quote Rankings - Best to Worst
-            </h2>
-            <p style="font-size: 12px; color: #6b7280; margin: 0 0 20px 14px; font-weight: 400;">Ranked by overall coverage quality, competitiveness, and value</p>
-            
-            <!-- Quote Cards -->
-            <div style="margin-bottom: 16px; border: 2px solid #fbbf24; border-radius: 8px; padding: 20px; background: #fefce8;">
-              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                  <div style="background: #fbbf24; color: white; padding: 8px; border-radius: 4px; font-weight: 600; font-size: 12px;">LI</div>
-                  <div>
-                    <h3 style="font-size: 16px; font-weight: 600; color: #1f2937; margin: 0 0 6px 0;">Liberty Specialty Markets</h3>
-                    <span style="background: #1f2937; color: white; padding: 4px 8px; border-radius: 12px; font-size: 10px;">Highly Recommended</span>
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                  <span style="display: inline-block; width: 4px; height: 4px; background: #6b7280; border-radius: 50%; margin-right: 6px;"></span>
+                  <span style="font-size: 12px; font-weight: 500; color: #374151;">Professional Indemnity</span>
+                </div>
+                <div style="margin-bottom: 8px;">
+                  <div style="font-size: 10px; color: #6b7280; margin-bottom: 4px;">Best Coverage:</div>
+                  <div style="font-size: 10px; color: #3b82f6; display: flex; align-items: center;">
+                    <span style="margin-right: 4px;">✓</span>
+                    Liberty Specialty Markets
                   </div>
                 </div>
-                <div style="text-align: right;">
-                  <div style="font-size: 24px; font-weight: 700; color: #1f2937;">£4,325</div>
-                  <div style="background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-top: 4px;">Overall Score: 100%</div>
+                <div style="font-size: 20px; font-weight: 700; color: #1f2937;">£2M</div>
+              </div>
+              
+              <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 16px;">
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                  <span style="display: inline-block; width: 4px; height: 4px; background: #6b7280; border-radius: 50%; margin-right: 6px;"></span>
+                  <span style="font-size: 12px; font-weight: 500; color: #374151;">Public Liability</span>
                 </div>
+                <div style="margin-bottom: 8px;">
+                  <div style="font-size: 10px; color: #6b7280; margin-bottom: 4px;">Best Coverage:</div>
+                  <div style="font-size: 10px; color: #3b82f6; display: flex; align-items: center;">
+                    <span style="margin-right: 4px;">✓</span>
+                    Liberty Specialty Markets
+                  </div>
+                </div>
+                <div style="font-size: 20px; font-weight: 700; color: #1f2937;">£1M</div>
+              </div>
+              
+              <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 16px;">
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                  <span style="display: inline-block; width: 4px; height: 4px; background: #6b7280; border-radius: 50%; margin-right: 6px;"></span>
+                  <span style="font-size: 12px; font-weight: 500; color: #374151;">Employers Liability</span>
+                </div>
+                <div style="margin-bottom: 8px;">
+                  <div style="font-size: 10px; color: #6b7280; margin-bottom: 4px;">Best Coverage:</div>
+                  <div style="font-size: 10px; color: #3b82f6; display: flex; align-items: center;">
+                    <span style="margin-right: 4px;">✓</span>
+                    Liberty Specialty Markets
+                  </div>
+                </div>
+                <div style="font-size: 20px; font-weight: 700; color: #1f2937;">£10M</div>
+              </div>
+            </div>
+            
+            <!-- Coverage Cards Grid - Second Row -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+              <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 16px;">
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                  <span style="display: inline-block; width: 4px; height: 4px; background: #6b7280; border-radius: 50%; margin-right: 6px;"></span>
+                  <span style="font-size: 12px; font-weight: 500; color: #374151;">Cyber & Data Protection</span>
+                </div>
+                <div style="margin-bottom: 8px;">
+                  <div style="font-size: 10px; color: #6b7280; margin-bottom: 4px;">Best Coverage:</div>
+                  <div style="font-size: 10px; color: #3b82f6; display: flex; align-items: center;">
+                    <span style="margin-right: 4px;">✓</span>
+                    Liberty Specialty Markets
+                  </div>
+                </div>
+                <div style="font-size: 20px; font-weight: 700; color: #1f2937;">£500K</div>
+              </div>
+              
+              <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 16px;">
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                  <span style="display: inline-block; width: 4px; height: 4px; background: #6b7280; border-radius: 50%; margin-right: 6px;"></span>
+                  <span style="font-size: 12px; font-weight: 500; color: #374151;">Product Liability</span>
+                </div>
+                <div style="margin-bottom: 8px;">
+                  <div style="font-size: 10px; color: #6b7280; margin-bottom: 4px;">Best Coverage:</div>
+                  <div style="font-size: 10px; color: #3b82f6; display: flex; align-items: center;">
+                    <span style="margin-right: 4px;">✓</span>
+                    Liberty Specialty Markets
+                  </div>
+                </div>
+                <div style="font-size: 20px; font-weight: 700; color: #1f2937;">£2M</div>
+              </div>
+            </div>
+            
+            <!-- Comparison Table -->
+            <div style="background: white; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; margin-bottom: 20px;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                <thead>
+                  <tr style="background: #f9fafb;">
+                    <th style="padding: 12px 8px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e5e7eb;">Insurer</th>
+                    <th style="padding: 12px 8px; text-align: center; font-weight: 600; color: #374151; border-bottom: 1px solid #e5e7eb;">Premium</th>
+                    <th style="padding: 12px 8px; text-align: center; font-weight: 600; color: #374151; border-bottom: 1px solid #e5e7eb;">Professional Indemnity</th>
+                    <th style="padding: 12px 8px; text-align: center; font-weight: 600; color: #374151; border-bottom: 1px solid #e5e7eb;">Public Liability</th>
+                    <th style="padding: 12px 8px; text-align: center; font-weight: 600; color: #374151; border-bottom: 1px solid #e5e7eb;">Employers Liability</th>
+                    <th style="padding: 12px 8px; text-align: center; font-weight: 600; color: #374151; border-bottom: 1px solid #e5e7eb;">Cyber & Data</th>
+                    <th style="padding: 12px 8px; text-align: center; font-weight: 600; color: #374151; border-bottom: 1px solid #e5e7eb;">Overall Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="padding: 10px 8px; border-bottom: 1px solid #f3f4f6;">
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="background: #fbbf24; color: white; padding: 4px 6px; border-radius: 4px; font-size: 9px; font-weight: 600;">LI</div>
+                        <div>
+                          <div style="font-weight: 500; color: #1f2937; font-size: 11px;">Liberty Specialty Markets</div>
+                          <div style="background: #1f2937; color: white; padding: 2px 6px; border-radius: 10px; font-size: 8px; display: inline-block; margin-top: 2px;">Rank #1</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td style="padding: 10px 8px; text-align: center; font-weight: 600; border-bottom: 1px solid #f3f4f6;">£4,325</td>
+                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £2M</span>
+                    </td>
+                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £1M</span>
+                    </td>
+                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £10M</span>
+                    </td>
+                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £500K</span>
+                    </td>
+                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                      <div style="font-weight: 600; color: #16a34a; font-size: 13px;">100%</div>
+                      <div style="font-size: 9px; color: #6b7280;">Coverage: 167% | Price: 7%</div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 10px 8px; border-bottom: 1px solid #f3f4f6;">
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="background: #6b7280; color: white; padding: 4px 6px; border-radius: 4px; font-size: 9px; font-weight: 600;">LI</div>
+                        <div>
+                          <div style="font-weight: 500; color: #1f2937; font-size: 11px;">Liberty Specialty Markets</div>
+                          <div style="background: #3b82f6; color: white; padding: 2px 6px; border-radius: 10px; font-size: 8px; display: inline-block; margin-top: 2px;">Rank #2</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td style="padding: 10px 8px; text-align: center; font-weight: 600; border-bottom: 1px solid #f3f4f6;">£4,098</td>
+                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £1M</span>
+                    </td>
+                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £1M</span>
+                    </td>
+                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £10M</span>
+                    </td>
+                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £500K</span>
+                    </td>
+                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                      <div style="font-weight: 600; color: #16a34a; font-size: 13px;">100%</div>
+                      <div style="font-size: 9px; color: #6b7280;">Coverage: 133% | Price: 72%</div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 10px 8px; border-bottom: 1px solid #f3f4f6;">
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="background: #f97316; color: white; padding: 4px 6px; border-radius: 4px; font-size: 9px; font-weight: 600;">AV</div>
+                        <div>
+                          <div style="font-weight: 500; color: #1f2937; font-size: 11px;">Aviva Business</div>
+                          <div style="background: #0ea5e9; color: white; padding: 2px 6px; border-radius: 10px; font-size: 8px; display: inline-block; margin-top: 2px;">Rank #3</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td style="padding: 10px 8px; text-align: center; font-weight: 600; border-bottom: 1px solid #f3f4f6;">£4,000</td>
+                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                      <span style="background: #fee2e2; color: #dc2626; padding: 2px 6px; border-radius: 4px; font-size: 9px;">⚠ Not Covered</span>
+                    </td>
+                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £1M</span>
+                    </td>
+                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £10M</span>
+                    </td>
+                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                      <span style="background: #fef3c7; color: #d97706; padding: 2px 6px; border-radius: 4px; font-size: 9px;">⚬ Basic Cover</span>
+                    </td>
+                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                      <div style="font-weight: 600; color: #16a34a; font-size: 13px;">90%</div>
+                      <div style="font-size: 9px; color: #6b7280;">Coverage: 83% | Price: 100%</div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 10px 8px; border-bottom: 1px solid #f3f4f6;">
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="background: #6b7280; color: white; padding: 4px 6px; border-radius: 4px; font-size: 9px; font-weight: 600;">QB</div>
+                        <div>
+                          <div style="font-weight: 500; color: #1f2937; font-size: 11px;">QBE European Operations</div>
+                          <div style="background: #6b7280; color: white; padding: 2px 6px; border-radius: 10px; font-size: 8px; display: inline-block; margin-top: 2px;">Rank #4</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td style="padding: 10px 8px; text-align: center; font-weight: 600; border-bottom: 1px solid #f3f4f6;">£4,350</td>
+                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                      <span style="background: #fee2e2; color: #dc2626; padding: 2px 6px; border-radius: 4px; font-size: 9px;">⚠ Not Covered</span>
+                    </td>
+                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £1M</span>
+                    </td>
+                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                      <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 9px;">✓ £10M</span>
+                    </td>
+                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                      <span style="background: #fef3c7; color: #d97706; padding: 2px 6px; border-radius: 4px; font-size: 9px;">⚬ Basic Cover</span>
+                    </td>
+                    <td style="padding: 10px 8px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+                      <div style="font-weight: 600; color: #dc2626; font-size: 13px;">50%</div>
+                      <div style="font-size: 9px; color: #6b7280;">Coverage: 83% | Price: 0%</div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <!-- Summary Cards -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 16px;">
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                  <span style="background: #16a34a; color: white; padding: 4px; border-radius: 4px; margin-right: 8px; font-size: 10px;">✓</span>
+                  <span style="font-weight: 600; color: #166534; font-size: 12px;">Best Value for Money</span>
+                </div>
+                <p style="font-size: 11px; color: #166534; margin: 0; line-height: 1.4;">
+                  <strong>Liberty Specialty Markets</strong> offers the best combination of coverage and price at £4,325 with an overall score of 100%.
+                </p>
+              </div>
+              
+              <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 16px;">
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                  <span style="background: #3b82f6; color: white; padding: 4px; border-radius: 4px; margin-right: 8px; font-size: 10px;">○</span>
+                  <span style="font-weight: 600; color: #1d4ed8; font-size: 12px;">Coverage Analysis</span>
+                </div>
+                <p style="font-size: 11px; color: #1d4ed8; margin: 0; line-height: 1.4;">
+                  Scoring considers coverage limits (60%) and pricing competitiveness (40%). 3 quotes scored 80%+ overall.
+                </p>
               </div>
             </div>
           </div>
