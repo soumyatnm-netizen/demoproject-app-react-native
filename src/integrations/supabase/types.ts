@@ -1067,53 +1067,7 @@ export type Database = {
       }
     }
     Views: {
-      team_member_safe_view: {
-        Row: {
-          company_id: string | null
-          created_at: string | null
-          department: string | null
-          first_name: string | null
-          is_active: boolean | null
-          job_title: string | null
-          last_login_at: string | null
-          last_name: string | null
-          role: Database["public"]["Enums"]["app_role"] | null
-          user_id: string | null
-        }
-        Insert: {
-          company_id?: string | null
-          created_at?: string | null
-          department?: string | null
-          first_name?: string | null
-          is_active?: boolean | null
-          job_title?: string | null
-          last_login_at?: string | null
-          last_name?: string | null
-          role?: Database["public"]["Enums"]["app_role"] | null
-          user_id?: string | null
-        }
-        Update: {
-          company_id?: string | null
-          created_at?: string | null
-          department?: string | null
-          first_name?: string | null
-          is_active?: boolean | null
-          job_title?: string | null
-          last_login_at?: string | null
-          last_name?: string | null
-          role?: Database["public"]["Enums"]["app_role"] | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "broker_companies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
       analyze_quote_coverage: {
