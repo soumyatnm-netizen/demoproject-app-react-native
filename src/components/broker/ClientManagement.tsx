@@ -32,6 +32,8 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [showClientDetails, setShowClientDetails] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<ClientData | null>(null);
   const { toast } = useToast();
 
   const [newClient, setNewClient] = useState({
@@ -185,6 +187,11 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
     client.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     client.report_title.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleViewClient = (client: ClientData) => {
+    setSelectedClient(client);
+    setShowClientDetails(true);
+  };
 
   if (loading) {
     return (
@@ -505,7 +512,7 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                   </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
-                      <Button size="sm" variant="outline">
+                      <Button size="sm" variant="outline" onClick={() => handleViewClient(client)}>
                         <Eye className="h-4 w-4" />
                       </Button>
                       <Button size="sm" variant="outline">
@@ -522,6 +529,204 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Client Details Modal */}
+      <Dialog open={showClientDetails} onOpenChange={setShowClientDetails}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Building2 className="h-5 w-5" />
+              <span>{selectedClient?.client_name}</span>
+            </DialogTitle>
+            <DialogDescription>
+              Comprehensive client profile and information
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedClient && (
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Basic Information</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Client Name</Label>
+                      <p className="text-sm">{selectedClient.client_name}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Industry</Label>
+                      <p className="text-sm">{selectedClient.report_data?.industry || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Revenue Band</Label>
+                      <p className="text-sm">{selectedClient.report_data?.revenue_band || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Employee Count</Label>
+                      <p className="text-sm">{selectedClient.report_data?.employee_count || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Risk Profile</Label>
+                      <Badge variant="outline">
+                        {selectedClient.report_data?.risk_profile || 'N/A'}
+                      </Badge>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Status</Label>
+                      <Badge variant={selectedClient.report_status === 'completed' ? 'default' : 'secondary'}>
+                        {selectedClient.report_status}
+                      </Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Contact Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Contact Information</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Email</Label>
+                      <p className="text-sm">{selectedClient.report_data?.contact_info?.email || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Phone</Label>
+                      <p className="text-sm">{selectedClient.report_data?.contact_info?.phone || 'N/A'}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Coverage Requirements */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Coverage Requirements</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedClient.report_data?.coverage_requirements?.map((requirement: string, index: number) => (
+                      <Badge key={index} variant="secondary">
+                        {requirement}
+                      </Badge>
+                    )) || <p className="text-sm text-muted-foreground">No coverage requirements specified</p>}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Additional Details */}
+              {(selectedClient.report_data?.main_address || 
+                selectedClient.report_data?.postcode || 
+                selectedClient.report_data?.date_established || 
+                selectedClient.report_data?.organisation_type || 
+                selectedClient.report_data?.website) && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Additional Details</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {selectedClient.report_data?.main_address && (
+                        <div>
+                          <Label className="text-sm font-medium text-muted-foreground">Main Address</Label>
+                          <p className="text-sm">{selectedClient.report_data.main_address}</p>
+                        </div>
+                      )}
+                      {selectedClient.report_data?.postcode && (
+                        <div>
+                          <Label className="text-sm font-medium text-muted-foreground">Postcode</Label>
+                          <p className="text-sm">{selectedClient.report_data.postcode}</p>
+                        </div>
+                      )}
+                      {selectedClient.report_data?.date_established && (
+                        <div>
+                          <Label className="text-sm font-medium text-muted-foreground">Date Established</Label>
+                          <p className="text-sm">{selectedClient.report_data.date_established}</p>
+                        </div>
+                      )}
+                      {selectedClient.report_data?.organisation_type && (
+                        <div>
+                          <Label className="text-sm font-medium text-muted-foreground">Organisation Type</Label>
+                          <p className="text-sm">{selectedClient.report_data.organisation_type}</p>
+                        </div>
+                      )}
+                      {selectedClient.report_data?.website && (
+                        <div>
+                          <Label className="text-sm font-medium text-muted-foreground">Website</Label>
+                          <p className="text-sm">
+                            <a 
+                              href={selectedClient.report_data.website} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline"
+                            >
+                              {selectedClient.report_data.website}
+                            </a>
+                          </p>
+                        </div>
+                      )}
+                      {selectedClient.report_data?.years_experience && (
+                        <div>
+                          <Label className="text-sm font-medium text-muted-foreground">Years Experience</Label>
+                          <p className="text-sm">{selectedClient.report_data.years_experience}</p>
+                        </div>
+                      )}
+                      {selectedClient.report_data?.total_employees && (
+                        <div>
+                          <Label className="text-sm font-medium text-muted-foreground">Total Employees</Label>
+                          <p className="text-sm">{selectedClient.report_data.total_employees}</p>
+                        </div>
+                      )}
+                      {selectedClient.report_data?.wage_roll && (
+                        <div>
+                          <Label className="text-sm font-medium text-muted-foreground">Total Wage Roll</Label>
+                          <p className="text-sm">£{Number(selectedClient.report_data.wage_roll).toLocaleString()}</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Notes */}
+              {selectedClient.report_data?.notes && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Notes</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm whitespace-pre-wrap">{selectedClient.report_data.notes}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Report Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Report Information</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Report Title</Label>
+                      <p className="text-sm">{selectedClient.report_title}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Created Date</Label>
+                      <p className="text-sm">{new Date(selectedClient.created_at).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
