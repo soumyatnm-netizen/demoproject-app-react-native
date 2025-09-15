@@ -474,14 +474,17 @@ const InstantQuoteComparison = () => {
       printContainer.style.fontSize = '16px';
       printContainer.style.lineHeight = '1.5';
       
-      // Get the current page sections
-      const sections = document.querySelectorAll('.space-y-6 > *');
+      // Get only the comparison results sections (not the upload/selection steps)
+      const coverageSection = document.querySelector('[data-section="coverage-highlights"]');
+      const rankingsSection = document.querySelector('[data-section="quote-rankings"]');
+      
       let contentHTML = '';
-      sections.forEach(section => {
-        if (section.textContent?.includes('Coverage Comparison') || section.textContent?.includes('Quote Rankings')) {
-          contentHTML += section.outerHTML;
-        }
-      });
+      if (coverageSection) {
+        contentHTML += coverageSection.outerHTML;
+      }
+      if (rankingsSection) {
+        contentHTML += rankingsSection.outerHTML;
+      }
       
       printContainer.innerHTML = `
         <div style="background: linear-gradient(135deg, #3b82f6, #1e40af); color: white; padding: 30px; margin-bottom: 30px; display: flex; align-items: center; gap: 20px; border-radius: 12px;">
@@ -885,7 +888,7 @@ const InstantQuoteComparison = () => {
       {analysisComplete && rankings.length > 0 && (
         <>
           {/* Coverage Highlights */}
-          <Card>
+          <Card data-section="coverage-highlights">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Shield className="h-5 w-5" />
@@ -900,7 +903,7 @@ const InstantQuoteComparison = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card data-section="quote-rankings">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <TrendingUp className="h-5 w-5" />
