@@ -19,3 +19,6 @@ verify_jwt = false
 
 [functions.match-underwriters]
 verify_jwt = false
+
+[functions.intelligent-insurer-matching]
+verify_jwt = false

@@ -3,7 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Target, TrendingUp, AlertCircle, CheckCircle2, Mail, Building2 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Target, TrendingUp, AlertCircle, CheckCircle2, Mail, Building2, Brain, BarChart3, Award, Clock, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -16,23 +18,38 @@ interface ClientQuote {
   coverage_limits: any;
 }
 
-interface UnderwriterMatch {
-  id: string;
+interface EnhancedMatch {
   underwriter_name: string;
-  logo_url: string | null;
   match_score: number;
-  risk_alignment: 'high' | 'medium' | 'low';
-  target_sectors: string[];
-  specialty_focus: string[];
+  confidence_level: 'high' | 'medium' | 'low';
   match_reasons: string[];
-  financial_ratings: any;
+  concerns: string[];
+  recommended_approach: string;
+  estimated_win_probability: number;
+  historical_performance?: {
+    win_rate: number;
+    avg_response_time: number;
+    typical_premium_adjustment: number;
+  };
+  appetite_alignment: {
+    industry_fit: number;
+    revenue_alignment: number;
+    coverage_expertise: number;
+    risk_appetite_match: number;
+  };
+  market_intelligence: {
+    recent_activity: string;
+    competitive_position: string;
+    capacity_status: string;
+  };
 }
 
 const InsurerMatching = () => {
   const [clientQuotes, setClientQuotes] = useState<ClientQuote[]>([]);
   const [selectedQuote, setSelectedQuote] = useState<string>("");
-  const [matches, setMatches] = useState<UnderwriterMatch[]>([]);
+  const [matches, setMatches] = useState<EnhancedMatch[]>([]);
   const [loading, setLoading] = useState(false);
+  const [analysisTimestamp, setAnalysisTimestamp] = useState<string>("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -76,76 +93,34 @@ const InsurerMatching = () => {
   const generateMatches = async (quoteId: string) => {
     setLoading(true);
     try {
-      const selectedQuoteData = clientQuotes.find(q => q.id === quoteId);
-      if (!selectedQuoteData) return;
+      console.log('Generating intelligent matches for quote:', quoteId);
+      
+      const { data, error } = await supabase.functions.invoke('intelligent-insurer-matching', {
+        body: { client_id: quoteId }
+      });
 
-      // Fetch underwriter appetite data
-      const { data: underwriters, error } = await supabase
-        .from('underwriter_appetite_data')
-        .select('*');
+      if (error) {
+        throw new Error(error.message || 'Failed to generate matches');
+      }
 
-      if (error) throw error;
+      console.log('Received matching results:', data);
+      
+      setMatches(data.matches || []);
+      setAnalysisTimestamp(data.analysis_timestamp || new Date().toISOString());
+      
+      toast({
+        title: "Analysis Complete",
+        description: `Found ${data.matches?.length || 0} potential matches using AI-powered analysis`,
+      });
 
-      // Calculate matches based on industry, revenue band, etc.
-      const calculatedMatches: UnderwriterMatch[] = underwriters?.map(uw => {
-        let score = 0;
-        const reasons: string[] = [];
-
-        // Industry matching
-        if (uw.target_sectors?.includes(selectedQuoteData.industry.toLowerCase())) {
-          score += 30;
-          reasons.push(`Specializes in ${selectedQuoteData.industry} sector`);
-        }
-
-        // Revenue band matching
-        const revenueMatch = checkRevenueMatch(selectedQuoteData.revenue_band, uw.minimum_premium, uw.maximum_premium);
-        if (revenueMatch) {
-          score += 25;
-          reasons.push('Premium range aligns with client budget');
-        }
-
-        // Risk appetite
-        if (uw.risk_appetite === 'medium' || uw.risk_appetite === 'high') {
-          score += 20;
-          reasons.push('Appropriate risk appetite for client profile');
-        }
-
-        // Geographic coverage (assuming UK for demo)
-        if (uw.geographic_coverage?.includes('UK') || uw.geographic_coverage?.includes('United Kingdom')) {
-          score += 15;
-          reasons.push('Provides coverage in required geography');
-        }
-
-        // Random additional factors for demo
-        if (Math.random() > 0.3) {
-          score += Math.floor(Math.random() * 10);
-          reasons.push('Strong market reputation and competitive terms');
-        }
-
-        const riskAlignment: 'high' | 'medium' | 'low' = 
-          score >= 70 ? 'high' : score >= 50 ? 'medium' : 'low';
-
-        return {
-          id: uw.id,
-          underwriter_name: uw.underwriter_name,
-          logo_url: uw.logo_url,
-          match_score: Math.min(score, 95), // Cap at 95%
-          risk_alignment: riskAlignment,
-          target_sectors: uw.target_sectors || [],
-          specialty_focus: uw.specialty_focus || [],
-          match_reasons: reasons,
-          financial_ratings: uw.financial_ratings
-        };
-      }).sort((a, b) => b.match_score - a.match_score) || [];
-
-      setMatches(calculatedMatches);
     } catch (error) {
       console.error('Error generating matches:', error);
       toast({
         title: "Error",
-        description: "Failed to generate insurer matches",
+        description: "Failed to generate insurer matches. Please try again.",
         variant: "destructive",
       });
+      setMatches([]);
     } finally {
       setLoading(false);
     }
@@ -171,12 +146,12 @@ const InsurerMatching = () => {
     return true;
   };
 
-  const getRiskAlignmentColor = (alignment: string) => {
-    switch (alignment) {
-      case 'high': return 'text-green-600';
-      case 'medium': return 'text-yellow-600';
-      case 'low': return 'text-red-600';
-      default: return 'text-gray-600';
+  const getConfidenceColor = (confidence: string) => {
+    switch (confidence) {
+      case 'high': return 'text-green-600 bg-green-50';
+      case 'medium': return 'text-yellow-600 bg-yellow-50';
+      case 'low': return 'text-red-600 bg-red-50';
+      default: return 'text-gray-600 bg-gray-50';
     }
   };
 
@@ -189,8 +164,21 @@ const InsurerMatching = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Insurer Matching Engine</h2>
-        <p className="text-muted-foreground">Find the best insurance matches for your clients</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold flex items-center space-x-2">
+              <Brain className="h-6 w-6 text-primary" />
+              <span>AI-Powered Insurer Matching</span>
+            </h2>
+            <p className="text-muted-foreground">Intelligent analysis using appetite guides, market data, and placement history</p>
+          </div>
+          {analysisTimestamp && (
+            <Badge variant="outline" className="text-xs">
+              <Clock className="h-3 w-3 mr-1" />
+              {new Date(analysisTimestamp).toLocaleTimeString()}
+            </Badge>
+          )}
+        </div>
       </div>
 
       <Card>
@@ -220,8 +208,19 @@ const InsurerMatching = () => {
             <Button 
               onClick={() => generateMatches(selectedQuote)}
               disabled={!selectedQuote || loading}
+              className="min-w-[140px]"
             >
-              {loading ? 'Finding Matches...' : 'Find Matches'}
+              {loading ? (
+                <>
+                  <Brain className="h-4 w-4 mr-2 animate-pulse" />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <Target className="h-4 w-4 mr-2" />
+                  Find Matches
+                </>
+              )}
             </Button>
           </div>
         </CardContent>
@@ -229,87 +228,209 @@ const InsurerMatching = () => {
 
       {matches.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold">Insurer Matches ({matches.length})</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-semibold flex items-center space-x-2">
+              <BarChart3 className="h-5 w-5" />
+              <span>Intelligent Match Results ({matches.length})</span>
+            </h3>
+            <div className="flex items-center space-x-2">
+              <Badge variant="outline" className="text-xs">
+                <Award className="h-3 w-3 mr-1" />
+                AI-Enhanced Analysis
+              </Badge>
+            </div>
+          </div>
           
-          <div className="grid gap-4">
-            {matches.slice(0, 10).map((match) => (
-              <Card key={match.id} className="border-l-4 border-l-primary">
+          <div className="grid gap-6">
+            {matches.map((match, index) => (
+              <Card key={`${match.underwriter_name}-${index}`} className="border-l-4 border-l-primary">
                 <CardContent className="pt-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-4">
-                      {match.logo_url ? (
-                        <img 
-                          src={match.logo_url} 
-                          alt={`${match.underwriter_name} logo`}
-                          className="w-12 h-12 object-contain rounded"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 bg-muted rounded flex items-center justify-center">
-                          <Building2 className="h-6 w-6 text-muted-foreground" />
+                  <div className="space-y-4">
+                    {/* Header Section */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg flex items-center justify-center">
+                          <Building2 className="h-6 w-6 text-primary" />
                         </div>
-                      )}
-                      <div>
-                        <h4 className="font-semibold text-lg">{match.underwriter_name}</h4>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Badge variant="outline" className={getRiskAlignmentColor(match.risk_alignment)}>
-                            {match.risk_alignment} risk alignment
-                          </Badge>
-                          {match.target_sectors.slice(0, 2).map((sector) => (
-                            <Badge key={sector} variant="secondary" className="text-xs">
-                              {sector}
+                        <div>
+                          <h4 className="font-semibold text-lg">{match.underwriter_name}</h4>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Badge className={getConfidenceColor(match.confidence_level)}>
+                              {match.confidence_level} confidence
                             </Badge>
-                          ))}
+                            <Badge variant="outline" className="text-xs">
+                              {match.market_intelligence.capacity_status} capacity
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="text-right space-y-2">
+                        <div className={`text-2xl font-bold px-3 py-1 rounded ${getScoreColor(match.match_score)}`}>
+                          {match.match_score}%
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {match.estimated_win_probability}% win probability
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="text-right">
-                      <div className={`text-2xl font-bold px-3 py-1 rounded ${getScoreColor(match.match_score)}`}>
-                        {match.match_score}%
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">Match Score</p>
-                    </div>
-                  </div>
 
-                  <div className="mt-4">
-                    <h5 className="font-medium mb-2 flex items-center">
-                      <CheckCircle2 className="h-4 w-4 mr-2 text-green-600" />
-                      Match Reasons
-                    </h5>
-                    <ul className="space-y-1">
-                      {match.match_reasons.map((reason, index) => (
-                        <li key={index} className="text-sm text-muted-foreground flex items-center">
-                          <span className="w-1 h-1 bg-primary rounded-full mr-2"></span>
-                          {reason}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                    {/* Detailed Analysis Tabs */}
+                    <Tabs defaultValue="overview" className="w-full">
+                      <TabsList className="grid w-full grid-cols-4">
+                        <TabsTrigger value="overview">Overview</TabsTrigger>
+                        <TabsTrigger value="alignment">Appetite Fit</TabsTrigger>
+                        <TabsTrigger value="intelligence">Market Intel</TabsTrigger>
+                        <TabsTrigger value="approach">Strategy</TabsTrigger>
+                      </TabsList>
+                      
+                      <TabsContent value="overview" className="space-y-4">
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div>
+                            <h5 className="font-medium mb-2 flex items-center text-green-600">
+                              <CheckCircle2 className="h-4 w-4 mr-2" />
+                              Match Strengths
+                            </h5>
+                            <ul className="space-y-1">
+                              {match.match_reasons.map((reason, i) => (
+                                <li key={i} className="text-sm text-muted-foreground flex items-start">
+                                  <span className="w-1 h-1 bg-green-500 rounded-full mr-2 mt-2 flex-shrink-0"></span>
+                                  {reason}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                          
+                          {match.concerns.length > 0 && (
+                            <div>
+                              <h5 className="font-medium mb-2 flex items-center text-orange-600">
+                                <AlertTriangle className="h-4 w-4 mr-2" />
+                                Considerations
+                              </h5>
+                              <ul className="space-y-1">
+                                {match.concerns.map((concern, i) => (
+                                  <li key={i} className="text-sm text-muted-foreground flex items-start">
+                                    <span className="w-1 h-1 bg-orange-500 rounded-full mr-2 mt-2 flex-shrink-0"></span>
+                                    {concern}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
 
-                  {match.specialty_focus.length > 0 && (
-                    <div className="mt-4">
-                      <h5 className="font-medium mb-2">Specialty Focus</h5>
-                      <div className="flex flex-wrap gap-1">
-                        {match.specialty_focus.slice(0, 4).map((focus) => (
-                          <Badge key={focus} variant="outline" className="text-xs">
-                            {focus}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="mt-4 flex space-x-2">
-                    <Button size="sm" variant="outline">
-                      View Details
-                    </Button>
-                    <Button size="sm" variant="outline">
-                      <Mail className="h-4 w-4 mr-2" />
-                      Email Client
-                    </Button>
-                    <Button size="sm">
-                      Add to Shortlist
-                    </Button>
+                        {match.historical_performance && (
+                          <div className="bg-muted/30 rounded-lg p-4">
+                            <h5 className="font-medium mb-3">Historical Performance</h5>
+                            <div className="grid grid-cols-3 gap-4 text-center">
+                              <div>
+                                <div className="text-lg font-semibold">
+                                  {Math.round(match.historical_performance.win_rate * 100)}%
+                                </div>
+                                <div className="text-xs text-muted-foreground">Win Rate</div>
+                              </div>
+                              <div>
+                                <div className="text-lg font-semibold">
+                                  {match.historical_performance.avg_response_time}d
+                                </div>
+                                <div className="text-xs text-muted-foreground">Avg Response</div>
+                              </div>
+                              <div>
+                                <div className="text-lg font-semibold">
+                                  {match.historical_performance.typical_premium_adjustment > 0 ? '+' : ''}
+                                  {Math.round(match.historical_performance.typical_premium_adjustment * 100)}%
+                                </div>
+                                <div className="text-xs text-muted-foreground">Premium Adj.</div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </TabsContent>
+                      
+                      <TabsContent value="alignment" className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <div className="flex justify-between text-sm mb-1">
+                              <span>Industry Fit</span>
+                              <span>{match.appetite_alignment.industry_fit}%</span>
+                            </div>
+                            <Progress value={match.appetite_alignment.industry_fit} className="h-2" />
+                          </div>
+                          <div>
+                            <div className="flex justify-between text-sm mb-1">
+                              <span>Revenue Alignment</span>
+                              <span>{match.appetite_alignment.revenue_alignment}%</span>
+                            </div>
+                            <Progress value={match.appetite_alignment.revenue_alignment} className="h-2" />
+                          </div>
+                          <div>
+                            <div className="flex justify-between text-sm mb-1">
+                              <span>Coverage Expertise</span>
+                              <span>{match.appetite_alignment.coverage_expertise}%</span>
+                            </div>
+                            <Progress value={match.appetite_alignment.coverage_expertise} className="h-2" />
+                          </div>
+                          <div>
+                            <div className="flex justify-between text-sm mb-1">
+                              <span>Risk Appetite Match</span>
+                              <span>{match.appetite_alignment.risk_appetite_match}%</span>
+                            </div>
+                            <Progress value={match.appetite_alignment.risk_appetite_match} className="h-2" />
+                          </div>
+                        </div>
+                      </TabsContent>
+                      
+                      <TabsContent value="intelligence" className="space-y-4">
+                        <div className="grid md:grid-cols-3 gap-4">
+                          <div className="text-center p-4 bg-muted/30 rounded-lg">
+                            <TrendingUp className="h-8 w-8 mx-auto mb-2 text-primary" />
+                            <div className="font-medium">Market Activity</div>
+                            <div className="text-sm text-muted-foreground">
+                              {match.market_intelligence.recent_activity}
+                            </div>
+                          </div>
+                          <div className="text-center p-4 bg-muted/30 rounded-lg">
+                            <BarChart3 className="h-8 w-8 mx-auto mb-2 text-primary" />
+                            <div className="font-medium">Position</div>
+                            <div className="text-sm text-muted-foreground">
+                              {match.market_intelligence.competitive_position}
+                            </div>
+                          </div>
+                          <div className="text-center p-4 bg-muted/30 rounded-lg">
+                            <Target className="h-8 w-8 mx-auto mb-2 text-primary" />
+                            <div className="font-medium">Capacity</div>
+                            <div className="text-sm text-muted-foreground">
+                              {match.market_intelligence.capacity_status}
+                            </div>
+                          </div>
+                        </div>
+                      </TabsContent>
+                      
+                      <TabsContent value="approach" className="space-y-4">
+                        <div className="bg-primary/5 rounded-lg p-4">
+                          <h5 className="font-medium mb-2 flex items-center">
+                            <Brain className="h-4 w-4 mr-2 text-primary" />
+                            AI-Recommended Approach
+                          </h5>
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            {match.recommended_approach}
+                          </p>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2">
+                          <Button size="sm" variant="outline">
+                            View Full Profile
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <Mail className="h-4 w-4 mr-2" />
+                            Generate Submission
+                          </Button>
+                          <Button size="sm">
+                            Add to Shortlist
+                          </Button>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
                   </div>
                 </CardContent>
               </Card>
