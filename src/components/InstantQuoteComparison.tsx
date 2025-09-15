@@ -465,14 +465,14 @@ const InstantQuoteComparison = () => {
       // Create a temporary container for printing sized for A4
       const printContainer = document.createElement('div');
       printContainer.style.position = 'absolute';
+      printContainer.style.top = '-9999px';
       printContainer.style.left = '-9999px';
-      printContainer.style.width = '794px'; // A4 width at 96 DPI (210mm)
-      printContainer.style.minHeight = '1123px'; // A4 height at 96 DPI (297mm)
-      printContainer.style.padding = '40px';
+      printContainer.style.width = '210mm'; // A4 width
+      printContainer.style.padding = '20mm';
       printContainer.style.backgroundColor = 'white';
       printContainer.style.fontFamily = 'system-ui, sans-serif';
-      printContainer.style.fontSize = '14px';
-      printContainer.style.lineHeight = '1.4';
+      printContainer.style.fontSize = '16px';
+      printContainer.style.lineHeight = '1.5';
       
       // Get the current page sections
       const sections = document.querySelectorAll('.space-y-6 > *');
@@ -484,20 +484,20 @@ const InstantQuoteComparison = () => {
       });
       
       printContainer.innerHTML = `
-        <div style="background: linear-gradient(135deg, #3b82f6, #1e40af); color: white; padding: 24px; margin-bottom: 24px; display: flex; align-items: center; gap: 16px; border-radius: 8px;">
-          <img src="${coverCompassLogo}" alt="CoverCompass Logo" style="height: 50px; width: auto; object-fit: contain;" />
+        <div style="background: linear-gradient(135deg, #3b82f6, #1e40af); color: white; padding: 30px; margin-bottom: 30px; display: flex; align-items: center; gap: 20px; border-radius: 12px;">
+          <img src="${coverCompassLogo}" alt="CoverCompass Logo" style="height: 60px; width: auto; object-fit: contain;" />
           <div>
-            <h1 style="font-size: 24px; font-weight: bold; margin: 0; line-height: 1.2;">CoverCompass</h1>
-            <p style="font-size: 14px; opacity: 0.9; margin: 4px 0 0 0;">Insurance Quote Comparison Report</p>
+            <h1 style="font-size: 32px; font-weight: bold; margin: 0; line-height: 1.2;">CoverCompass</h1>
+            <p style="font-size: 16px; opacity: 0.9; margin: 8px 0 0 0;">Insurance Quote Comparison Report</p>
           </div>
         </div>
-        <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 24px; border: 1px solid #e2e8f0;">
-          <h3 style="font-size: 16px; margin: 0 0 12px 0; color: #1e293b;">📋 Client Information</h3>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px;">
-            <div style="padding: 4px 0;"><strong>Client:</strong> ${selectedClientData.client_name}</div>
-            <div style="padding: 4px 0;"><strong>Date:</strong> ${new Date().toLocaleDateString()}</div>
-            ${selectedClientData.industry ? `<div style="padding: 4px 0;"><strong>Industry:</strong> ${selectedClientData.industry}</div>` : ""}
-            <div style="padding: 4px 0;"><strong>Quotes Analyzed:</strong> ${rankings.length}</div>
+        <div style="background: #f8fafc; padding: 24px; border-radius: 12px; margin-bottom: 30px; border: 1px solid #e2e8f0;">
+          <h3 style="font-size: 20px; margin: 0 0 16px 0; color: #1e293b;">📋 Client Information</h3>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 16px;">
+            <div style="padding: 8px 0;"><strong>Client:</strong> ${selectedClientData.client_name}</div>
+            <div style="padding: 8px 0;"><strong>Date:</strong> ${new Date().toLocaleDateString()}</div>
+            ${selectedClientData.industry ? `<div style="padding: 8px 0;"><strong>Industry:</strong> ${selectedClientData.industry}</div>` : ""}
+            <div style="padding: 8px 0;"><strong>Quotes Analyzed:</strong> ${rankings.length}</div>
           </div>
         </div>
       `;
@@ -505,15 +505,16 @@ const InstantQuoteComparison = () => {
       // Create content section for subsequent pages
       const contentContainer = document.createElement('div');
       contentContainer.style.position = 'absolute';
+      contentContainer.style.top = '-9999px';
       contentContainer.style.left = '-9999px';
-      contentContainer.style.width = '794px';
-      contentContainer.style.padding = '40px';
+      contentContainer.style.width = '210mm';
+      contentContainer.style.padding = '20mm';
       contentContainer.style.backgroundColor = 'white';
       contentContainer.style.fontFamily = 'system-ui, sans-serif';
-      contentContainer.style.fontSize = '12px';
-      contentContainer.style.lineHeight = '1.3';
+      contentContainer.style.fontSize = '16px';
+      contentContainer.style.lineHeight = '1.5';
       
-      contentContainer.innerHTML = contentHTML.replace(/class="[^"]*"/g, '').replace(/style="[^"]*"/g, 'style="margin-bottom: 16px;"');
+      contentContainer.innerHTML = contentHTML;
       
       document.body.appendChild(printContainer);
       document.body.appendChild(contentContainer);
@@ -526,9 +527,9 @@ const InstantQuoteComparison = () => {
       const maxWidth = pageWidth - margin * 2;
       const maxHeight = pageHeight - margin * 2;
       
-      // Add header page
+      // Capture at proper scale for PDF readability
       const headerCanvas = await html2canvas(printContainer, { 
-        scale: 2,
+        scale: 1,
         backgroundColor: '#ffffff',
         useCORS: true,
         allowTaint: true,
@@ -549,7 +550,7 @@ const InstantQuoteComparison = () => {
       
       // Add content pages
       const contentCanvas = await html2canvas(contentContainer, { 
-        scale: 2,
+        scale: 1,
         backgroundColor: '#ffffff',
         useCORS: true,
         allowTaint: true,
@@ -561,26 +562,34 @@ const InstantQuoteComparison = () => {
       let contentWidth = maxWidth;
       let contentHeight = contentWidth / contentRatio;
       
-      // Calculate how many pages we need for content
-      const pagesNeeded = Math.ceil(contentHeight / maxHeight);
+      // Add content starting from page 2
+      pdf.addPage();
       
-      for (let page = 0; page < pagesNeeded; page++) {
-        pdf.addPage();
+      if (contentHeight > maxHeight) {
+        // Split content across multiple pages if needed
+        const pagesNeeded = Math.ceil(contentHeight / maxHeight);
         
-        const yOffset = page * maxHeight * (contentCanvas.height / contentHeight);
-        const pageCanvas = document.createElement('canvas');
-        const pageCtx = pageCanvas.getContext('2d');
-        if (pageCtx) {
-          pageCanvas.width = contentCanvas.width;
-          pageCanvas.height = Math.min(contentCanvas.height - yOffset, contentCanvas.height / pagesNeeded);
+        for (let page = 0; page < pagesNeeded; page++) {
+          if (page > 0) pdf.addPage();
           
-          pageCtx.fillStyle = '#ffffff';
-          pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-          pageCtx.drawImage(contentCanvas, 0, -yOffset);
+          const yOffset = page * (contentCanvas.height / pagesNeeded);
+          const pageCanvas = document.createElement('canvas');
+          const pageCtx = pageCanvas.getContext('2d');
           
-          const pageHeight = (pageCanvas.height / contentCanvas.height) * contentHeight;
-          pdf.addImage(pageCanvas.toDataURL('image/png'), 'PNG', margin, margin, contentWidth, pageHeight);
+          if (pageCtx) {
+            pageCanvas.width = contentCanvas.width;
+            pageCanvas.height = Math.min(contentCanvas.height / pagesNeeded, contentCanvas.height - yOffset);
+            
+            pageCtx.fillStyle = '#ffffff';
+            pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+            pageCtx.drawImage(contentCanvas, 0, -yOffset);
+            
+            const scaledHeight = (pageCanvas.height / contentCanvas.height) * contentHeight;
+            pdf.addImage(pageCanvas.toDataURL('image/png'), 'PNG', margin, margin, contentWidth, scaledHeight);
+          }
         }
+      } else {
+        pdf.addImage(contentCanvas.toDataURL('image/png'), 'PNG', margin, margin, contentWidth, contentHeight);
       }
       
       document.body.removeChild(printContainer);
