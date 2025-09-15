@@ -38,6 +38,26 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
   const [editingClientData, setEditingClientData] = useState<any>(null);
   const { toast } = useToast();
 
+  // Status options with their corresponding colors
+  const statusOptions = [
+    { value: 'quote_stage', label: 'Quote Stage', color: 'bg-blue-500' },
+    { value: 'negotiation', label: 'Negotiation', color: 'bg-purple-500' },
+    { value: 'current_client', label: 'Current Client', color: 'bg-green-500' },
+    { value: 'renewal_approaching', label: 'Renewal Approaching', color: 'bg-orange-500' },
+    { value: 'lost_client', label: 'Lost Client', color: 'bg-red-500' },
+    { value: 'draft', label: 'Draft', color: 'bg-gray-500' }
+  ];
+
+  const getStatusColor = (status: string) => {
+    const statusOption = statusOptions.find(option => option.value === status);
+    return statusOption ? statusOption.color : 'bg-gray-500';
+  };
+
+  const getStatusLabel = (status: string) => {
+    const statusOption = statusOptions.find(option => option.value === status);
+    return statusOption ? statusOption.label : status;
+  };
+
   const [newClient, setNewClient] = useState({
     client_name: "",
     industry: "",
@@ -212,7 +232,8 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
       years_experience: client.report_data?.years_experience?.toString() || '',
       total_employees: client.report_data?.total_employees?.toString() || '',
       wage_roll: client.report_data?.wage_roll?.toString() || '',
-      report_title: client.report_title
+      report_title: client.report_title,
+      report_status: client.report_status || 'draft'
     });
     setShowClientDetails(true);
   };
@@ -245,7 +266,8 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
         years_experience: selectedClient.report_data?.years_experience?.toString() || '',
         total_employees: selectedClient.report_data?.total_employees?.toString() || '',
         wage_roll: selectedClient.report_data?.wage_roll?.toString() || '',
-        report_title: selectedClient.report_title
+        report_title: selectedClient.report_title,
+        report_status: selectedClient.report_status || 'draft'
       });
     }
   };
@@ -283,7 +305,8 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
         .update({
           client_name: editingClientData.client_name,
           report_title: editingClientData.report_title,
-          report_data: updatedClientData
+          report_data: updatedClientData,
+          report_status: editingClientData.report_status
         })
         .eq('id', selectedClient.id)
         .eq('user_id', user.id);
@@ -303,7 +326,8 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
         ...selectedClient,
         client_name: editingClientData.client_name,
         report_title: editingClientData.report_title,
-        report_data: updatedClientData
+        report_data: updatedClientData,
+        report_status: editingClientData.report_status
       };
       setSelectedClient(updatedClient);
       setIsEditingClient(false);
@@ -628,9 +652,10 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                   </TableCell>
                   <TableCell>
                     <Badge 
-                      variant={client.report_status === 'completed' ? 'default' : 'secondary'}
+                      variant="secondary"
+                      className={`text-white ${getStatusColor(client.report_status || 'draft')}`}
                     >
-                      {client.report_status}
+                      {getStatusLabel(client.report_status || 'draft')}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -791,9 +816,30 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-muted-foreground">Status</Label>
-                      <Badge variant={selectedClient.report_status === 'completed' ? 'default' : 'secondary'}>
-                        {selectedClient.report_status}
-                      </Badge>
+                      {isEditingClient ? (
+                        <Select value={editingClientData.report_status} onValueChange={(value) => setEditingClientData({...editingClientData, report_status: value})}>
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border shadow-lg z-50">
+                            {statusOptions.map((status) => (
+                              <SelectItem key={status.value} value={status.value}>
+                                <div className="flex items-center space-x-2">
+                                  <div className={`w-3 h-3 rounded-full ${status.color}`}></div>
+                                  <span>{status.label}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Badge 
+                          variant="secondary"
+                          className={`text-white ${getStatusColor(selectedClient.report_status || 'draft')} mt-1`}
+                        >
+                          {getStatusLabel(selectedClient.report_status || 'draft')}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </CardContent>
