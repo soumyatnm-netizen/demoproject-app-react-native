@@ -496,49 +496,95 @@ const InstantQuoteComparison = () => {
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px;">
             <div style="padding: 4px 0;"><strong>Client:</strong> ${selectedClientData.client_name}</div>
             <div style="padding: 4px 0;"><strong>Date:</strong> ${new Date().toLocaleDateString()}</div>
-            ${selectedClientData.industry ? `<div style="padding: 4px 0;"><strong>Industry:</strong> ${selectedClientData.industry}</div>` : ''}
+            ${selectedClientData.industry ? `<div style="padding: 4px 0;"><strong>Industry:</strong> ${selectedClientData.industry}</div>` : ""}
             <div style="padding: 4px 0;"><strong>Quotes Analyzed:</strong> ${rankings.length}</div>
           </div>
         </div>
-        <div style="font-size: 12px; line-height: 1.3;">
-          ${contentHTML.replace(/class="[^"]*"/g, '').replace(/style="[^"]*"/g, 'style="margin-bottom: 16px;"')}
-        </div>
       `;
       
-      document.body.appendChild(printContainer);
+      // Create content section for subsequent pages
+      const contentContainer = document.createElement('div');
+      contentContainer.style.position = 'absolute';
+      contentContainer.style.left = '-9999px';
+      contentContainer.style.width = '794px';
+      contentContainer.style.padding = '40px';
+      contentContainer.style.backgroundColor = 'white';
+      contentContainer.style.fontFamily = 'system-ui, sans-serif';
+      contentContainer.style.fontSize = '12px';
+      contentContainer.style.lineHeight = '1.3';
       
-      // Capture at high quality for crisp PDF output
-      const canvas = await html2canvas(printContainer, { 
-        scale: 2, // High quality
+      contentContainer.innerHTML = contentHTML.replace(/class="[^"]*"/g, '').replace(/style="[^"]*"/g, 'style="margin-bottom: 16px;"');
+      
+      document.body.appendChild(printContainer);
+      document.body.appendChild(contentContainer);
+      
+      // Generate PDF with multiple pages
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const margin = 10;
+      const maxWidth = pageWidth - margin * 2;
+      const maxHeight = pageHeight - margin * 2;
+      
+      // Add header page
+      const headerCanvas = await html2canvas(printContainer, { 
+        scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true,
         allowTaint: true,
         height: printContainer.scrollHeight,
         width: printContainer.scrollWidth
       });
-      document.body.removeChild(printContainer);
       
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = 210;
-      const pageHeight = 297;
-      const margin = 10; // Minimal margins for maximum content area
-      const maxWidth = pageWidth - margin * 2;
-      const maxHeight = pageHeight - margin * 2;
+      const headerRatio = headerCanvas.width / headerCanvas.height;
+      let headerWidth = maxWidth;
+      let headerHeight = headerWidth / headerRatio;
       
-      // Scale image to use full page width
-      const imgRatio = canvas.width / canvas.height;
-      let imgWidth = maxWidth; // Use full available width
-      let imgHeight = imgWidth / imgRatio;
-      
-      // If content is too tall for one page, scale down to fit
-      if (imgHeight > maxHeight) {
-        imgHeight = maxHeight;
-        imgWidth = imgHeight * imgRatio;
+      if (headerHeight > maxHeight) {
+        headerHeight = maxHeight;
+        headerWidth = headerHeight * headerRatio;
       }
       
-      const x = margin;
-      const y = margin;
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', x, y, imgWidth, imgHeight);
+      pdf.addImage(headerCanvas.toDataURL('image/png'), 'PNG', margin, margin, headerWidth, headerHeight);
+      
+      // Add content pages
+      const contentCanvas = await html2canvas(contentContainer, { 
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        allowTaint: true,
+        height: contentContainer.scrollHeight,
+        width: contentContainer.scrollWidth
+      });
+      
+      const contentRatio = contentCanvas.width / contentCanvas.height;
+      let contentWidth = maxWidth;
+      let contentHeight = contentWidth / contentRatio;
+      
+      // Calculate how many pages we need for content
+      const pagesNeeded = Math.ceil(contentHeight / maxHeight);
+      
+      for (let page = 0; page < pagesNeeded; page++) {
+        pdf.addPage();
+        
+        const yOffset = page * maxHeight * (contentCanvas.height / contentHeight);
+        const pageCanvas = document.createElement('canvas');
+        const pageCtx = pageCanvas.getContext('2d');
+        if (pageCtx) {
+          pageCanvas.width = contentCanvas.width;
+          pageCanvas.height = Math.min(contentCanvas.height - yOffset, contentCanvas.height / pagesNeeded);
+          
+          pageCtx.fillStyle = '#ffffff';
+          pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+          pageCtx.drawImage(contentCanvas, 0, -yOffset);
+          
+          const pageHeight = (pageCanvas.height / contentCanvas.height) * contentHeight;
+          pdf.addImage(pageCanvas.toDataURL('image/png'), 'PNG', margin, margin, contentWidth, pageHeight);
+        }
+      }
+      
+      document.body.removeChild(printContainer);
+      document.body.removeChild(contentContainer);
       
       const fileName = `CoverCompass_Analysis_${selectedClientData.client_name.replace(/\s+/g, '_')}.pdf`;
       pdf.save(fileName);
