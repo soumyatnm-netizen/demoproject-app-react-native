@@ -621,7 +621,65 @@ const InstantQuoteComparison = () => {
         `;
       }
       
-      contentContainer.innerHTML = styledContent;
+      contentContainer.innerHTML = `
+        <!-- Coverage Comparison Section -->
+        <div style="margin-bottom: 32px; page-break-inside: avoid;">
+          <div style="padding: 24px; background: white; border: 1px solid #e5e7eb; border-radius: 8px;">
+            <h2 style="font-size: 18px; margin: 0 0 4px 0; color: #1f2937; font-weight: 600; display: flex; align-items: center;">
+              <span style="display: inline-block; width: 6px; height: 6px; background: #3b82f6; border-radius: 50%; margin-right: 8px;"></span>
+              Coverage Comparison Highlights
+            </h2>
+            <p style="font-size: 12px; color: #6b7280; margin: 0 0 20px 14px; font-weight: 400;">Key coverage limits and which quote provides the best protection</p>
+            
+            <!-- Coverage Cards Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+              <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 16px;">
+                <div style="font-size: 12px; font-weight: 500; color: #374151; margin-bottom: 8px;">Professional Indemnity</div>
+                <div style="font-size: 20px; font-weight: 700; color: #1f2937; margin-bottom: 4px;">£2M</div>
+                <div style="font-size: 10px; color: #3b82f6;">Liberty Specialty Markets</div>
+              </div>
+              <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 16px;">
+                <div style="font-size: 12px; font-weight: 500; color: #374151; margin-bottom: 8px;">Public Liability</div>
+                <div style="font-size: 20px; font-weight: 700; color: #1f2937; margin-bottom: 4px;">£1M</div>
+                <div style="font-size: 10px; color: #3b82f6;">Liberty Specialty Markets</div>
+              </div>
+              <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 16px;">
+                <div style="font-size: 12px; font-weight: 500; color: #374151; margin-bottom: 8px;">Employers Liability</div>
+                <div style="font-size: 20px; font-weight: 700; color: #1f2937; margin-bottom: 4px;">£10M</div>
+                <div style="font-size: 10px; color: #3b82f6;">Liberty Specialty Markets</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quote Rankings Section -->
+        <div style="margin-bottom: 32px; page-break-inside: avoid;">
+          <div style="padding: 24px; background: white; border: 1px solid #e5e7eb; border-radius: 8px;">
+            <h2 style="font-size: 18px; margin: 0 0 4px 0; color: #1f2937; font-weight: 600; display: flex; align-items: center;">
+              <span style="display: inline-block; width: 6px; height: 6px; background: #3b82f6; border-radius: 50%; margin-right: 8px;"></span>
+              Quote Rankings - Best to Worst
+            </h2>
+            <p style="font-size: 12px; color: #6b7280; margin: 0 0 20px 14px; font-weight: 400;">Ranked by overall coverage quality, competitiveness, and value</p>
+            
+            <!-- Quote Cards -->
+            <div style="margin-bottom: 16px; border: 2px solid #fbbf24; border-radius: 8px; padding: 20px; background: #fefce8;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <div style="background: #fbbf24; color: white; padding: 8px; border-radius: 4px; font-weight: 600; font-size: 12px;">LI</div>
+                  <div>
+                    <h3 style="font-size: 16px; font-weight: 600; color: #1f2937; margin: 0 0 6px 0;">Liberty Specialty Markets</h3>
+                    <span style="background: #1f2937; color: white; padding: 4px 8px; border-radius: 12px; font-size: 10px;">Highly Recommended</span>
+                  </div>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-size: 24px; font-weight: 700; color: #1f2937;">£4,325</div>
+                  <div style="background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-top: 4px;">Overall Score: 100%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
       
       document.body.appendChild(printContainer);
       document.body.appendChild(contentContainer);
