@@ -30,6 +30,7 @@ import CoverageComparisonTable from "./CoverageComparisonTable";
 import { getInsurerInfo } from "@/lib/insurers";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import coverCompassLogo from "@/assets/covercompass-logo.png";
 
 interface QuoteRanking {
   quote_id: string;
@@ -479,9 +480,12 @@ const InstantQuoteComparison = () => {
       });
       
       printContainer.innerHTML = `
-        <div style="background: linear-gradient(135deg, #3b82f6, #1e40af); color: white; padding: 32px; margin-bottom: 32px;">
-          <h1 style="font-size: 32px; font-weight: bold;">CoverCompass</h1>
-          <p style="font-size: 16px; opacity: 0.9;">Insurance Quote Comparison Report</p>
+        <div style="background: linear-gradient(135deg, #3b82f6, #1e40af); color: white; padding: 32px; margin-bottom: 32px; display: flex; align-items: center; gap: 20px;">
+          <img src="${coverCompassLogo}" alt="CoverCompass Logo" style="height: 60px; width: auto; object-fit: contain;" />
+          <div>
+            <h1 style="font-size: 28px; font-weight: bold; margin: 0;">CoverCompass</h1>
+            <p style="font-size: 16px; opacity: 0.9; margin: 5px 0 0 0;">Insurance Quote Comparison Report</p>
+          </div>
         </div>
         <div style="background: #f8fafc; padding: 24px; border-radius: 12px; margin-bottom: 32px;">
           <h3 style="font-size: 18px; margin-bottom: 16px;">📋 Client Information</h3>
