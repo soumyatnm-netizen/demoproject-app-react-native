@@ -1100,6 +1100,10 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: boolean
       }
+      can_access_sensitive_data: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
       cleanup_expired_security_data: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -1273,6 +1277,10 @@ export type Database = {
       is_super_admin: {
         Args: { user_id: string }
         Returns: boolean
+      }
+      log_hr_sensitive_access: {
+        Args: { access_reason?: string; target_user_id: string }
+        Returns: undefined
       }
       log_login_attempt: {
         Args: {
