@@ -419,6 +419,7 @@ export type Database = {
         Row: {
           average_response_days: number | null
           capacity_status: string | null
+          company_id: string | null
           created_at: string
           data_points_count: number | null
           id: string
@@ -434,6 +435,7 @@ export type Database = {
         Insert: {
           average_response_days?: number | null
           capacity_status?: string | null
+          company_id?: string | null
           created_at?: string
           data_points_count?: number | null
           id?: string
@@ -449,6 +451,7 @@ export type Database = {
         Update: {
           average_response_days?: number | null
           capacity_status?: string | null
+          company_id?: string | null
           created_at?: string
           data_points_count?: number | null
           id?: string
@@ -461,7 +464,15 @@ export type Database = {
           underwriter_name?: string
           win_probability?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "market_predictions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "broker_companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       placement_outcomes: {
         Row: {
@@ -950,6 +961,7 @@ export type Database = {
       }
       underwriter_appetites: {
         Row: {
+          company_id: string | null
           created_at: string
           document_type: string
           file_size: number | null
@@ -966,6 +978,7 @@ export type Database = {
           uploaded_by: string
         }
         Insert: {
+          company_id?: string | null
           created_at?: string
           document_type?: string
           file_size?: number | null
@@ -982,6 +995,7 @@ export type Database = {
           uploaded_by: string
         }
         Update: {
+          company_id?: string | null
           created_at?: string
           document_type?: string
           file_size?: number | null
@@ -997,7 +1011,15 @@ export type Database = {
           updated_at?: string
           uploaded_by?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "underwriter_appetites_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "broker_companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       underwriter_matches: {
         Row: {
