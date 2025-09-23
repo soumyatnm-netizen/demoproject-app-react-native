@@ -260,6 +260,48 @@ export type Database = {
         }
         Relationships: []
       }
+      file_access_audit: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          error_message: string | null
+          file_id: string | null
+          file_path: string | null
+          id: string
+          ip_address: unknown | null
+          metadata: Json | null
+          success: boolean
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          error_message?: string | null
+          file_id?: string | null
+          file_path?: string | null
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          success?: boolean
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          error_message?: string | null
+          file_id?: string | null
+          file_path?: string | null
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       gap_analyses: {
         Row: {
           attack_strategy: string | null
@@ -473,6 +515,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pii_access_audit: {
+        Row: {
+          access_method: string
+          accessed_user_id: string
+          accessing_user_id: string
+          blocked_reason: string | null
+          consent_given: boolean | null
+          consent_required: boolean | null
+          created_at: string | null
+          data_type: string
+          fields_accessed: string[] | null
+          id: string
+          ip_address: unknown | null
+          metadata: Json | null
+          purpose: string | null
+          risk_score: number | null
+          session_id: string | null
+          success: boolean
+          user_agent: string | null
+        }
+        Insert: {
+          access_method: string
+          accessed_user_id: string
+          accessing_user_id: string
+          blocked_reason?: string | null
+          consent_given?: boolean | null
+          consent_required?: boolean | null
+          created_at?: string | null
+          data_type: string
+          fields_accessed?: string[] | null
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          purpose?: string | null
+          risk_score?: number | null
+          session_id?: string | null
+          success?: boolean
+          user_agent?: string | null
+        }
+        Update: {
+          access_method?: string
+          accessed_user_id?: string
+          accessing_user_id?: string
+          blocked_reason?: string | null
+          consent_given?: boolean | null
+          consent_required?: boolean | null
+          created_at?: string | null
+          data_type?: string
+          fields_accessed?: string[] | null
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          purpose?: string | null
+          risk_score?: number | null
+          session_id?: string | null
+          success?: boolean
+          user_agent?: string | null
+        }
+        Relationships: []
       }
       placement_outcomes: {
         Row: {
@@ -1355,6 +1457,20 @@ export type Database = {
         Args: { user_id: string }
         Returns: boolean
       }
+      log_file_access: {
+        Args: {
+          p_action_type: string
+          p_error_message?: string
+          p_file_id?: string
+          p_file_path?: string
+          p_ip_address?: unknown
+          p_metadata?: Json
+          p_success?: boolean
+          p_user_agent?: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       log_hr_sensitive_access: {
         Args: { access_reason?: string; target_user_id: string }
         Returns: undefined
@@ -1367,6 +1483,26 @@ export type Database = {
           p_success?: boolean
           p_user_agent?: string
           p_user_id: string
+        }
+        Returns: undefined
+      }
+      log_pii_access: {
+        Args: {
+          p_access_method: string
+          p_accessed_user_id: string
+          p_accessing_user_id: string
+          p_blocked_reason?: string
+          p_consent_given?: boolean
+          p_consent_required?: boolean
+          p_data_type: string
+          p_fields_accessed?: string[]
+          p_ip_address?: unknown
+          p_metadata?: Json
+          p_purpose?: string
+          p_risk_score?: number
+          p_session_id?: string
+          p_success?: boolean
+          p_user_agent?: string
         }
         Returns: undefined
       }

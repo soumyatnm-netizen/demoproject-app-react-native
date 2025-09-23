@@ -50,13 +50,17 @@ export class SecurityLogger {
 
       const clientInfo = this.getClientInfo();
       
-      // Use direct insert since RLS allows system inserts
-      await supabase.from('file_access_audit').insert({
-        user_id: user.id,
-        ...log,
-        ...clientInfo,
-        success: log.success ?? true,
-        metadata: log.metadata ?? {},
+      // Use database function for audit logging
+      await supabase.rpc('log_file_access', {
+        p_user_id: user.id,
+        p_action_type: log.action_type,
+        p_file_id: log.file_id ?? null,
+        p_file_path: log.file_path ?? null,
+        p_ip_address: clientInfo.ip_address,
+        p_user_agent: clientInfo.user_agent,
+        p_success: log.success ?? true,
+        p_error_message: log.error_message ?? null,
+        p_metadata: log.metadata ?? {}
       });
     } catch (error) {
       console.error('Failed to log file access:', error);
@@ -73,17 +77,23 @@ export class SecurityLogger {
 
       const clientInfo = this.getClientInfo();
       
-      // Use direct insert since RLS allows system inserts
-      await supabase.from('pii_access_audit').insert({
-        accessing_user_id: user.id,
-        ...log,
-        ...clientInfo,
-        fields_accessed: log.fields_accessed ?? [],
-        consent_required: log.consent_required ?? false,
-        consent_given: log.consent_given ?? false,
-        risk_score: log.risk_score ?? 25,
-        success: log.success ?? true,
-        metadata: log.metadata ?? {},
+      // Use database function for audit logging
+      await supabase.rpc('log_pii_access', {
+        p_accessed_user_id: log.accessed_user_id,
+        p_accessing_user_id: user.id,
+        p_data_type: log.data_type,
+        p_access_method: log.access_method,
+        p_fields_accessed: log.fields_accessed ?? [],
+        p_purpose: log.purpose ?? null,
+        p_consent_required: log.consent_required ?? false,
+        p_consent_given: log.consent_given ?? false,
+        p_ip_address: clientInfo.ip_address,
+        p_user_agent: clientInfo.user_agent,
+        p_session_id: clientInfo.session_id,
+        p_risk_score: log.risk_score ?? 25,
+        p_success: log.success ?? true,
+        p_blocked_reason: log.blocked_reason ?? null,
+        p_metadata: log.metadata ?? {}
       });
     } catch (error) {
       console.error('Failed to log PII access:', error);
