@@ -10,6 +10,7 @@ import { TestOpenAI } from "./TestOpenAI";
 import ComparisonView from "./ComparisonView";
 import CompanyManagement from "./CompanyManagement";
 import ClientReportGenerator from "./ClientReportGenerator";
+import ClientManagement from "./broker/ClientManagement";
 import AttackingBrokerIntelligence from "./AttackingBrokerIntelligence";
 import PlacementOutcomeTracker from "./PlacementOutcomeTracker";
 import PredictiveAnalyticsDashboard from "./PredictiveAnalyticsDashboard";
@@ -346,9 +347,10 @@ const Dashboard = ({ onBack }: DashboardProps) => {
 
         {/* Main Content */}
         <Tabs defaultValue="comparison" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="comparison">Quick Comparison</TabsTrigger>
             <TabsTrigger value="reports">Client Reports</TabsTrigger>
+            <TabsTrigger value="clients">Client Management</TabsTrigger>
             <TabsTrigger value="intelligence">Market Intelligence</TabsTrigger>
             <TabsTrigger value="tracking">Placement Tracking</TabsTrigger>
             <TabsTrigger value="team">Team Management</TabsTrigger>
@@ -360,6 +362,10 @@ const Dashboard = ({ onBack }: DashboardProps) => {
 
           <TabsContent value="reports">
             <ClientReportGenerator />
+          </TabsContent>
+
+          <TabsContent value="clients">
+            <ClientManagement onStatsUpdate={() => {}} />
           </TabsContent>
 
           <TabsContent value="intelligence">
