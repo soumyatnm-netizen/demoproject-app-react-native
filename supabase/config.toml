@@ -22,3 +22,6 @@ verify_jwt = false
 
 [functions.intelligent-insurer-matching]
 verify_jwt = false
+
+[functions.generate-comparison]
+verify_jwt = true
