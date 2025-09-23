@@ -8,13 +8,15 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Edit, Eye, Mail, Building2, FileUp } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Search, Edit, Eye, Mail, Building2, FileUp, Target } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { DocumentUpload } from "./DocumentUpload";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Check, ChevronDown } from "lucide-react";
+import ClientInsurerMatching from "./ClientInsurerMatching";
 
 interface ClientData {
   id: string;
@@ -1147,6 +1149,11 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Insurer Matching Section */}
+              {!isEditingClient && (
+                <ClientInsurerMatching client={selectedClient} />
+              )}
             </div>
           )}
         </DialogContent>
