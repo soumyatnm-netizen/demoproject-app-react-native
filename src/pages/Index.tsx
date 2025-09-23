@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { FileUp, BarChart3, Users, Shield, Upload, Eye, Download } from "lucide-react";
 import FileUpload from "@/components/FileUpload";
 import Dashboard from "@/components/Dashboard";
+import { SecurityVulnerabilityReport } from "@/components/SecurityVulnerabilityReport";
 import AuthWrapper from "@/components/AuthWrapper";
 
 const Index = () => {
@@ -100,6 +101,13 @@ const Index = () => {
               </CardHeader>
             </Card>
           </div>
+        </div>
+      </section>
+
+      {/* Security Status Section */}
+      <section className="py-20 bg-red-50">
+        <div className="container mx-auto px-4">
+          <SecurityVulnerabilityReport />
         </div>
       </section>
 

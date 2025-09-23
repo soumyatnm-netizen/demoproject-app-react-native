@@ -7,6 +7,7 @@ import { Upload, FileText, X, CheckCircle, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { SecurityLogger } from "@/lib/security";
+import { SecurityVulnerabilityReport } from "@/components/SecurityVulnerabilityReport";
 
 interface FileUploadProps {
   onUploadSuccess?: () => void;
