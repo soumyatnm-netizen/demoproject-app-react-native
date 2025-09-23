@@ -44,7 +44,11 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
 
   useEffect(() => {
     if (selectedClient) {
-      const filtered = quotes.filter(quote => quote.client_name === selectedClient);
+      const filtered = quotes.filter(quote => {
+        console.log('Quote client_name:', quote.client_name, 'Selected client:', selectedClient);
+        return quote.client_name === selectedClient;
+      });
+      console.log('Filtered quotes for', selectedClient, ':', filtered);
       setFilteredQuotes(filtered);
       setSelectedQuotes([]); // Reset selected quotes when client changes
     } else {
@@ -63,6 +67,7 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
       if (error) throw error;
 
       const uniqueClients = [...new Set(data.map(item => item.client_name))].filter(Boolean);
+      console.log('Fetched clients:', uniqueClients);
       setClients(uniqueClients);
     } catch (error) {
       console.error('Error fetching clients:', error);

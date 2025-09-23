@@ -125,6 +125,9 @@ const Dashboard = ({ onBack }: DashboardProps) => {
 
       if (quotesError) throw quotesError;
 
+      console.log('Fetched quotes:', quotesData);
+      console.log('Quotes with client names:', quotesData?.filter(q => q.client_name));
+
       setDocuments(documentsData || []);
       setQuotes(quotesData || []);
     } catch (error) {
@@ -234,6 +237,10 @@ const Dashboard = ({ onBack }: DashboardProps) => {
               </div>
             </div>
             <div className="flex items-center space-x-2">
+              <Button variant="ghost" size="sm" onClick={fetchData}>
+                <Settings className="h-4 w-4 mr-2" />
+                Refresh Data
+              </Button>
               <Dialog open={showOpenAITest} onOpenChange={setShowOpenAITest}>
                 <DialogTrigger asChild>
                   <Button variant="ghost" size="sm">
