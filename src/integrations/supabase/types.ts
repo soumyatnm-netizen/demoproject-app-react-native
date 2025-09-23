@@ -861,6 +861,7 @@ export type Database = {
       }
       structured_quotes: {
         Row: {
+          client_name: string | null
           coverage_limits: Json | null
           created_at: string
           deductible_amount: number | null
@@ -883,6 +884,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          client_name?: string | null
           coverage_limits?: Json | null
           created_at?: string
           deductible_amount?: number | null
@@ -905,6 +907,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          client_name?: string | null
           coverage_limits?: Json | null
           created_at?: string
           deductible_amount?: number | null

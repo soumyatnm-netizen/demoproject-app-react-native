@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BarChart3, Download, Eye, TrendingUp } from "lucide-react";
+import { BarChart3, Download, Eye, TrendingUp, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -21,6 +21,7 @@ interface StructuredQuote {
   inclusions: string[];
   exclusions: string[];
   created_at: string;
+  client_name?: string;
 }
 
 interface ComparisonViewProps {
@@ -32,7 +33,41 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
   const [selectedQuotes, setSelectedQuotes] = useState<string[]>([]);
   const [comparisonData, setComparisonData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [clients, setClients] = useState<string[]>([]);
+  const [selectedClient, setSelectedClient] = useState<string>("");
+  const [filteredQuotes, setFilteredQuotes] = useState<StructuredQuote[]>([]);
   const { toast } = useToast();
+
+  useEffect(() => {
+    fetchClients();
+  }, []);
+
+  useEffect(() => {
+    if (selectedClient) {
+      const filtered = quotes.filter(quote => quote.client_name === selectedClient);
+      setFilteredQuotes(filtered);
+      setSelectedQuotes([]); // Reset selected quotes when client changes
+    } else {
+      setFilteredQuotes([]);
+      setSelectedQuotes([]);
+    }
+  }, [selectedClient, quotes]);
+
+  const fetchClients = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('client_reports')
+        .select('client_name')
+        .order('client_name');
+
+      if (error) throw error;
+
+      const uniqueClients = [...new Set(data.map(item => item.client_name))].filter(Boolean);
+      setClients(uniqueClients);
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+    }
+  };
 
   const handleQuoteSelection = (quoteId: string, selected: boolean) => {
     if (selected) {
@@ -128,17 +163,60 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Quote Selection */}
+      {/* Client Selection */}
       <Card>
         <CardHeader>
-          <CardTitle>Select Quotes to Compare</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Select Client
+          </CardTitle>
           <CardDescription>
-            Choose quotes from your processed documents for side-by-side comparison
+            Choose a client to view their quotes for comparison
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-            {quotes.map((quote) => (
+          <Select value={selectedClient} onValueChange={setSelectedClient}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Choose a client to view their quotes" />
+            </SelectTrigger>
+            <SelectContent>
+              {clients.map((client) => (
+                <SelectItem key={client} value={client}>
+                  {client}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          {clients.length === 0 && (
+            <p className="text-sm text-muted-foreground mt-2">
+              No clients found. Create client reports to see them here.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Quote Selection */}
+      {selectedClient && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Select Quotes to Compare</CardTitle>
+            <CardDescription>
+              Choose quotes for {selectedClient} for side-by-side comparison
+            </CardDescription>
+          </CardHeader>
+        <CardContent>
+          {filteredQuotes.length === 0 ? (
+            <div className="text-center py-8">
+              <BarChart3 className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-muted-foreground">
+                No quotes found for {selectedClient}. Upload and process documents to generate quotes.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                {filteredQuotes.map((quote) => (
               <Card 
                 key={quote.id} 
                 className={`cursor-pointer transition-colors ${
@@ -191,8 +269,11 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
               {selectedQuotes.length} quote{selectedQuotes.length !== 1 ? 's' : ''} selected
             </p>
           </div>
+            </>
+          )}
         </CardContent>
       </Card>
+      )}
 
       {/* Comparison Results */}
       {comparisonData && (
@@ -233,7 +314,7 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
                   </TableHeader>
                   <TableBody>
                     {selectedQuotes.map(quoteId => {
-                      const quote = quotes.find(q => q.id === quoteId);
+                      const quote = filteredQuotes.find(q => q.id === quoteId);
                       if (!quote) return null;
                       return (
                         <TableRow key={quote.id}>

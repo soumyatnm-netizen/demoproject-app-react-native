@@ -217,9 +217,16 @@ const InstantQuoteComparison = () => {
         // Process document with AI
         console.log('Calling process-document edge function...');
         setProcessingStep(`Analyzing quote ${i + 1} with AI...`);
+        
+        // Get the selected client's name
+        const selectedClientData = clients.find(client => client.id === selectedClient);
+        
         const { data: processResult, error: processError } = await supabase.functions
           .invoke('process-document', {
-            body: { documentId: docData.id }
+            body: { 
+              documentId: docData.id,
+              clientName: selectedClientData?.client_name
+            }
           });
 
         if (processError) {

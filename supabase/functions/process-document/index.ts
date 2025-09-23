@@ -43,7 +43,7 @@ serve(async (req) => {
       throw new Error('Invalid JSON in request body');
     }
 
-    const { documentId } = requestBody;
+    const { documentId, clientName } = requestBody;
 
     if (!documentId) {
       console.error('No document ID provided in request');
@@ -185,7 +185,8 @@ serve(async (req) => {
         inclusions: structuredData.inclusions,
         exclusions: structuredData.exclusions,
         policy_terms: structuredData.policy_terms,
-        quote_status: structuredData.quote_status
+        quote_status: structuredData.quote_status,
+        client_name: clientName || null
       })
       .select()
       .single();
