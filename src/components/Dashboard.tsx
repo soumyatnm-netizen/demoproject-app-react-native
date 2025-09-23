@@ -353,15 +353,19 @@ const Dashboard = ({ onBack }: DashboardProps) => {
         </div>
 
         {/* Main Content */}
-        <Tabs defaultValue="comparison" className="space-y-6">
+        <Tabs defaultValue="clients" className="space-y-6">
           <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="clients">Client Management</TabsTrigger>
             <TabsTrigger value="comparison">Quick Comparison</TabsTrigger>
             <TabsTrigger value="reports">Client Reports</TabsTrigger>
-            <TabsTrigger value="clients">Client Management</TabsTrigger>
             <TabsTrigger value="intelligence">Market Intelligence</TabsTrigger>
             <TabsTrigger value="tracking">Placement Tracking</TabsTrigger>
             <TabsTrigger value="team">Team Management</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="clients">
+            <ClientManagement onStatsUpdate={() => {}} />
+          </TabsContent>
 
           <TabsContent value="comparison">
             <ComparisonView quotes={quotes} onRefresh={fetchData} />
@@ -369,10 +373,6 @@ const Dashboard = ({ onBack }: DashboardProps) => {
 
           <TabsContent value="reports">
             <ClientReportGenerator />
-          </TabsContent>
-
-          <TabsContent value="clients">
-            <ClientManagement onStatsUpdate={() => {}} />
           </TabsContent>
 
           <TabsContent value="intelligence">
