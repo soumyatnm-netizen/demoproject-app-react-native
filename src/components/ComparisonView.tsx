@@ -130,6 +130,16 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
 
       if (error) throw error;
 
+      // Create and trigger download
+      if (data.downloadUrl) {
+        const link = document.createElement('a');
+        link.href = data.downloadUrl;
+        link.download = data.filename || 'quote-comparison-report.html';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+
       toast({
         title: "Success",
         description: "Report exported successfully",
