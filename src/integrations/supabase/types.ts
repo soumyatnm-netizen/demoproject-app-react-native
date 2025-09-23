@@ -1137,39 +1137,7 @@ export type Database = {
       }
     }
     Views: {
-      profile_sensitive_data_masked: {
-        Row: {
-          created_at: string | null
-          emergency_contact: Json | null
-          id: string | null
-          personal_address: string | null
-          phone: string | null
-          sensitive_notes: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          emergency_contact?: never
-          id?: string | null
-          personal_address?: never
-          phone?: never
-          sensitive_notes?: never
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          emergency_contact?: never
-          id?: string | null
-          personal_address?: never
-          phone?: never
-          sensitive_notes?: never
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       analyze_quote_coverage: {
@@ -1179,6 +1147,10 @@ export type Database = {
       can_access_profile: {
         Args: { target_user_id: string }
         Returns: boolean
+      }
+      cleanup_expired_access_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       cleanup_expired_security_data: {
         Args: Record<PropertyKey, never>
@@ -1282,6 +1254,20 @@ export type Database = {
           id: string
           last_updated: string
           phone_masked: string
+          user_id: string
+        }[]
+      }
+      get_masked_sensitive_data_secure: {
+        Args: { target_user_id: string }
+        Returns: {
+          access_level: string
+          created_at: string
+          emergency_contact: Json
+          id: string
+          personal_address: string
+          phone: string
+          sensitive_notes: string
+          updated_at: string
           user_id: string
         }[]
       }
