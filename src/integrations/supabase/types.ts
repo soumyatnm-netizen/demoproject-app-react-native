@@ -1100,10 +1100,6 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: boolean
       }
-      can_access_sensitive_data: {
-        Args: { target_user_id: string }
-        Returns: boolean
-      }
       cleanup_expired_security_data: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -1342,6 +1338,19 @@ export type Database = {
           recommendation_category: string
         }[]
       }
+      request_sensitive_data_access: {
+        Args: {
+          access_duration_hours?: number
+          access_purpose: string
+          justification: string
+          target_user_id: string
+        }
+        Returns: string
+      }
+      respond_to_consent_request: {
+        Args: { approved: boolean; consent_id: string; employee_notes?: string }
+        Returns: boolean
+      }
       revoke_sensitive_data_consent: {
         Args: { consent_type: string; hr_user_id: string }
         Returns: boolean
@@ -1358,6 +1367,10 @@ export type Database = {
           is_valid: boolean
           role: Database["public"]["Enums"]["app_role"]
         }[]
+      }
+      validate_sensitive_data_access: {
+        Args: { access_purpose?: string; target_user_id: string }
+        Returns: boolean
       }
     }
     Enums: {
