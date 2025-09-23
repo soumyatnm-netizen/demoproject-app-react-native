@@ -155,7 +155,7 @@ const UnderwriterMatchingResults = ({ documentId, documentName, isOpen, onClose 
             Underwriter Matches for {documentName}
           </DialogTitle>
           <DialogDescription>
-            AI-powered analysis matching your document against underwriter appetite guides
+            CoverCompassAI-powered analysis matching your document against underwriter appetite guides
           </DialogDescription>
         </DialogHeader>
 

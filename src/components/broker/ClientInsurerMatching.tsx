@@ -346,7 +346,7 @@ const ClientInsurerMatching = ({ client }: ClientInsurerMatchingProps) => {
             <span>Insurer Matching</span>
           </CardTitle>
           <CardDescription>
-            AI-powered insurer matching based on appetite guides
+            CoverCompassAI-powered insurer matching based on appetite guides
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -110,7 +110,7 @@ const InsurerMatching = () => {
       
       toast({
         title: "Analysis Complete",
-        description: `Found ${data.matches?.length || 0} potential matches using AI-powered analysis`,
+        description: `Found ${data.matches?.length || 0} potential matches using CoverCompassAI-powered analysis`,
       });
 
     } catch (error) {
@@ -168,7 +168,7 @@ const InsurerMatching = () => {
           <div>
             <h2 className="text-2xl font-bold flex items-center space-x-2">
               <Brain className="h-6 w-6 text-primary" />
-              <span>AI-Powered Insurer Matching</span>
+              <span>CoverCompassAI-Powered Insurer Matching</span>
             </h2>
             <p className="text-muted-foreground">Intelligent analysis using appetite guides, market data, and placement history</p>
           </div>

@@ -44,7 +44,7 @@ const Index = () => {
           </h2>
           <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
             Stop spending hours manually comparing insurance quotes. Upload 1-5 quotes from different underwriters 
-            and our AI instantly analyzes schedules, limits, clauses, exclusions, and core wording to rank them from best to worst.
+            and CoverCompassAI instantly analyzes schedules, limits, clauses, exclusions, and core wording to rank them from best to worst.
           </p>
           <div className="flex gap-4 justify-center">
             <Button size="lg" onClick={() => setCurrentView('dashboard')}>
@@ -85,7 +85,7 @@ const Index = () => {
                 <Eye className="h-12 w-12 text-primary mx-auto mb-4" />
                 <CardTitle>2. Upload 1-5 Quotes</CardTitle>
                 <CardDescription>
-                  Upload PDF quotes from different underwriters. Our AI analyzes schedules, limits, inner limits, exclusions, enhancements, and core wording.
+                  Upload PDF quotes from different underwriters. CoverCompassAI analyzes schedules, limits, inner limits, exclusions, enhancements, and core wording.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -120,7 +120,7 @@ const Index = () => {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  AI-powered extraction of coverage terms, limits, and conditions from any document format.
+                  CoverCompassAI-powered extraction of coverage terms, limits, and conditions from any document format.
                 </p>
               </CardContent>
             </Card>

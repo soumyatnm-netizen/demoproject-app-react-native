@@ -226,7 +226,7 @@ const PredictiveAnalyticsDashboard = () => {
                 Predictive Analytics Dashboard
               </CardTitle>
               <CardDescription className="text-blue-700">
-                AI-powered predictions for market approach success rates
+                CoverCompassAI-powered predictions for market approach success rates
               </CardDescription>
             </div>
             <Button 

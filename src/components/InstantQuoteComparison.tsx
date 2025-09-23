@@ -895,7 +895,7 @@ const InstantQuoteComparison = () => {
             </CardTitle>
           </div>
           <CardDescription className="text-lg">
-            Upload quotes and compare coverage instantly. Our AI analyzes schedules, limits, clauses, and terms to rank quotes from best to worst.
+            Upload quotes and compare coverage instantly. CoverCompassAI analyzes schedules, limits, clauses, and terms to rank quotes from best to worst.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -1052,7 +1052,7 @@ const InstantQuoteComparison = () => {
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {uploadedQuotes.length === 1 
-                      ? "Our AI will analyze your quote for coverage details and recommendations."
+                      ? "CoverCompassAI will analyze your quote for coverage details and recommendations."
                       : `Click "Compare Quotes Instantly" below to analyze coverage, limits, exclusions, and competitiveness across all ${uploadedQuotes.length} quotes.`
                     }
                   </p>
@@ -1070,7 +1070,7 @@ const InstantQuoteComparison = () => {
             <Shield className="h-5 w-5" />
             <span>Step 3: Instant Analysis</span>
           </CardTitle>
-          <CardDescription>Our AI will analyze coverage, limits, terms, and competitiveness</CardDescription>
+          <CardDescription>CoverCompassAI will analyze coverage, limits, terms, and competitiveness</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -1114,7 +1114,7 @@ const InstantQuoteComparison = () => {
                 </div>
                 <Progress value={uploadedQuotes.length > 0 ? Math.round((100 / (uploadedQuotes.length + 1)) * (uploadedQuotes.length > 0 ? 1 : 0)) : 33} className="w-full" />
                 <p className="text-xs text-muted-foreground">
-                  Using OpenAI to analyze schedules, limits, exclusions, enhancements, and core policy wording...
+                  Using CoverCompassAI to analyze schedules, limits, exclusions, enhancements, and core policy wording...
                 </p>
               </div>
             )}
