@@ -276,11 +276,10 @@ const Dashboard = ({ onBack }: DashboardProps) => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+              <div className="flex justify-center">
+                <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 text-lg px-4 py-2 font-semibold">
                   ⚡ Instant Quote Comparison
                 </Badge>
-                <Badge variant="outline">Client Management</Badge>
               </div>
             </CardContent>
           </Card>
