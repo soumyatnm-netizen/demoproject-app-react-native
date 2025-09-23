@@ -299,20 +299,7 @@ const Dashboard = ({ onBack }: DashboardProps) => {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Documents</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{documents.length}</div>
-              <p className="text-xs text-muted-foreground">
-                Total uploaded
-              </p>
-            </CardContent>
-          </Card>
-
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Quotes Processed</CardTitle>
@@ -343,111 +330,32 @@ const Dashboard = ({ onBack }: DashboardProps) => {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Processing</CardTitle>
-              <Upload className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Client Reports</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {documents.filter(d => d.status === 'processing').length}
+                {userProfile?.role === 'company_admin' ? '12' : '8'}
               </div>
               <p className="text-xs text-muted-foreground">
-                Documents in queue
+                Active projects
               </p>
             </CardContent>
           </Card>
         </div>
 
         {/* Main Content */}
-        <Tabs defaultValue="upload" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="upload">Upload & Process</TabsTrigger>
+        <Tabs defaultValue="comparison" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="comparison">Quick Comparison</TabsTrigger>
             <TabsTrigger value="reports">Client Reports</TabsTrigger>
-            <TabsTrigger value="intelligence">Attack Intelligence</TabsTrigger>
+            <TabsTrigger value="intelligence">Market Intelligence</TabsTrigger>
             <TabsTrigger value="tracking">Placement Tracking</TabsTrigger>
-            <TabsTrigger value="predictions">Predictive Analytics</TabsTrigger>
             <TabsTrigger value="team">Team Management</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="upload">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Upload Documents</CardTitle>
-                  <CardDescription>
-                    Upload insurance quotes, policy wordings, and schedules for AI processing
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <FileUpload onUploadSuccess={handleUploadSuccess} />
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>All Documents</CardTitle>
-                  <CardDescription>
-                    All your uploaded documents and their processing status
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="mb-4">
-                    <FileUpload onUploadSuccess={handleUploadSuccess} />
-                  </div>
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {documents.filter(doc => doc.status !== 'error').map((doc) => {
-                      // Find the corresponding structured quote for this document
-                      const relatedQuote = quotes.find(q => q.document_id === doc.id);
-                      
-                      return (
-                        <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <FileText className="h-4 w-4 text-muted-foreground" />
-                            <div>
-                              <p className="text-sm font-medium">{doc.filename}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {new Date(doc.created_at).toLocaleDateString()}
-                                {relatedQuote && (
-                                  <span className="ml-2 text-primary">
-                                    • {relatedQuote.insurer_name}
-                                  </span>
-                                )}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge 
-                              variant={doc.status === 'processed' ? 'default' : 
-                                      doc.status === 'processing' ? 'secondary' : 'destructive'}
-                            >
-                              {doc.status}
-                            </Badge>
-                            {doc.status === 'processed' && relatedQuote && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setSelectedDocumentForMatching({ 
-                                  id: relatedQuote.id, // Use the structured quote ID, not document ID
-                                  name: doc.filename 
-                                })}
-                                className="flex items-center gap-1"
-                              >
-                                <Star className="h-3 w-3" />
-                                Matches
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {documents.length === 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        No documents uploaded yet
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+          <TabsContent value="comparison">
+            <ComparisonView quotes={quotes} onRefresh={fetchData} />
           </TabsContent>
 
           <TabsContent value="reports">
