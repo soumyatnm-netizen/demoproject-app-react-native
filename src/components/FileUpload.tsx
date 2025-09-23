@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Upload, FileText, X, CheckCircle, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { SecurityLogger } from "@/lib/security";
 
 interface FileUploadProps {
   onUploadSuccess?: () => void;
@@ -58,18 +59,22 @@ const FileUpload = ({ onUploadSuccess }: FileUploadProps) => {
     };
 
     try {
-      // Upload to Supabase Storage
+      // Enhanced secure upload with audit logging
       const fileName = `${Date.now()}-${file.name}`;
       const filePath = `documents/${fileName}`;
 
       updateProgress(25, 'uploading');
 
-      const { error: uploadError } = await supabase.storage
-        .from('documents')
-        .upload(filePath, file, {
+      // Use secure upload with automatic audit logging
+      const { data: uploadData, error: uploadError } = await SecurityLogger.secureFileUpload(
+        file,
+        'documents',
+        filePath,
+        {
           cacheControl: '3600',
           upsert: false
-        });
+        }
+      );
 
       if (uploadError) throw uploadError;
 
@@ -99,14 +104,30 @@ const FileUpload = ({ onUploadSuccess }: FileUploadProps) => {
 
       updateProgress(75, 'processing');
 
-      // Process document with AI
+      // Process document with AI and log processing attempt
+      await SecurityLogger.logFileAccess({
+        file_id: documentData.id,
+        file_path: filePath,
+        action_type: 'process',
+        metadata: { document_id: documentData.id, processing_stage: 'ai_analysis' }
+      });
+
       const { error: functionError } = await supabase.functions.invoke('process-document', {
         body: { documentId: documentData.id }
       });
 
       if (functionError) {
         console.error('Function error:', functionError);
-        // Don't throw here - document is uploaded, processing just failed
+        // Log processing failure
+        await SecurityLogger.logFileAccess({
+          file_id: documentData.id,
+          file_path: filePath,
+          action_type: 'process',
+          success: false,
+          error_message: functionError.message,
+          metadata: { document_id: documentData.id, processing_stage: 'ai_analysis_failed' }
+        });
+        
         updateProgress(100, 'error');
         toast({
           title: "Upload completed",
