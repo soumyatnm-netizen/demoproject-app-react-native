@@ -1270,6 +1270,10 @@ export type Database = {
         Args: { user_id: string }
         Returns: boolean
       }
+      is_same_company_user: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
       is_super_admin: {
         Args: { user_id: string }
         Returns: boolean
@@ -1297,6 +1301,14 @@ export type Database = {
           p_accessed_user_id: string
           p_ip_address?: unknown
           p_user_agent?: string
+        }
+        Returns: undefined
+      }
+      log_security_violation: {
+        Args: {
+          attempted_resource: string
+          details?: Json
+          violation_type: string
         }
         Returns: undefined
       }
