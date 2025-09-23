@@ -25,7 +25,7 @@ const Index = () => {
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <img src="/lovable-uploads/117007fd-e5c4-4ee6-a580-ee7bde7ad08a.png" alt="CoverCompass" className="h-12" />
+          <img src="/lovable-uploads/117007fd-e5c4-4ee6-a580-ee7bde7ad08a.png" alt="CoverCompass" className="h-16" />
         </div>
           <Button onClick={() => setCurrentView('dashboard')}>
             Get Started
@@ -36,7 +36,7 @@ const Index = () => {
       {/* Hero Section */}
       <section className="py-20 bg-gradient-to-br from-primary/5 to-primary/10">
         <div className="container mx-auto px-4 text-center">
-          <Badge className="mb-4" variant="secondary">
+          <Badge className="mb-4 text-sm px-4 py-2" variant="secondary">
             Markets Mapped. Cover Unlocked
           </Badge>
           <h2 className="text-5xl font-bold text-foreground mb-6">
@@ -191,7 +191,7 @@ const Index = () => {
       <footer className="py-12 border-t">
         <div className="container mx-auto px-4 text-center">
         <div className="flex items-center justify-center space-x-2 mb-4">
-          <img src="/lovable-uploads/117007fd-e5c4-4ee6-a580-ee7bde7ad08a.png" alt="CoverCompass" className="h-10" />
+          <img src="/lovable-uploads/117007fd-e5c4-4ee6-a580-ee7bde7ad08a.png" alt="CoverCompass" className="h-12" />
         </div>
         <p className="text-sm text-muted-foreground">
           Markets Mapped. Cover Unlocked
