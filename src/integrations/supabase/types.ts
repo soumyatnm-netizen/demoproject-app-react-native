@@ -775,6 +775,54 @@ export type Database = {
         }
         Relationships: []
       }
+      sensitive_data_access_sessions: {
+        Row: {
+          access_count: number | null
+          accessed_fields: string[] | null
+          auto_expire_minutes: number | null
+          created_at: string
+          expires_at: string
+          hr_user_id: string
+          id: string
+          ip_address: unknown | null
+          purpose: string
+          revoked_at: string | null
+          session_token: string
+          target_user_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          access_count?: number | null
+          accessed_fields?: string[] | null
+          auto_expire_minutes?: number | null
+          created_at?: string
+          expires_at: string
+          hr_user_id: string
+          id?: string
+          ip_address?: unknown | null
+          purpose: string
+          revoked_at?: string | null
+          session_token: string
+          target_user_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          access_count?: number | null
+          accessed_fields?: string[] | null
+          auto_expire_minutes?: number | null
+          created_at?: string
+          expires_at?: string
+          hr_user_id?: string
+          id?: string
+          ip_address?: unknown | null
+          purpose?: string
+          revoked_at?: string | null
+          session_token?: string
+          target_user_id?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       sensitive_data_consent: {
         Row: {
           consent_type: string
@@ -1089,7 +1137,39 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      profile_sensitive_data_masked: {
+        Row: {
+          created_at: string | null
+          emergency_contact: Json | null
+          id: string | null
+          personal_address: string | null
+          phone: string | null
+          sensitive_notes: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          emergency_contact?: never
+          id?: string | null
+          personal_address?: never
+          phone?: never
+          sensitive_notes?: never
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          emergency_contact?: never
+          id?: string | null
+          personal_address?: never
+          phone?: never
+          sensitive_notes?: never
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       analyze_quote_coverage: {
@@ -1124,6 +1204,14 @@ export type Database = {
           p_revenue_band_min?: number
           p_typical_limits?: Json
           p_win_rate?: number
+        }
+        Returns: string
+      }
+      create_sensitive_data_session: {
+        Args: {
+          duration_minutes?: number
+          purpose: string
+          target_user_id: string
         }
         Returns: string
       }
@@ -1371,6 +1459,14 @@ export type Database = {
         Args: { p_document_id: string }
         Returns: boolean
       }
+      validate_enhanced_sensitive_access: {
+        Args: {
+          access_purpose?: string
+          requested_fields?: string[]
+          target_user_id: string
+        }
+        Returns: Json
+      }
       validate_invite_code: {
         Args: { p_email: string; p_invite_code: string }
         Returns: {
@@ -1387,6 +1483,7 @@ export type Database = {
     }
     Enums: {
       app_role: "company_admin" | "broker" | "viewer" | "hr_admin"
+      data_mask_level: "none" | "partial" | "full" | "blocked"
       portal_type: "admin" | "broker" | "both"
     }
     CompositeTypes: {
@@ -1516,6 +1613,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["company_admin", "broker", "viewer", "hr_admin"],
+      data_mask_level: ["none", "partial", "full", "blocked"],
       portal_type: ["admin", "broker", "both"],
     },
   },
