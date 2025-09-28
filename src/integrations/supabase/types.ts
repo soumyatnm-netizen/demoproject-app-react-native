@@ -578,6 +578,7 @@ export type Database = {
       }
       placement_outcomes: {
         Row: {
+          business_type: string | null
           competitiveness_score: number | null
           coverage_limits: Json | null
           created_at: string
@@ -596,6 +597,7 @@ export type Database = {
           win_reason: string | null
         }
         Insert: {
+          business_type?: string | null
           competitiveness_score?: number | null
           coverage_limits?: Json | null
           created_at?: string
@@ -614,6 +616,7 @@ export type Database = {
           win_reason?: string | null
         }
         Update: {
+          business_type?: string | null
           competitiveness_score?: number | null
           coverage_limits?: Json | null
           created_at?: string

@@ -138,6 +138,7 @@ const PlacementOutcomeTracker = () => {
           premium_amount: selectedQuote.premium_amount,
           outcome: outcomeForm.outcome,
           win_reason: outcomeForm.winReason,
+          business_type: outcomeForm.businessType,
           notes: outcomeForm.notes,
           placed_at: outcomeForm.outcome === 'won' ? new Date().toISOString() : null
         });
