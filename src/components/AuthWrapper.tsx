@@ -339,15 +339,32 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  // Check for password reset token on component mount
+  // Check for password reset token on component mount and hash changes
   useEffect(() => {
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const accessToken = hashParams.get('access_token');
-    const type = hashParams.get('type');
-    
-    if (type === 'recovery' && accessToken) {
-      setIsResettingPassword(true);
-    }
+    const checkPasswordResetToken = () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const type = hashParams.get('type');
+      
+      console.log('Checking password reset token:', { type, hasAccessToken: !!accessToken });
+      
+      if (type === 'recovery' && accessToken) {
+        console.log('Password reset token detected, showing reset form');
+        setIsResettingPassword(true);
+        setLoading(false); // Ensure loading is false so form shows
+      }
+    };
+
+    // Check on mount
+    checkPasswordResetToken();
+
+    // Check when hash changes
+    const handleHashChange = () => {
+      checkPasswordResetToken();
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -472,12 +489,97 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
     clearForm();
   };
 
-  if (loading) {
+  if (loading && !isResettingPassword) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show password reset form even if user is not logged in
+  if (isResettingPassword) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          {onBack && (
+            <div className="mb-6">
+              <Button variant="ghost" size="sm" onClick={onBack}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Homepage
+              </Button>
+            </div>
+          )}
+          
+          <div className="text-center mb-8">
+            <img src="/lovable-uploads/117007fd-e5c4-4ee6-a580-ee7bde7ad08a.png" alt="CoverCompass" className="h-20 mx-auto mb-4" />
+            <p className="text-muted-foreground mt-2">
+              Markets Mapped. Cover Unlocked
+            </p>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Reset Your Password</CardTitle>
+              <CardDescription>
+                Enter your new password below
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handlePasswordReset} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">New Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="new-password"
+                      type={showPassword ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Enter your new password"
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirm New Password</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm your new password"
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={authLoading}>
+                  {authLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Updating Password...
+                    </>
+                  ) : (
+                    "Update Password"
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
