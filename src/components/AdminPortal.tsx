@@ -189,13 +189,13 @@ const AdminPortal = ({ onBack }: AdminPortalProps) => {
 
         {/* Main Content */}
         <Tabs defaultValue="brokers" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="brokers">Broker Management</TabsTrigger>
-            <TabsTrigger value="clients">Client Overview</TabsTrigger>
-            <TabsTrigger value="appetites">Appetite Guides</TabsTrigger>
-            <TabsTrigger value="pdfs">PDF Management</TabsTrigger>
-            <TabsTrigger value="data">Data Visualization</TabsTrigger>
-            <TabsTrigger value="settings">System Settings</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-6 h-12">
+            <TabsTrigger value="brokers" className="text-base py-3 px-4 font-medium">Broker Management</TabsTrigger>
+            <TabsTrigger value="clients" className="text-base py-3 px-4 font-medium">Client Overview</TabsTrigger>
+            <TabsTrigger value="appetites" className="text-base py-3 px-4 font-medium">Appetite Guides</TabsTrigger>
+            <TabsTrigger value="pdfs" className="text-base py-3 px-4 font-medium">PDF Management</TabsTrigger>
+            <TabsTrigger value="data" className="text-base py-3 px-4 font-medium">Data Visualization</TabsTrigger>
+            <TabsTrigger value="settings" className="text-base py-3 px-4 font-medium">System Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="brokers">

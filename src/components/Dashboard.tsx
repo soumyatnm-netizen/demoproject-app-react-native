@@ -354,13 +354,13 @@ const Dashboard = ({ onBack }: DashboardProps) => {
 
         {/* Main Content */}
         <Tabs defaultValue="clients" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="clients">Client Management</TabsTrigger>
-            <TabsTrigger value="comparison">Quick Comparison</TabsTrigger>
-            <TabsTrigger value="reports">Client Reports</TabsTrigger>
-            <TabsTrigger value="intelligence">Market Intelligence</TabsTrigger>
-            <TabsTrigger value="tracking">Placement Tracking</TabsTrigger>
-            <TabsTrigger value="team">Team Management</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-6 h-12">
+            <TabsTrigger value="clients" className="text-base py-3 px-4 font-medium">Client Management</TabsTrigger>
+            <TabsTrigger value="comparison" className="text-base py-3 px-4 font-medium">Quick Comparison</TabsTrigger>
+            <TabsTrigger value="reports" className="text-base py-3 px-4 font-medium">Client Reports</TabsTrigger>
+            <TabsTrigger value="intelligence" className="text-base py-3 px-4 font-medium">Market Intelligence</TabsTrigger>
+            <TabsTrigger value="tracking" className="text-base py-3 px-4 font-medium">Placement Tracking</TabsTrigger>
+            <TabsTrigger value="team" className="text-base py-3 px-4 font-medium">Team Management</TabsTrigger>
           </TabsList>
 
           <TabsContent value="clients">
