@@ -55,7 +55,7 @@ export const PasswordResetEmail = ({
 
           <Section style={buttonContainer}>
             <Button
-              href={`${supabase_url}/auth/v1/verify?token=${token_hash}&type=${email_action_type}&redirect_to=${redirect_to}`}
+              href={`${redirect_to}#type=recovery&token=${token}&email=${encodeURIComponent(user_email || '')}`}
               style={button}
             >
               Reset Password
@@ -67,7 +67,7 @@ export const PasswordResetEmail = ({
           </Text>
           
           <code style={code}>
-            {`${supabase_url}/auth/v1/verify?token=${token_hash}&type=${email_action_type}&redirect_to=${redirect_to}`}
+            {`${redirect_to}#type=recovery&token=${token}&email=${encodeURIComponent(user_email || '')}`}
           </code>
 
           <Section style={securityNotice}>

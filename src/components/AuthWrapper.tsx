@@ -338,34 +338,63 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [verifyingRecovery, setVerifyingRecovery] = useState(false);
 
-  // Check for password reset token on component mount and hash changes
+  // Check for password reset via either access_token (magic link) or token+email (OTP) in hash
   useEffect(() => {
-    const checkPasswordResetToken = () => {
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const accessToken = hashParams.get('access_token');
-      const type = hashParams.get('type');
-      
-      console.log('Checking password reset token:', { type, hasAccessToken: !!accessToken });
-      
+    const checkRecoveryFlow = async () => {
+      const rawHash = window.location.hash || '';
+      const hash = rawHash.startsWith('#') ? rawHash.substring(1) : rawHash;
+      const params = new URLSearchParams(hash);
+      const type = params.get('type');
+      const accessToken = params.get('access_token');
+      const otpToken = params.get('token');
+      const emailParam = params.get('email');
+
+      console.log('Recovery hash check:', { type, hasAccessToken: !!accessToken, hasOtpToken: !!otpToken });
+
       if (type === 'recovery' && accessToken) {
-        console.log('Password reset token detected, showing reset form');
         setIsResettingPassword(true);
-        setLoading(false); // Ensure loading is false so form shows
+        setLoading(false);
+        return;
+      }
+
+      if (type === 'recovery' && otpToken && emailParam && !verifyingRecovery) {
+        try {
+          setVerifyingRecovery(true);
+          const { error } = await supabase.auth.verifyOtp({
+            email: emailParam,
+            token: otpToken,
+            type: 'recovery'
+          });
+          if (error) throw error;
+          setIsResettingPassword(true);
+          setLoading(false);
+          // Prevent re-verification
+          window.location.hash = 'type=recovery';
+        } catch (err: any) {
+          console.error('verifyOtp recovery failed:', err);
+          toast({
+            title: 'Reset link expired',
+            description: 'Please request a new password reset email.',
+            variant: 'destructive',
+          });
+          setShowForgotPassword(true);
+          setForgotPasswordEmail(emailParam || '');
+        } finally {
+          setVerifyingRecovery(false);
+        }
       }
     };
 
-    // Check on mount
-    checkPasswordResetToken();
-
-    // Check when hash changes
+    checkRecoveryFlow();
     const handleHashChange = () => {
-      checkPasswordResetToken();
+      checkRecoveryFlow();
     };
 
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
+  }, [verifyingRecovery]);
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -16,7 +16,9 @@ const Index = () => {
       const params = new URLSearchParams(hash);
       const type = params.get('type');
       const accessToken = params.get('access_token');
-      if (type === 'recovery' && accessToken) {
+      const otpToken = params.get('token');
+      const email = params.get('email');
+      if (type === 'recovery' && (accessToken || (otpToken && email))) {
         setCurrentView('dashboard');
       }
     };
