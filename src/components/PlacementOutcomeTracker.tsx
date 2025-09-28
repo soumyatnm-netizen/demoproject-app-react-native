@@ -18,6 +18,8 @@ interface StructuredQuote {
   premium_amount: number;
   industry: string;
   coverage_limits: any;
+  client_name: string;
+  quote_date: string;
   created_at: string;
 }
 
@@ -39,10 +41,12 @@ interface PlacementOutcome {
 
 const PlacementOutcomeTracker = () => {
   const [quotes, setQuotes] = useState<StructuredQuote[]>([]);
+  const [clients, setClients] = useState<string[]>([]);
   const [placementOutcomes, setPlacementOutcomes] = useState<PlacementOutcome[]>([]);
+  const [selectedClient, setSelectedClient] = useState<string>("");
   const [selectedQuote, setSelectedQuote] = useState<StructuredQuote | null>(null);
+  const [clientQuotes, setClientQuotes] = useState<StructuredQuote[]>([]);
   const [outcomeForm, setOutcomeForm] = useState({
-    underwriter: "",
     outcome: "",
     winReason: "",
     responseDays: "",
@@ -66,6 +70,13 @@ const PlacementOutcomeTracker = () => {
 
       if (quotesError) throw quotesError;
 
+      // Extract unique client names
+      const uniqueClients = [...new Set(
+        (quotesData || [])
+          .filter(quote => quote.client_name)
+          .map(quote => quote.client_name)
+      )].sort();
+
       // Fetch existing placement outcomes
       const { data: outcomesData, error: outcomesError } = await supabase
         .from('placement_outcomes')
@@ -75,6 +86,7 @@ const PlacementOutcomeTracker = () => {
       if (outcomesError) throw outcomesError;
 
       setQuotes(quotesData || []);
+      setClients(uniqueClients);
       setPlacementOutcomes(outcomesData || []);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -86,11 +98,26 @@ const PlacementOutcomeTracker = () => {
     }
   };
 
+  // Handle client selection to filter quotes
+  const handleClientSelection = (clientName: string) => {
+    setSelectedClient(clientName);
+    setSelectedQuote(null);
+    
+    if (clientName) {
+      const filteredQuotes = quotes
+        .filter(quote => quote.client_name === clientName)
+        .sort((a, b) => new Date(b.quote_date || b.created_at).getTime() - new Date(a.quote_date || a.created_at).getTime());
+      setClientQuotes(filteredQuotes);
+    } else {
+      setClientQuotes([]);
+    }
+  };
+
   const submitPlacementOutcome = async () => {
-    if (!selectedQuote || !outcomeForm.underwriter || !outcomeForm.outcome) {
+    if (!selectedQuote || !outcomeForm.outcome) {
       toast({
-        title: "Error",
-        description: "Please fill in all required fields",
+        title: "Error", 
+        description: "Please select a client, quote, and outcome",
         variant: "destructive",
       });
       return;
@@ -106,7 +133,7 @@ const PlacementOutcomeTracker = () => {
         .insert({
           user_id: user.id,
           quote_id: selectedQuote.id,
-          underwriter_name: outcomeForm.underwriter,
+          underwriter_name: selectedQuote.insurer_name, // Use the insurer from the selected quote
           industry: selectedQuote.industry,
           product_type: selectedQuote.product_type,
           premium_amount: selectedQuote.premium_amount,
@@ -127,14 +154,15 @@ const PlacementOutcomeTracker = () => {
 
       // Reset form
       setOutcomeForm({
-        underwriter: "",
         outcome: "",
         winReason: "",
         responseDays: "",
         competitivenessScore: "",
         notes: ""
       });
+      setSelectedClient("");
       setSelectedQuote(null);
+      setClientQuotes([]);
       fetchData();
 
     } catch (error) {
@@ -233,35 +261,47 @@ const PlacementOutcomeTracker = () => {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Select Quote/Client *</Label>
+              <Label>Select Client *</Label>
               <Select 
-                value={selectedQuote?.id || ""} 
-                onValueChange={(value) => {
-                  const quote = quotes.find(q => q.id === value);
-                  setSelectedQuote(quote || null);
-                }}
+                value={selectedClient} 
+                onValueChange={handleClientSelection}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose quote to track outcome for" />
+                  <SelectValue placeholder="Select client" />
                 </SelectTrigger>
                 <SelectContent>
-                  {quotes.map((quote) => (
-                    <SelectItem key={quote.id} value={quote.id}>
-                      {quote.insurer_name} - {quote.product_type} (£{quote.premium_amount?.toLocaleString()})
+                  {clients.map((clientName) => (
+                    <SelectItem key={clientName} value={clientName}>
+                      {clientName}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Underwriter/Market *</Label>
-              <Input
-                placeholder="e.g., Lloyd's Syndicate 123, AXA, Zurich"
-                value={outcomeForm.underwriter}
-                onChange={(e) => setOutcomeForm(prev => ({ ...prev, underwriter: e.target.value }))}
-              />
-            </div>
+            {selectedClient && (
+              <div className="space-y-2">
+                <Label>Select Quote *</Label>
+                <Select 
+                  value={selectedQuote?.id || ""} 
+                  onValueChange={(value) => {
+                    const quote = clientQuotes.find(q => q.id === value);
+                    setSelectedQuote(quote || null);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose quote to track outcome for" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientQuotes.map((quote) => (
+                      <SelectItem key={quote.id} value={quote.id}>
+                        {quote.insurer_name} - {quote.product_type} (£{quote.premium_amount?.toLocaleString()}) - {new Date(quote.quote_date || quote.created_at).toLocaleDateString()}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Outcome *</Label>
@@ -326,7 +366,7 @@ const PlacementOutcomeTracker = () => {
 
           <Button 
             onClick={submitPlacementOutcome} 
-            disabled={submitting || !selectedQuote}
+            disabled={submitting || !selectedQuote || !selectedClient}
             className="w-full"
           >
             {submitting ? "Recording..." : "Record Placement Outcome"}
