@@ -50,6 +50,7 @@ const PlacementOutcomeTracker = () => {
     outcome: "",
     winReason: "",
     businessType: "",
+    policyType: "",
     notes: ""
   });
   const [submitting, setSubmitting] = useState(false);
@@ -139,6 +140,7 @@ const PlacementOutcomeTracker = () => {
           outcome: outcomeForm.outcome,
           win_reason: outcomeForm.winReason,
           business_type: outcomeForm.businessType,
+          policy_type: outcomeForm.policyType,
           notes: outcomeForm.notes,
           placed_at: outcomeForm.outcome === 'won' ? new Date().toISOString() : null
         });
@@ -155,6 +157,7 @@ const PlacementOutcomeTracker = () => {
         outcome: "",
         winReason: "",
         businessType: "",
+        policyType: "",
         notes: ""
       });
       setSelectedClient("");
@@ -312,6 +315,33 @@ const PlacementOutcomeTracker = () => {
                 <SelectContent>
                   <SelectItem value="new_business">New Business</SelectItem>
                   <SelectItem value="existing_client">Existing Client</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Policy Type *</Label>
+              <Select 
+                value={outcomeForm.policyType} 
+                onValueChange={(value) => setOutcomeForm(prev => ({ ...prev, policyType: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select policy type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="public_liability">Public Liability Insurance</SelectItem>
+                  <SelectItem value="professional_indemnity">Professional Indemnity Insurance</SelectItem>
+                  <SelectItem value="cyber">Cyber Insurance</SelectItem>
+                  <SelectItem value="employers_liability">Employers' Liability Insurance</SelectItem>
+                  <SelectItem value="product_liability">Product Liability Insurance</SelectItem>
+                  <SelectItem value="commercial_property">Commercial Property Insurance</SelectItem>
+                  <SelectItem value="business_interruption">Business Interruption Insurance</SelectItem>
+                  <SelectItem value="directors_officers">Directors and Officers (D&O) Insurance</SelectItem>
+                  <SelectItem value="workers_compensation">Workers' Compensation Insurance</SelectItem>
+                  <SelectItem value="commercial_auto">Commercial Auto Insurance</SelectItem>
+                  <SelectItem value="trade_credit">Trade Credit Insurance</SelectItem>
+                  <SelectItem value="marine_cargo">Marine & Cargo Insurance</SelectItem>
+                  <SelectItem value="general_liability">General Liability Insurance</SelectItem>
                 </SelectContent>
               </Select>
             </div>
