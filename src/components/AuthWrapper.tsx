@@ -335,6 +335,21 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
     });
   };
 
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  // Check for password reset token on component mount
+  useEffect(() => {
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const accessToken = hashParams.get('access_token');
+    const type = hashParams.get('type');
+    
+    if (type === 'recovery' && accessToken) {
+      setIsResettingPassword(true);
+    }
+  }, []);
+
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -376,6 +391,63 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
       });
     } finally {
       setForgotPasswordLoading(false);
+    }
+  };
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Passwords do not match",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      passwordSchema.parse(newPassword);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast({
+          title: "Invalid Password",
+          description: error.issues[0].message,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    setAuthLoading(true);
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Password Updated",
+        description: "Your password has been successfully updated.",
+      });
+      
+      setIsResettingPassword(false);
+      setNewPassword("");
+      setConfirmPassword("");
+      
+      // Clear the URL hash
+      window.location.hash = '';
+      
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update password. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -439,6 +511,63 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {isResettingPassword ? (
+                <div className="space-y-4">
+                  <div className="text-center mb-4">
+                    <h2 className="text-lg font-semibold">Reset Your Password</h2>
+                    <p className="text-sm text-muted-foreground">Enter your new password below</p>
+                  </div>
+                  <form onSubmit={handlePasswordReset} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="new-password">New Password</Label>
+                      <div className="relative">
+                        <Input
+                          id="new-password"
+                          type={showPassword ? "text" : "password"}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="Enter your new password"
+                          required
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-password">Confirm New Password</Label>
+                      <Input
+                        id="confirm-password"
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Confirm your new password"
+                        required
+                      />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={authLoading}>
+                      {authLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Updating Password...
+                        </>
+                      ) : (
+                        "Update Password"
+                      )}
+                    </Button>
+                  </form>
+                </div>
+              ) : (
               <Tabs value={isAdminSignUp ? "admin" : isSignUp ? "signup" : "signin"} className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="signin" onClick={() => switchTab(false, false)}>
@@ -797,6 +926,7 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                   </form>
                 </TabsContent>
               </Tabs>
+              )}
             </CardContent>
           </Card>
         </div>
