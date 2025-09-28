@@ -190,7 +190,7 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
 
   const deleteQuote = async (quote: StructuredQuote) => {
     try {
-      // First get the document associated with this quote
+      // First get the quote data with document_id
       const { data: quoteData, error: quoteError } = await supabase
         .from('structured_quotes')
         .select('document_id')
@@ -199,61 +199,114 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
 
       if (quoteError) throw quoteError;
 
-      if (quoteData?.document_id) {
-        // Get document info for file deletion
-        const { data: docData, error: docError } = await supabase
-          .from('documents')
-          .select('storage_path')
-          .eq('id', quoteData.document_id)
-          .single();
-
-        if (!docError && docData?.storage_path) {
-          // Delete file from storage
-          await supabase.storage
-            .from('documents')
-            .remove([docData.storage_path]);
-        }
-
-        // Delete document record
-        await supabase
-          .from('documents')
-          .delete()
-          .eq('id', quoteData.document_id);
+      if (!quoteData?.document_id) {
+        throw new Error('No associated document found for this quote');
       }
 
-      // Delete the structured quote
-      const { error: deleteError } = await supabase
+      // Delete the quote record
+      const { error: deleteQuoteError } = await supabase
         .from('structured_quotes')
         .delete()
         .eq('id', quote.id);
 
-      if (deleteError) throw deleteError;
+      if (deleteQuoteError) throw deleteQuoteError;
 
-      // Remove from selected quotes if it was selected
-      setSelectedQuotes(prev => prev.filter(id => id !== quote.id));
+      // Delete the document record
+      const { error: docError } = await supabase
+        .from('documents')
+        .delete()
+        .eq('id', quoteData.document_id);
+
+      if (docError) throw docError;
+
+      // Delete the file from storage
+      const { error: storageError } = await supabase.storage
+        .from('documents')
+        .remove([quoteData.document_id]);
+
+      if (storageError) throw storageError;
 
       toast({
-        title: "Quote Deleted",
-        description: `${quote.insurer_name} quote has been permanently deleted`,
+        title: "Success",
+        description: "Quote deleted successfully",
       });
 
-      // Refresh the quotes list
-      if (typeof onRefresh === 'function') {
-        onRefresh();
-      }
+      onRefresh();
     } catch (error) {
       console.error('Delete error:', error);
       toast({
-        title: "Delete Failed",
-        description: `Could not delete ${quote.insurer_name} quote: ${error.message}`,
+        title: "Error",
+        description: "Failed to delete quote",
         variant: "destructive",
       });
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', {
+  const deleteSelectedQuotes = async () => {
+    try {
+      const quotesToDelete = filteredQuotes.filter(quote => 
+        selectedQuotes.includes(quote.id)
+      );
+
+      // Delete all selected quotes
+      for (const quote of quotesToDelete) {
+        // First get the quote data with document_id
+        const { data: quoteData, error: fetchError } = await supabase
+          .from('structured_quotes')
+          .select('document_id')
+          .eq('id', quote.id)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        if (!quoteData?.document_id) {
+          continue; // Skip if no document found
+        }
+
+        // Delete the quote record
+        const { error: quoteError } = await supabase
+          .from('structured_quotes')
+          .delete()
+          .eq('id', quote.id);
+
+        if (quoteError) throw quoteError;
+
+        // Delete the document record
+        const { error: docError } = await supabase
+          .from('documents')
+          .delete()
+          .eq('id', quoteData.document_id);
+
+        if (docError) throw docError;
+
+        // Delete the file from storage
+        const { error: storageError } = await supabase.storage
+          .from('documents')
+          .remove([quoteData.document_id]);
+
+        if (storageError) throw storageError;
+      }
+
+      toast({
+        title: "Success",
+        description: `${quotesToDelete.length} quotes deleted successfully`,
+      });
+
+      // Clear selected quotes and refresh
+      setSelectedQuotes([]);
+      onRefresh();
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete selected quotes",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const formatDate = (dateString: string): string => {
+    return new Date(dateString).toLocaleDateString('en-GB', {
       day: 'numeric',
       month: 'short',
       year: 'numeric'
@@ -261,27 +314,28 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
   };
 
   const exportComparison = async () => {
-    if (!comparisonData) return;
-
     try {
       const { data, error } = await supabase.functions.invoke('export-report', {
-        body: { 
+        body: {
           comparisonData,
-          format: 'pdf'
+          selectedQuotes: selectedQuotes.map(id => 
+            filteredQuotes.find(q => q.id === id)
+          ).filter(Boolean)
         }
       });
 
       if (error) throw error;
 
-      // Create and trigger download
-      if (data.downloadUrl) {
-        const link = document.createElement('a');
-        link.href = data.downloadUrl;
-        link.download = data.filename || 'quote-comparison-report.html';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
+      // Create and download the file
+      const blob = new Blob([data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `comparison-report-${new Date().getTime()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
 
       toast({
         title: "Success",
@@ -473,6 +527,30 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
             >
               {loading ? 'Generating...' : 'Generate Comparison'}
             </Button>
+            {selectedQuotes.length > 1 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="default">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Selected
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Selected Quotes</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete {selectedQuotes.length} selected quotes? This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={deleteSelectedQuotes}>
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             <p className="text-sm text-muted-foreground">
               {selectedQuotes.length} quote{selectedQuotes.length !== 1 ? 's' : ''} selected
             </p>
