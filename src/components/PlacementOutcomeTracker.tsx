@@ -114,10 +114,10 @@ const PlacementOutcomeTracker = () => {
   };
 
   const submitPlacementOutcome = async () => {
-    if (!selectedQuote || !outcomeForm.outcome) {
+    if (!selectedQuote || !outcomeForm.outcome || !outcomeForm.policyType) {
       toast({
         title: "Error", 
-        description: "Please select a client, quote, and outcome",
+        description: "Please select a client, quote, outcome, and policy type",
         variant: "destructive",
       });
       return;
