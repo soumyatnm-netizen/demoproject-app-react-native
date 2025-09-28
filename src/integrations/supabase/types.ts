@@ -587,6 +587,7 @@ export type Database = {
           notes: string | null
           outcome: string
           placed_at: string | null
+          policy_type: string | null
           premium_amount: number | null
           product_type: string | null
           quote_id: string | null
@@ -606,6 +607,7 @@ export type Database = {
           notes?: string | null
           outcome: string
           placed_at?: string | null
+          policy_type?: string | null
           premium_amount?: number | null
           product_type?: string | null
           quote_id?: string | null
@@ -625,6 +627,7 @@ export type Database = {
           notes?: string | null
           outcome?: string
           placed_at?: string | null
+          policy_type?: string | null
           premium_amount?: number | null
           product_type?: string | null
           quote_id?: string | null
