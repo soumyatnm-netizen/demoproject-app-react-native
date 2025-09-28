@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Download, Search, Filter } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { FileText, Download, Search, Filter, Archive, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -20,28 +21,51 @@ interface Document {
   source: 'client_document' | 'underwriter_appetite';
   underwriter_name?: string;
   source_url?: string;
+  client_name?: string;
 }
 
 const DocumentManagement = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [clients, setClients] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [clientFilter, setClientFilter] = useState<string>("all");
   const { toast } = useToast();
 
   useEffect(() => {
     fetchDocuments();
+    fetchClients();
   }, []);
+
+  const fetchClients = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('structured_quotes')
+        .select('client_name')
+        .not('client_name', 'is', null);
+
+      if (error) throw error;
+
+      const uniqueClients = [...new Set(data?.map(item => item.client_name).filter(Boolean))] as string[];
+      setClients(uniqueClients.sort());
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+    }
+  };
 
   const fetchDocuments = async () => {
     try {
       setLoading(true);
       
-      // Fetch client documents
+      // Fetch client documents with client associations
       const { data: clientDocs, error: clientError } = await supabase
         .from('documents')
-        .select('*')
+        .select(`
+          *,
+          structured_quotes!inner(client_name)
+        `)
         .order('created_at', { ascending: false });
 
       if (clientError) throw clientError;
@@ -58,7 +82,8 @@ const DocumentManagement = () => {
       const allDocuments: Document[] = [
         ...(clientDocs || []).map(doc => ({
           ...doc,
-          source: 'client_document' as const
+          source: 'client_document' as const,
+          client_name: doc.structured_quotes?.[0]?.client_name
         })),
         ...(underwriterDocs || []).map(doc => ({
           ...doc,
@@ -127,6 +152,72 @@ const DocumentManagement = () => {
     }
   };
 
+  const handleArchiveDocument = async (document: Document) => {
+    try {
+      const table = document.source === 'client_document' ? 'documents' : 'underwriter_appetites';
+      
+      const { error } = await supabase
+        .from(table)
+        .update({ status: 'archived' })
+        .eq('id', document.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Document archived successfully",
+      });
+
+      fetchDocuments();
+    } catch (error) {
+      console.error('Error archiving document:', error);
+      toast({
+        title: "Error",
+        description: "Failed to archive document",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteDocument = async (document: Document) => {
+    try {
+      const table = document.source === 'client_document' ? 'documents' : 'underwriter_appetites';
+      
+      // Delete the record from database
+      const { error: dbError } = await supabase
+        .from(table)
+        .delete()
+        .eq('id', document.id);
+
+      if (dbError) throw dbError;
+
+      // Delete the file from storage if it exists
+      if (document.storage_path) {
+        const { error: storageError } = await supabase.storage
+          .from('documents')
+          .remove([document.storage_path]);
+
+        if (storageError) {
+          console.error('Error deleting file from storage:', storageError);
+        }
+      }
+
+      toast({
+        title: "Success",
+        description: "Document deleted successfully",
+      });
+
+      fetchDocuments();
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete document",
+        variant: "destructive",
+      });
+    }
+  };
+
   const formatFileSize = (bytes?: number) => {
     if (!bytes) return 'Unknown';
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
@@ -152,12 +243,14 @@ const DocumentManagement = () => {
 
   const filteredDocuments = documents.filter(doc => {
     const matchesSearch = doc.filename.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (doc.underwriter_name && doc.underwriter_name.toLowerCase().includes(searchTerm.toLowerCase()));
+      (doc.underwriter_name && doc.underwriter_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (doc.client_name && doc.client_name.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesStatus = statusFilter === 'all' || doc.status === statusFilter;
     const matchesSource = sourceFilter === 'all' || doc.source === sourceFilter;
+    const matchesClient = clientFilter === 'all' || doc.client_name === clientFilter;
 
-    return matchesSearch && matchesStatus && matchesSource;
+    return matchesSearch && matchesStatus && matchesSource && matchesClient;
   });
 
   if (loading) {
@@ -191,6 +284,19 @@ const DocumentManagement = () => {
               </div>
             </div>
             <div className="flex gap-2">
+              <Select value={clientFilter} onValueChange={setClientFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Select Client" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Clients</SelectItem>
+                  {clients.map((client) => (
+                    <SelectItem key={client} value={client}>
+                      {client}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="Status" />
@@ -279,15 +385,64 @@ const DocumentManagement = () => {
                     {new Date(doc.created_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDownload(doc)}
-                      className="flex items-center space-x-1"
-                    >
-                      <Download className="h-4 w-4" />
-                      <span>Download</span>
-                    </Button>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDownload(doc)}
+                        className="flex items-center space-x-1"
+                      >
+                        <Download className="h-4 w-4" />
+                        <span>Download</span>
+                      </Button>
+                      
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="sm" variant="outline">
+                            <Archive className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Archive Document</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to archive "{doc.filename}"? This will mark it as archived but keep it accessible.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleArchiveDocument(doc)}>
+                              Archive
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="sm" variant="outline">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Document</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to permanently delete "{doc.filename}"? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleDeleteDocument(doc)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -299,7 +454,7 @@ const DocumentManagement = () => {
               <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">No documents found</h3>
               <p className="text-muted-foreground">
-                {searchTerm || statusFilter !== 'all' || sourceFilter !== 'all'
+                {searchTerm || statusFilter !== 'all' || sourceFilter !== 'all' || clientFilter !== 'all'
                   ? 'Try adjusting your filters to find documents.'
                   : 'Upload some documents to get started.'}
               </p>
