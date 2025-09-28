@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,23 @@ import AuthWrapper from "@/components/AuthWrapper";
 
 const Index = () => {
   const [currentView, setCurrentView] = useState<'landing' | 'dashboard'>('landing');
+
+  useEffect(() => {
+    const checkRecovery = () => {
+      const hash = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+      const type = params.get('type');
+      const accessToken = params.get('access_token');
+      if (type === 'recovery' && accessToken) {
+        setCurrentView('dashboard');
+      }
+    };
+
+    checkRecovery();
+    const onHashChange = () => checkRecovery();
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
 
   if (currentView === 'dashboard') {
     return (
