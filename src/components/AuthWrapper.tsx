@@ -54,6 +54,9 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
   const [authLoading, setAuthLoading] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [inviteData, setInviteData] = useState<any>(null);
+  const [companyCode, setCompanyCode] = useState("");
+  const [companyData, setCompanyData] = useState<any>(null);
+  const [signupType, setSignupType] = useState<'invite' | 'company' | 'none'>('none');
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
@@ -87,7 +90,7 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
               companyDomain
             } : null;
             
-            createOrUpdateProfile(session.user, inviteData, adminSignUpData);
+            createOrUpdateProfile(session.user, inviteData, adminSignUpData, companyData);
           }, 100);
         }
       }
@@ -103,7 +106,7 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
     return () => subscription.unsubscribe();
   }, [inviteData]);
 
-  const createOrUpdateProfile = async (user: User, inviteInfo?: any, adminData?: any) => {
+  const createOrUpdateProfile = async (user: User, inviteInfo?: any, adminData?: any, companyInfo?: any) => {
     try {
       // Check if profile already exists
       const { data: existingProfile } = await supabase
@@ -133,6 +136,11 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
               used_by: user.id
             })
             .eq('invite_code', inviteInfo.invite_code);
+        }
+        // If user is signing up with a company code
+        else if (companyInfo) {
+          profileData.company_id = companyInfo.company_id;
+          profileData.role = 'broker'; // Default role for company code signups
         }
         // If user is admin creating a company
         else if (adminData) {
@@ -180,37 +188,70 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('company_invites')
-        .select(`
-          *,
-          company:broker_companies(*),
-          inviter:profiles!invited_by(*)
-        `)
-        .eq('invite_code', code.toUpperCase())
-        .is('used_at', null)
-        .gt('expires_at', new Date().toISOString())
-        .single();
+      const { data, error } = await supabase.rpc('validate_invite_code', {
+        p_invite_code: code.trim(),
+        p_email: email || 'temp@temp.com' // Use temp email if not entered yet
+      });
 
-      if (error || !data) {
+      if (error) throw error;
+
+      if (!data || data.length === 0 || !data[0].is_valid) {
         toast({
           title: "Invalid Invite Code",
-          description: "The invite code is invalid, expired, or already used.",
+          description: "This invite code is invalid or has expired",
           variant: "destructive",
         });
         setInviteData(null);
         return;
       }
 
-      setInviteData(data);
-      setEmail(data.email); // Pre-fill email from invite
+      setInviteData(data[0]);
+      setSignupType('invite');
       toast({
         title: "Invite Code Valid",
-        description: `You're invited to join ${data.company.name}`,
+        description: `You're invited to join ${data[0].company_name}`,
       });
     } catch (error) {
       console.error('Error validating invite code:', error);
       setInviteData(null);
+    }
+  };
+
+  const validateCompanyCode = async (code: string) => {
+    if (!code.trim()) {
+      setCompanyData(null);
+      setSignupType('none');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('validate_company_code', {
+        p_code: code.trim()
+      });
+
+      if (error) throw error;
+
+      if (!data || data.length === 0 || !data[0].is_valid) {
+        toast({
+          title: "Invalid Company Code",
+          description: "This company code is invalid or has expired",
+          variant: "destructive",
+        });
+        setCompanyData(null);
+        setSignupType('none');
+        return;
+      }
+
+      setCompanyData(data[0]);
+      setSignupType('company');
+      toast({
+        title: "Company Code Valid",
+        description: `You can join ${data[0].company_name}`,
+      });
+    } catch (error) {
+      console.error('Error validating company code:', error);
+      setCompanyData(null);
+      setSignupType('none');
     }
   };
 
@@ -222,6 +263,15 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
       return () => clearTimeout(timeoutId);
     }
   }, [inviteCode]);
+
+  useEffect(() => {
+    if (companyCode) {
+      const timeoutId = setTimeout(() => {
+        validateCompanyCode(companyCode);
+      }, 500);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [companyCode]);
 
   const validateForm = (isSignIn: boolean = false) => {
     setValidationErrors({});
@@ -276,7 +326,9 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
             emailRedirectTo: `${window.location.origin}/`,
             data: {
               invite_code: inviteCode || null,
-              is_admin_signup: isAdminSignUp || false
+              company_code: companyCode || null,
+              is_admin_signup: isAdminSignUp || false,
+              signup_type: signupType
             }
           }
         };
@@ -287,7 +339,9 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
         toast({
           title: "Success",
           description: inviteData 
-            ? `Account created! You'll be added to ${inviteData.company.name}.`
+            ? `Account created! You'll be added to ${inviteData.company_name}.`
+            : companyData
+            ? `Account created! You'll be added to ${companyData.company_name}.`
             : isAdminSignUp
             ? "Company admin account created! Please check your email to confirm."
             : "Please check your email to confirm your account",
@@ -508,6 +562,9 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
     setCompanyDomain("");
     setInviteCode("");
     setInviteData(null);
+    setCompanyCode("");
+    setCompanyData(null);
+    setSignupType('none');
     setShowForgotPassword(false);
     setForgotPasswordEmail("");
   };
@@ -829,27 +886,66 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                 
                 <TabsContent value="signup" className="space-y-4 mt-4">
                   <form onSubmit={handleAuth} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="invite-code">Invite Code (Optional)</Label>
-                      <Input
-                        id="invite-code"
-                        type="text"
-                        placeholder="Enter company invite code"
-                        value={inviteCode}
-                        onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                        className="uppercase"
-                      />
-                      {inviteData && (
-                        <div className="p-3 bg-primary/10 border border-primary/20 rounded-md">
-                          <p className="text-sm font-medium text-primary">
-                            🎉 You're invited to join {inviteData.company.name}!
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Role: {inviteData.role}
-                          </p>
-                        </div>
-                      )}
-                    </div>
+                    <Tabs value={signupType === 'invite' ? 'invite' : signupType === 'company' ? 'company' : 'invite'} className="w-full">
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="invite" onClick={() => { setSignupType('invite'); setCompanyCode(''); setCompanyData(null); }}>
+                          Invite Code
+                        </TabsTrigger>
+                        <TabsTrigger value="company" onClick={() => { setSignupType('company'); setInviteCode(''); setInviteData(null); }}>
+                          Company Code
+                        </TabsTrigger>
+                      </TabsList>
+                      
+                      <TabsContent value="invite" className="space-y-2 mt-4">
+                        <Label htmlFor="invite-code">Invite Code (Optional)</Label>
+                        <Input
+                          id="invite-code"
+                          type="text"
+                          placeholder="Enter personal invite code"
+                          value={inviteCode}
+                          onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                          className="uppercase"
+                        />
+                        {inviteData && (
+                          <div className="p-3 bg-primary/10 border border-primary/20 rounded-md">
+                            <p className="text-sm font-medium text-primary">
+                              🎉 You're invited to join {inviteData.company_name}!
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Role: {inviteData.role}
+                            </p>
+                          </div>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          Use the personal invite code sent to your email
+                        </p>
+                      </TabsContent>
+                      
+                      <TabsContent value="company" className="space-y-2 mt-4">
+                        <Label htmlFor="company-code">Company Code</Label>
+                        <Input
+                          id="company-code"
+                          type="text"
+                          placeholder="Enter company code (e.g., ABC123)"
+                          value={companyCode}
+                          onChange={(e) => setCompanyCode(e.target.value.toUpperCase())}
+                          className="uppercase"
+                        />
+                        {companyData && (
+                          <div className="p-3 bg-primary/10 border border-primary/20 rounded-md">
+                            <p className="text-sm font-medium text-primary">
+                              🏢 Ready to join {companyData.company_name}!
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              You'll be added as a broker
+                            </p>
+                          </div>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          Ask your company admin for the reusable company code
+                        </p>
+                      </TabsContent>
+                    </Tabs>
                     <div className="space-y-2">
                       <Label htmlFor="signup-email">Email</Label>
                       <Input

@@ -24,6 +24,7 @@ const CompanyManagement = ({ userProfile }: CompanyManagementProps) => {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"broker" | "viewer">("broker");
   const [inviteLoading, setInviteLoading] = useState(false);
+  const [generatingCompanyCode, setGeneratingCompanyCode] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -132,6 +133,52 @@ const CompanyManagement = ({ userProfile }: CompanyManagementProps) => {
     }
   };
 
+  const generateCompanyCode = async () => {
+    setGeneratingCompanyCode(true);
+    try {
+      // Generate new company code
+      const { data: newCode, error: codeError } = await supabase
+        .rpc('generate_company_code');
+
+      if (codeError) throw codeError;
+
+      // Update company with new code
+      const { error: updateError } = await supabase
+        .from('broker_companies')
+        .update({
+          company_code: newCode,
+          company_code_expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() // 1 year from now
+        })
+        .eq('id', userProfile.company_id);
+
+      if (updateError) throw updateError;
+
+      setCompany(prev => ({ ...prev, company_code: newCode }));
+      
+      toast({
+        title: "Company Code Generated",
+        description: `New company code: ${newCode}`,
+      });
+    } catch (error: any) {
+      console.error('Error generating company code:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate company code",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingCompanyCode(false);
+    }
+  };
+
+  const copyCompanyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast({
+      title: "Copied",
+      description: "Company code copied to clipboard",
+    });
+  };
+
   const copyInviteCode = (code: string) => {
     navigator.clipboard.writeText(code);
     toast({
@@ -210,13 +257,56 @@ const CompanyManagement = ({ userProfile }: CompanyManagementProps) => {
             {teamMembers.length} team member{teamMembers.length !== 1 ? 's' : ''}
           </CardDescription>
         </CardHeader>
+        {userProfile.role === 'company_admin' && (
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="company-code">Company Code</Label>
+                <div className="flex items-center gap-2 mt-1">
+                  {company?.company_code ? (
+                    <>
+                      <code className="bg-muted px-3 py-2 rounded text-sm font-mono flex-1">
+                        {company.company_code}
+                      </code>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => copyCompanyCode(company.company_code)}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={generateCompanyCode}
+                        disabled={generatingCompanyCode}
+                      >
+                        Regenerate
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      onClick={generateCompanyCode}
+                      disabled={generatingCompanyCode}
+                    >
+                      {generatingCompanyCode ? "Generating..." : "Generate Company Code"}
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Share this code with team members so they can join your company during signup
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        )}
       </Card>
 
       <Tabs defaultValue="team" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="team">Team Members</TabsTrigger>
           <TabsTrigger value="invites" disabled={userProfile.role !== 'company_admin'}>
-            Invites {invites.length > 0 && `(${invites.length})`}
+            Personal Invites {invites.length > 0 && `(${invites.length})`}
           </TabsTrigger>
         </TabsList>
 
@@ -242,7 +332,7 @@ const CompanyManagement = ({ userProfile }: CompanyManagementProps) => {
                       <DialogHeader>
                         <DialogTitle>Invite Team Member</DialogTitle>
                         <DialogDescription>
-                          Send an invitation to join {company?.name}
+                          Send a personal invitation to join {company?.name}
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4">
@@ -323,9 +413,10 @@ const CompanyManagement = ({ userProfile }: CompanyManagementProps) => {
         <TabsContent value="invites">
           <Card>
             <CardHeader>
-              <CardTitle>Pending Invitations</CardTitle>
+              <CardTitle>Personal Invitations</CardTitle>
               <CardDescription>
-                Invitations sent to join your company
+                Email-specific invitations sent to join your company. 
+                For general access, use the company code above.
               </CardDescription>
             </CardHeader>
             <CardContent>

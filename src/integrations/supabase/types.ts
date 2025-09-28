@@ -18,6 +18,8 @@ export type Database = {
         Row: {
           address: string | null
           city: string | null
+          company_code: string | null
+          company_code_expires_at: string | null
           country: string | null
           created_at: string
           domain: string | null
@@ -33,6 +35,8 @@ export type Database = {
         Insert: {
           address?: string | null
           city?: string | null
+          company_code?: string | null
+          company_code_expires_at?: string | null
           country?: string | null
           created_at?: string
           domain?: string | null
@@ -48,6 +52,8 @@ export type Database = {
         Update: {
           address?: string | null
           city?: string | null
+          company_code?: string | null
+          company_code_expires_at?: string | null
           country?: string | null
           created_at?: string
           domain?: string | null
@@ -1361,6 +1367,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      generate_company_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       generate_invite_code: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -1667,6 +1677,14 @@ export type Database = {
       trigger_underwriter_matching: {
         Args: { p_document_id: string }
         Returns: boolean
+      }
+      validate_company_code: {
+        Args: { p_code: string }
+        Returns: {
+          company_id: string
+          company_name: string
+          is_valid: boolean
+        }[]
       }
       validate_enhanced_sensitive_access: {
         Args: {
