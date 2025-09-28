@@ -5,9 +5,20 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BarChart3, Download, Eye, TrendingUp, Users } from "lucide-react";
+import { BarChart3, Download, Eye, TrendingUp, Users, Trash2, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface StructuredQuote {
   id: string;
@@ -43,11 +54,12 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
   }, []);
 
   useEffect(() => {
+    // Get filtered quotes sorted by date (newest first)
     if (selectedClient) {
-      const filtered = quotes.filter(quote => {
-        console.log('Quote client_name:', quote.client_name, 'Selected client:', selectedClient);
-        return quote.client_name === selectedClient;
-      });
+      const filtered = quotes
+        .filter(quote => quote.client_name === selectedClient)
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      
       console.log('Filtered quotes for', selectedClient, ':', filtered);
       setFilteredQuotes(filtered);
       setSelectedQuotes([]); // Reset selected quotes when client changes
@@ -174,6 +186,78 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
         variant: "destructive",
       });
     }
+  };
+
+  const deleteQuote = async (quote: StructuredQuote) => {
+    try {
+      // First get the document associated with this quote
+      const { data: quoteData, error: quoteError } = await supabase
+        .from('structured_quotes')
+        .select('document_id')
+        .eq('id', quote.id)
+        .single();
+
+      if (quoteError) throw quoteError;
+
+      if (quoteData?.document_id) {
+        // Get document info for file deletion
+        const { data: docData, error: docError } = await supabase
+          .from('documents')
+          .select('storage_path')
+          .eq('id', quoteData.document_id)
+          .single();
+
+        if (!docError && docData?.storage_path) {
+          // Delete file from storage
+          await supabase.storage
+            .from('documents')
+            .remove([docData.storage_path]);
+        }
+
+        // Delete document record
+        await supabase
+          .from('documents')
+          .delete()
+          .eq('id', quoteData.document_id);
+      }
+
+      // Delete the structured quote
+      const { error: deleteError } = await supabase
+        .from('structured_quotes')
+        .delete()
+        .eq('id', quote.id);
+
+      if (deleteError) throw deleteError;
+
+      // Remove from selected quotes if it was selected
+      setSelectedQuotes(prev => prev.filter(id => id !== quote.id));
+
+      toast({
+        title: "Quote Deleted",
+        description: `${quote.insurer_name} quote has been permanently deleted`,
+      });
+
+      // Refresh the quotes list
+      if (typeof onRefresh === 'function') {
+        onRefresh();
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast({
+        title: "Delete Failed",
+        description: `Could not delete ${quote.insurer_name} quote: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
   };
 
   const exportComparison = async () => {
@@ -316,33 +400,69 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
                   <p className="text-xs text-muted-foreground mb-2">
                     {quote.product_type || 'General Insurance'}
                   </p>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium">
                       {quote.premium_currency} {quote.premium_amount?.toLocaleString() || 'N/A'}
-                     </span>
-                     <Badge 
-                       variant={quote.quote_status === 'quoted' ? 'default' : 'secondary'}
-                       className="text-xs"
-                     >
-                       {quote.quote_status}
-                     </Badge>
-                   </div>
-                   <div className="mt-2 flex justify-end">
-                     <Button
-                       variant="outline"
-                       size="sm"
-                       onClick={(e) => {
-                         e.stopPropagation();
-                         downloadQuote(quote);
-                       }}
-                       className="flex items-center space-x-1"
-                     >
-                       <Download className="h-3 w-3" />
-                       <span>Download</span>
-                     </Button>
-                   </div>
-                 </CardContent>
-               </Card>
+                    </span>
+                    <Badge 
+                      variant={quote.quote_status === 'quoted' ? 'default' : 'secondary'}
+                      className="text-xs"
+                    >
+                      {quote.quote_status}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
+                    <div className="flex items-center space-x-1">
+                      <Calendar className="h-3 w-3" />
+                      <span>Uploaded {formatDate(quote.created_at)}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        downloadQuote(quote);
+                      }}
+                      className="flex items-center space-x-1 h-7 px-2"
+                    >
+                      <Download className="h-3 w-3" />
+                      <span className="text-xs">Download</span>
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center space-x-1 h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          <span className="text-xs">Delete</span>
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Quote</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete this {quote.insurer_name} quote? This action cannot be undone and will permanently remove the quote and its associated file.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteQuote(quote)}
+                            className="bg-red-600 hover:bg-red-700"
+                          >
+                            Delete Quote
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
 
