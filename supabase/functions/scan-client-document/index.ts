@@ -111,12 +111,22 @@ serve(async (req) => {
 
     // Helpers
     const buildPrompt = () => `
-    You are a document analysis AI. Extract client/business information from this insurance policy or quote document.
+    You are an advanced document analysis AI with OCR and handwriting recognition capabilities. Extract client/business information from this document, which may contain:
+    - Printed text from insurance policies or quotes
+    - Handwritten notes and forms
+    - Scanned documents with mixed content
+    - Business cards or contact information sheets
+
+    **HANDWRITING RECOGNITION**: If this is a handwritten document, carefully read and transcribe all handwritten text, including:
+    - Names, addresses, and contact details
+    - Business information and notes
+    - Numbers, dates, and financial figures
+    - Any crossed-out or corrected information (use the corrected version)
 
     Extract the following information if available in the document:
 
     REQUIRED FIELDS:
-    - Business/Client name
+    - Business/Client name (may be handwritten)
     - Contact Email 
     - Contact Phone 
     - Coverage Requirements (as array)
@@ -137,6 +147,11 @@ serve(async (req) => {
     - Income breakdown (last year, current year expectation, next 12 months estimate)
     - Customer location & jurisdiction breakdown (UK, EU, USA/Canada, Rest of world percentages)
     - USA/Canada specific: subsidiaries, income, largest contracts (customer name, work, length, value)
+
+    **IMPORTANT**: 
+    - For handwritten text, be extra careful with letter recognition (e.g., distinguish between 'a' and 'o', '1' and 'l', '5' and 'S')
+    - If handwriting is unclear, make your best interpretation but note uncertainty in the field name with a "?" 
+    - Extract information from any format: forms, notes, business cards, letters, etc.
 
     Return ONLY a valid JSON object with the extracted data. Use null for fields that cannot be found. 
     For arrays, return empty arrays if no data found.

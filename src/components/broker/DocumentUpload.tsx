@@ -186,7 +186,7 @@ export const DocumentUpload = ({ open, onOpenChange, onClientExtracted }: Docume
         <DialogHeader>
           <DialogTitle>Upload Client Document</DialogTitle>
           <DialogDescription>
-            Upload a policy or quote document to automatically extract client information
+            Upload handwritten notes, business forms, insurance documents, or photos to automatically extract client information using AI-powered OCR and handwriting recognition
           </DialogDescription>
         </DialogHeader>
         
@@ -202,16 +202,16 @@ export const DocumentUpload = ({ open, onOpenChange, onClientExtracted }: Docume
             <input {...getInputProps()} />
             <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-lg font-medium mb-2">
-              {isDragActive ? 'Drop the files here...' : 'Drag & drop files here'}
+              {isDragActive ? 'Drop the files here...' : 'Drag & drop handwritten notes or documents here'}
             </p>
             <p className="text-sm text-muted-foreground mb-4">
-              or click to select files
+              or click to select files - supports handwriting recognition
             </p>
             <Button variant="outline" type="button">
               Select Files
             </Button>
             <p className="text-xs text-muted-foreground mt-4">
-              Supports: DOCX, JPG, PNG, GIF (max 10MB). PDF support coming soon.
+              Supports: Handwritten notes (JPG, PNG), DOCX documents, GIF images (max 10MB). AI-powered OCR and handwriting recognition included.
             </p>
           </div>
 
