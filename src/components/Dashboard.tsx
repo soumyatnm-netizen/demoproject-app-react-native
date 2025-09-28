@@ -12,6 +12,7 @@ import CompanyManagement from "./CompanyManagement";
 import ClientReportGenerator from "./ClientReportGenerator";
 import ClientManagement from "./broker/ClientManagement";
 import AttackingBrokerIntelligence from "./AttackingBrokerIntelligence";
+import MarketIntelligenceDashboard from "./MarketIntelligenceDashboard";
 import PlacementOutcomeTracker from "./PlacementOutcomeTracker";
 import PredictiveAnalyticsDashboard from "./PredictiveAnalyticsDashboard";
 import DocumentProcessingSuccess from "./DocumentProcessingSuccess";
@@ -375,7 +376,7 @@ const Dashboard = ({ onBack }: DashboardProps) => {
           </TabsContent>
 
           <TabsContent value="intelligence">
-            <AttackingBrokerIntelligence />
+            <MarketIntelligenceDashboard />
           </TabsContent>
 
           <TabsContent value="tracking">

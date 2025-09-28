@@ -14,6 +14,7 @@ import QuoteComparison from "./broker/QuoteComparison";
 import InstantQuoteComparison from "./InstantQuoteComparison";
 import AppetiteGuidesViewer from "./broker/AppetiteGuidesViewer";
 import DocumentManagement from "./broker/DocumentManagement";
+import MarketIntelligenceDashboard from "./MarketIntelligenceDashboard";
 
 interface BrokerPortalProps {
   onBack: () => void;
@@ -173,12 +174,13 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="instant-comparison">Instant Comparison</TabsTrigger>
             <TabsTrigger value="clients">Client Management</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
             <TabsTrigger value="appetites">Appetite Guides</TabsTrigger>
             <TabsTrigger value="matching">Insurer Matching</TabsTrigger>
+            <TabsTrigger value="market-intel">Market Intelligence</TabsTrigger>
             <TabsTrigger value="email">Email Integration</TabsTrigger>
             <TabsTrigger value="profile">My Profile</TabsTrigger>
           </TabsList>
@@ -201,6 +203,10 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
 
           <TabsContent value="matching">
             <InsurerMatching />
+          </TabsContent>
+
+          <TabsContent value="market-intel">
+            <MarketIntelligenceDashboard />
           </TabsContent>
 
           <TabsContent value="email">

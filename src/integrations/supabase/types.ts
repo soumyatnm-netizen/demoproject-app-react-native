@@ -647,6 +647,35 @@ export type Database = {
           },
         ]
       }
+      placement_policy_types: {
+        Row: {
+          created_at: string
+          id: string
+          placement_outcome_id: string
+          policy_type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          placement_outcome_id: string
+          policy_type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          placement_outcome_id?: string
+          policy_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "placement_policy_types_placement_outcome_id_fkey"
+            columns: ["placement_outcome_id"]
+            isOneToOne: false
+            referencedRelation: "placement_outcomes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_access_audit: {
         Row: {
           access_reason: string | null
@@ -1248,7 +1277,37 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      market_intelligence_aggregated: {
+        Row: {
+          avg_competitiveness_score: number | null
+          avg_premium: number | null
+          avg_response_time: number | null
+          company_id: string | null
+          data_source: string | null
+          declines: number | null
+          industry: string | null
+          last_placement_date: string | null
+          max_premium: number | null
+          min_premium: number | null
+          policy_type: string | null
+          product_type: string | null
+          quote_rate_percentage: number | null
+          quotes: number | null
+          total_placements: number | null
+          underwriter_name: string | null
+          win_rate_percentage: number | null
+          wins: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "broker_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       analyze_quote_coverage: {
@@ -1380,6 +1439,25 @@ export type Database = {
           sensitive_notes: string
           updated_at: string
           user_id: string
+        }[]
+      }
+      get_policy_type_intelligence: {
+        Args: {
+          p_industry?: string
+          p_max_premium?: number
+          p_min_premium?: number
+          p_policy_types: string[]
+        }
+        Returns: {
+          avg_premium: number
+          avg_response_time: number
+          competitiveness_ranking: number
+          industry: string
+          policy_type: string
+          quote_rate_percentage: number
+          total_placements: number
+          underwriter_name: string
+          win_rate_percentage: number
         }[]
       }
       get_sensitive_data_with_consent: {

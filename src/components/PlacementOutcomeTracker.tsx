@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { BarChart3, TrendingUp, Clock, Award, Target, AlertCircle } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BarChart3, TrendingUp, Clock, Award, Target, AlertCircle, Plus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -50,7 +51,7 @@ const PlacementOutcomeTracker = () => {
     outcome: "",
     winReason: "",
     businessType: "",
-    policyType: "",
+    policyTypes: [] as string[],
     notes: ""
   });
   const [submitting, setSubmitting] = useState(false);
@@ -114,10 +115,10 @@ const PlacementOutcomeTracker = () => {
   };
 
   const submitPlacementOutcome = async () => {
-    if (!selectedQuote || !outcomeForm.outcome || !outcomeForm.policyType) {
+    if (!selectedQuote || !outcomeForm.outcome || outcomeForm.policyTypes.length === 0) {
       toast({
         title: "Error", 
-        description: "Please select a client, quote, outcome, and policy type",
+        description: "Please select a client, quote, outcome, and at least one policy type",
         variant: "destructive",
       });
       return;
@@ -128,24 +129,43 @@ const PlacementOutcomeTracker = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { error } = await supabase
+      // Insert placement outcome
+      const { data: placementData, error: placementError } = await supabase
         .from('placement_outcomes')
         .insert({
           user_id: user.id,
           quote_id: selectedQuote.id,
-          underwriter_name: selectedQuote.insurer_name, // Use the insurer from the selected quote
+          underwriter_name: selectedQuote.insurer_name,
           industry: selectedQuote.industry,
           product_type: selectedQuote.product_type,
           premium_amount: selectedQuote.premium_amount,
           outcome: outcomeForm.outcome,
           win_reason: outcomeForm.winReason,
           business_type: outcomeForm.businessType,
-          policy_type: outcomeForm.policyType,
+          policy_type: outcomeForm.policyTypes[0], // Keep first policy type for compatibility
           notes: outcomeForm.notes,
           placed_at: outcomeForm.outcome === 'won' ? new Date().toISOString() : null
-        });
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (placementError) throw placementError;
+
+      // Insert multiple policy types
+      if (placementData && outcomeForm.policyTypes.length > 0) {
+        const policyTypeRecords = outcomeForm.policyTypes.map(policyType => ({
+          placement_outcome_id: placementData.id,
+          policy_type: policyType
+        }));
+
+        const { error: policyTypesError } = await supabase
+          .from('placement_policy_types')
+          .insert(policyTypeRecords);
+
+        if (policyTypesError) throw policyTypesError;
+      }
+
+      
 
       toast({
         title: "Success",
@@ -157,7 +177,7 @@ const PlacementOutcomeTracker = () => {
         outcome: "",
         winReason: "",
         businessType: "",
-        policyType: "",
+        policyTypes: [],
         notes: ""
       });
       setSelectedClient("");
@@ -175,6 +195,31 @@ const PlacementOutcomeTracker = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const policyTypeOptions = [
+    { value: "public_liability", label: "Public Liability Insurance" },
+    { value: "professional_indemnity", label: "Professional Indemnity Insurance" },
+    { value: "cyber", label: "Cyber Insurance" },
+    { value: "employers_liability", label: "Employers' Liability Insurance" },
+    { value: "product_liability", label: "Product Liability Insurance" },
+    { value: "commercial_property", label: "Commercial Property Insurance" },
+    { value: "business_interruption", label: "Business Interruption Insurance" },
+    { value: "directors_officers", label: "Directors and Officers (D&O) Insurance" },
+    { value: "workers_compensation", label: "Workers' Compensation Insurance" },
+    { value: "commercial_auto", label: "Commercial Auto Insurance" },
+    { value: "trade_credit", label: "Trade Credit Insurance" },
+    { value: "marine_cargo", label: "Marine & Cargo Insurance" },
+    { value: "general_liability", label: "General Liability Insurance" }
+  ];
+
+  const handlePolicyTypeToggle = (policyType: string) => {
+    setOutcomeForm(prev => ({
+      ...prev,
+      policyTypes: prev.policyTypes.includes(policyType)
+        ? prev.policyTypes.filter(type => type !== policyType)
+        : [...prev.policyTypes, policyType]
+    }));
   };
 
   const getOutcomeBadge = (outcome: string) => {
@@ -319,31 +364,45 @@ const PlacementOutcomeTracker = () => {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Policy Type *</Label>
-              <Select 
-                value={outcomeForm.policyType} 
-                onValueChange={(value) => setOutcomeForm(prev => ({ ...prev, policyType: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select policy type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="public_liability">Public Liability Insurance</SelectItem>
-                  <SelectItem value="professional_indemnity">Professional Indemnity Insurance</SelectItem>
-                  <SelectItem value="cyber">Cyber Insurance</SelectItem>
-                  <SelectItem value="employers_liability">Employers' Liability Insurance</SelectItem>
-                  <SelectItem value="product_liability">Product Liability Insurance</SelectItem>
-                  <SelectItem value="commercial_property">Commercial Property Insurance</SelectItem>
-                  <SelectItem value="business_interruption">Business Interruption Insurance</SelectItem>
-                  <SelectItem value="directors_officers">Directors and Officers (D&O) Insurance</SelectItem>
-                  <SelectItem value="workers_compensation">Workers' Compensation Insurance</SelectItem>
-                  <SelectItem value="commercial_auto">Commercial Auto Insurance</SelectItem>
-                  <SelectItem value="trade_credit">Trade Credit Insurance</SelectItem>
-                  <SelectItem value="marine_cargo">Marine & Cargo Insurance</SelectItem>
-                  <SelectItem value="general_liability">General Liability Insurance</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="space-y-3 md:col-span-2">
+              <Label>Policy Types * (Select all that apply)</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-48 overflow-y-auto border rounded-lg p-3">
+                {policyTypeOptions.map((option) => (
+                  <div key={option.value} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={option.value}
+                      checked={outcomeForm.policyTypes.includes(option.value)}
+                      onCheckedChange={() => handlePolicyTypeToggle(option.value)}
+                    />
+                    <Label 
+                      htmlFor={option.value} 
+                      className="text-sm font-normal cursor-pointer flex-1"
+                    >
+                      {option.label}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+              {outcomeForm.policyTypes.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {outcomeForm.policyTypes.map((policyType) => {
+                    const option = policyTypeOptions.find(opt => opt.value === policyType);
+                    return (
+                      <Badge 
+                        key={policyType} 
+                        variant="secondary" 
+                        className="flex items-center gap-1"
+                      >
+                        {option?.label}
+                        <X 
+                          className="h-3 w-3 cursor-pointer" 
+                          onClick={() => handlePolicyTypeToggle(policyType)}
+                        />
+                      </Badge>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
