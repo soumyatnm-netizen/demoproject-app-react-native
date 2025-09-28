@@ -202,7 +202,7 @@ export const DocumentUpload = ({ open, onOpenChange, onClientExtracted }: Docume
             <input {...getInputProps()} />
             <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-lg font-medium mb-2">
-              {isDragActive ? 'Drop the files here...' : 'Drag & drop handwritten notes or documents here'}
+              {isDragActive ? 'Drop the files here...' : 'Drag & drop quotes, documents or handwritten client forms here'}
             </p>
             <p className="text-sm text-muted-foreground mb-4">
               or click to select files - supports handwriting recognition
