@@ -55,6 +55,9 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
   const [inviteCode, setInviteCode] = useState("");
   const [inviteData, setInviteData] = useState<any>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
   
   // Admin signup fields
   const [companyName, setCompanyName] = useState("");
@@ -332,6 +335,50 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
     });
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate email
+    try {
+      emailSchema.parse(forgotPasswordEmail);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast({
+          title: "Invalid Email",
+          description: error.issues[0].message,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    setForgotPasswordLoading(true);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
+        redirectTo: `${window.location.origin}/`,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Password Reset Email Sent",
+        description: "Check your email for password reset instructions.",
+      });
+      
+      setShowForgotPassword(false);
+      setForgotPasswordEmail("");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send password reset email. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
+
   const clearForm = () => {
     setEmail("");
     setPassword("");
@@ -343,6 +390,8 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
     setCompanyDomain("");
     setInviteCode("");
     setInviteData(null);
+    setShowForgotPassword(false);
+    setForgotPasswordEmail("");
   };
 
   const switchTab = (signUp: boolean, admin: boolean) => {
@@ -459,7 +508,63 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                         "Sign In"
                       )}
                     </Button>
+                    
+                    <div className="text-center">
+                      <Button 
+                        type="button" 
+                        variant="link" 
+                        size="sm"
+                        onClick={() => setShowForgotPassword(true)}
+                        className="text-muted-foreground hover:text-primary"
+                      >
+                        Forgot your password?
+                      </Button>
+                    </div>
                   </form>
+                  
+                  {showForgotPassword && (
+                    <div className="mt-4 p-4 border rounded-lg bg-muted/50">
+                      <h3 className="text-sm font-medium mb-3">Reset Password</h3>
+                      <form onSubmit={handleForgotPassword} className="space-y-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="forgot-email">Email Address</Label>
+                          <Input
+                            id="forgot-email"
+                            type="email"
+                            placeholder="Enter your email address"
+                            value={forgotPasswordEmail}
+                            onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            type="submit" 
+                            size="sm" 
+                            disabled={forgotPasswordLoading}
+                            className="flex-1"
+                          >
+                            {forgotPasswordLoading ? (
+                              <>
+                                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                Sending...
+                              </>
+                            ) : (
+                              "Send Reset Email"
+                            )}
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setShowForgotPassword(false)}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </form>
+                    </div>
+                  )}
                 </TabsContent>
                 
                 <TabsContent value="signup" className="space-y-4 mt-4">
