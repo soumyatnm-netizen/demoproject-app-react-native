@@ -107,6 +107,14 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
   }, [inviteData]);
 
   const createOrUpdateProfile = async (user: User, inviteInfo?: any, adminData?: any, companyInfo?: any) => {
+    console.log('createOrUpdateProfile called with:', { 
+      userId: user.id, 
+      hasInviteInfo: !!inviteInfo,
+      hasAdminData: !!adminData,
+      hasCompanyInfo: !!companyInfo,
+      adminData
+    });
+
     try {
       // Check if profile already exists
       const { data: existingProfile } = await supabase
@@ -123,6 +131,7 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
 
         // If user is signing up with an invite code
         if (inviteInfo) {
+          console.log('Processing invite signup:', inviteInfo);
           profileData.company_id = inviteInfo.company_id;
           profileData.role = inviteInfo.role;
           profileData.invited_by = inviteInfo.invited_by;
@@ -139,45 +148,71 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
         }
         // If user is signing up with a company code
         else if (companyInfo) {
+          console.log('Processing company code signup:', companyInfo);
           profileData.company_id = companyInfo.company_id;
           profileData.role = 'broker'; // Default role for company code signups
         }
         // If user is admin creating a company
         else if (adminData) {
-          // First create the company
-          const { data: newCompany, error: companyError } = await supabase
-            .from('broker_companies')
-            .insert({
-              name: adminData.companyName,
-              domain: adminData.companyDomain || null,
-            })
-            .select()
-            .single();
+          console.log('Processing admin signup:', adminData);
+          try {
+            // First create the company
+            const { data: newCompany, error: companyError } = await supabase
+              .from('broker_companies')
+              .insert({
+                name: adminData.companyName,
+                domain: adminData.companyDomain || null,
+              })
+              .select()
+              .single();
 
-          if (companyError) throw companyError;
+            if (companyError) {
+              console.error('Company creation error:', companyError);
+              throw companyError;
+            }
 
-          profileData.company_id = newCompany.id;
-          profileData.role = 'company_admin';
-          profileData.first_name = adminData.firstName;
-          profileData.last_name = adminData.lastName;
-          profileData.job_title = adminData.jobTitle;
+            console.log('Company created successfully:', newCompany);
+
+            profileData.company_id = newCompany.id;
+            profileData.role = 'company_admin';
+            profileData.first_name = adminData.firstName;
+            profileData.last_name = adminData.lastName;
+            profileData.job_title = adminData.jobTitle;
+            profileData.company_name = adminData.companyName;
+          } catch (companyCreationError) {
+            console.error('Failed to create company:', companyCreationError);
+            throw companyCreationError;
+          }
         }
 
+        console.log('Creating profile with data:', profileData);
+        
         const { error } = await supabase
           .from('profiles')
           .insert(profileData);
 
         if (error) {
           console.error('Error creating profile:', error);
-        } else if (adminData) {
-          toast({
-            title: "Company Created!",
-            description: `${adminData.companyName} has been set up successfully. You can now invite team members.`,
-          });
+          throw error;
+        } else {
+          console.log('Profile created successfully');
+          if (adminData) {
+            toast({
+              title: "Company Created!",
+              description: `${adminData.companyName} has been set up successfully. You can now invite team members.`,
+            });
+          }
         }
+      } else {
+        console.log('Profile already exists:', existingProfile);
       }
     } catch (error) {
       console.error('Error in createOrUpdateProfile:', error);
+      toast({
+        title: "Account Setup Error",
+        description: "There was an issue setting up your account. Please try again or contact support.",
+        variant: "destructive",
+      });
     }
   };
 
