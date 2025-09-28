@@ -5,8 +5,37 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Loader2, ArrowLeft } from "lucide-react";
+import { Shield, Loader2, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { z } from "zod";
+import type { User, Session } from '@supabase/supabase-js';
+
+// Validation schemas
+const emailSchema = z.string().email("Please enter a valid email address");
+const passwordSchema = z.string().min(8, "Password must be at least 8 characters long")
+  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+  .regex(/\d/, "Password must contain at least one number");
+
+const signUpSchema = z.object({
+  email: emailSchema,
+  password: passwordSchema,
+});
+
+const signInSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1, "Password is required"),
+});
+
+const adminSignUpSchema = z.object({
+  email: emailSchema,
+  password: passwordSchema,
+  companyName: z.string().min(2, "Company name must be at least 2 characters"),
+  firstName: z.string().min(2, "First name must be at least 2 characters"),
+  lastName: z.string().min(2, "Last name must be at least 2 characters"),
+  jobTitle: z.string().min(2, "Job title must be at least 2 characters"),
+  companyDomain: z.string().optional(),
+});
 
 interface AuthWrapperProps {
   children: React.ReactNode;
@@ -14,15 +43,18 @@ interface AuthWrapperProps {
 }
 
 const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [isAdminSignUp, setIsAdminSignUp] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [inviteData, setInviteData] = useState<any>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   
   // Admin signup fields
   const [companyName, setCompanyName] = useState("");
@@ -34,21 +66,16 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Listen for auth changes
+    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
+        setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
         
         // Handle post-signup profile creation
         if (event === 'SIGNED_IN' && session?.user) {
-          setTimeout(async () => {
+          setTimeout(() => {
             const adminSignUpData = isAdminSignUp ? {
               companyName,
               firstName: adminFirstName,
@@ -57,16 +84,23 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
               companyDomain
             } : null;
             
-            await createOrUpdateProfile(session.user, inviteData, adminSignUpData);
+            createOrUpdateProfile(session.user, inviteData, adminSignUpData);
           }, 100);
         }
       }
     );
 
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
     return () => subscription.unsubscribe();
   }, [inviteData]);
 
-  const createOrUpdateProfile = async (user: any, inviteInfo?: any, adminData?: any) => {
+  const createOrUpdateProfile = async (user: User, inviteInfo?: any, adminData?: any) => {
     try {
       // Check if profile already exists
       const { data: existingProfile } = await supabase
@@ -186,82 +220,48 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
     }
   }, [inviteCode]);
 
-  const handleTestAccount = async () => {
-    setAuthLoading(true);
-    const testEmail = 'dan@covercompass.co.uk';
-    const testPassword = 'demo123456';
+  const validateForm = (isSignIn: boolean = false) => {
+    setValidationErrors({});
+    const errors: Record<string, string> = {};
 
     try {
-      // First try to sign in with existing test account
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: testEmail,
-        password: testPassword,
-      });
-
-      if (signInError) {
-        // Check if it's an email not confirmed error
-        if (signInError.message.includes('Email not confirmed')) {
-          toast({
-            title: "Demo Account Ready",
-            description: "Test account exists but needs confirmation. For demo purposes, please contact admin or use regular signup.",
-            variant: "destructive",
-          });
-          return;
-        }
-        
-        // Check if account doesn't exist
-        if (signInError.message.includes('Invalid login credentials')) {
-          // Test account doesn't exist, create it
-          const { data, error: signUpError } = await supabase.auth.signUp({
-            email: testEmail,
-            password: testPassword,
-            options: {
-              emailRedirectTo: `${window.location.origin}/`,
-              data: {
-                test_account: true,
-                skip_confirmation: true
-              }
-            }
-          });
-
-          if (signUpError) throw signUpError;
-
-          // Check if the user was immediately confirmed (when email confirmation is disabled)
-          if (data.user && !data.user.email_confirmed_at) {
-            toast({
-              title: "Test Account Created",
-              description: "Demo account created! Please check your email to confirm, or ask admin to disable email confirmation for instant access.",
-            });
-            return;
-          }
-
-          toast({
-            title: "Demo Access Ready",
-            description: "Welcome to CoverCompass! You're now signed in with a demo account.",
-          });
-        } else {
-          throw signInError;
-        }
-      } else {
-        toast({
-          title: "Welcome Back",
-          description: "Signed in with test account successfully",
+      if (isSignIn) {
+        signInSchema.parse({ email, password });
+      } else if (isAdminSignUp) {
+        adminSignUpSchema.parse({
+          email,
+          password,
+          companyName,
+          firstName: adminFirstName,
+          lastName: adminLastName,
+          jobTitle,
+          companyDomain
         });
+      } else {
+        signUpSchema.parse({ email, password });
       }
-    } catch (error: any) {
-      console.error('Test account error:', error);
-      toast({
-        title: "Demo Access Issue",
-        description: "For instant demo access, please ask admin to disable 'Confirm email' in Supabase Auth settings, or use regular signup.",
-        variant: "destructive",
-      });
-    } finally {
-      setAuthLoading(false);
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        error.issues.forEach((err) => {
+          if (err.path.length > 0) {
+            errors[err.path[0] as string] = err.message;
+          }
+        });
+        setValidationErrors(errors);
+      }
+      return false;
     }
   };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate form
+    if (!validateForm(!isSignUp && !isAdminSignUp)) {
+      return;
+    }
+
     setAuthLoading(true);
 
     try {
@@ -302,9 +302,21 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
         });
       }
     } catch (error: any) {
+      let errorMessage = "An error occurred. Please try again.";
+      
+      if (error.message.includes("Invalid login credentials")) {
+        errorMessage = "Invalid email or password. Please check your credentials and try again.";
+      } else if (error.message.includes("Email not confirmed")) {
+        errorMessage = "Please check your email and click the confirmation link before signing in.";
+      } else if (error.message.includes("User already registered")) {
+        errorMessage = "An account with this email already exists. Please sign in instead.";
+      } else if (error.message.includes("Password should be at least")) {
+        errorMessage = "Password must be at least 6 characters long.";
+      }
+
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Authentication Error",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -318,6 +330,25 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
       title: "Signed out",
       description: "You have been signed out successfully",
     });
+  };
+
+  const clearForm = () => {
+    setEmail("");
+    setPassword("");
+    setValidationErrors({});
+    setCompanyName("");
+    setAdminFirstName("");
+    setAdminLastName("");
+    setJobTitle("");
+    setCompanyDomain("");
+    setInviteCode("");
+    setInviteData(null);
+  };
+
+  const switchTab = (signUp: boolean, admin: boolean) => {
+    setIsSignUp(signUp);
+    setIsAdminSignUp(admin);
+    clearForm();
   };
 
   if (loading) {
@@ -360,17 +391,17 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
             </CardHeader>
             <CardContent>
               <Tabs value={isAdminSignUp ? "admin" : isSignUp ? "signup" : "signin"} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="signin" onClick={() => { setIsSignUp(false); setIsAdminSignUp(false); }}>
-                Sign In
-              </TabsTrigger>
-              <TabsTrigger value="signup" onClick={() => { setIsSignUp(true); setIsAdminSignUp(false); }}>
-                Sign Up
-              </TabsTrigger>
-              <TabsTrigger value="admin" onClick={() => { setIsSignUp(true); setIsAdminSignUp(true); }}>
-                Admin Setup
-              </TabsTrigger>
-            </TabsList>
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="signin" onClick={() => switchTab(false, false)}>
+                    Sign In
+                  </TabsTrigger>
+                  <TabsTrigger value="signup" onClick={() => switchTab(true, false)}>
+                    Sign Up
+                  </TabsTrigger>
+                  <TabsTrigger value="admin" onClick={() => switchTab(true, true)}>
+                    Admin Setup
+                  </TabsTrigger>
+                </TabsList>
                 
                 <TabsContent value="signin" className="space-y-4 mt-4">
                   <form onSubmit={handleAuth} className="space-y-4">
@@ -383,17 +414,40 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
+                        className={validationErrors.email ? "border-red-500" : ""}
                       />
+                      {validationErrors.email && (
+                        <p className="text-sm text-red-500">{validationErrors.email}</p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="password">Password</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                      />
+                      <div className="relative">
+                        <Input
+                          id="password"
+                          type={showPassword ? "text" : "password"}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                          className={validationErrors.password ? "border-red-500" : ""}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                      {validationErrors.password && (
+                        <p className="text-sm text-red-500">{validationErrors.password}</p>
+                      )}
                     </div>
                     <Button type="submit" className="w-full" disabled={authLoading}>
                       {authLoading ? (
@@ -403,32 +457,6 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                         </>
                       ) : (
                         "Sign In"
-                      )}
-                    </Button>
-                    
-                    <div className="relative">
-                      <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t" />
-                      </div>
-                      <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-card px-2 text-muted-foreground">Or</span>
-                      </div>
-                    </div>
-                    
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      className="w-full" 
-                      onClick={handleTestAccount}
-                      disabled={authLoading}
-                    >
-                      {authLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating Test Account...
-                        </>
-                      ) : (
-                        "🚀 Try Test Account"
                       )}
                     </Button>
                   </form>
@@ -466,20 +494,46 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
-                        disabled={!!inviteData} // Disable if invite code is used
+                        disabled={!!inviteData}
+                        className={validationErrors.email ? "border-red-500" : ""}
                       />
+                      {validationErrors.email && (
+                        <p className="text-sm text-red-500">{validationErrors.email}</p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="signup-password">Password</Label>
-                      <Input
-                        id="signup-password"
-                        type="password"
-                        placeholder="Choose a strong password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        minLength={6}
-                      />
+                      <div className="relative">
+                        <Input
+                          id="signup-password"
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Choose a strong password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                          minLength={8}
+                          className={validationErrors.password ? "border-red-500" : ""}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                      {validationErrors.password && (
+                        <p className="text-sm text-red-500">{validationErrors.password}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Password must be at least 8 characters with uppercase, lowercase, and number.
+                      </p>
                     </div>
                     <Button type="submit" className="w-full" disabled={authLoading}>
                       {authLoading ? (
@@ -489,32 +543,6 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                         </>
                       ) : (
                         "Create Account"
-                      )}
-                    </Button>
-                    
-                    <div className="relative">
-                      <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t" />
-                      </div>
-                      <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-card px-2 text-muted-foreground">Or</span>
-                      </div>
-                    </div>
-                    
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      className="w-full" 
-                      onClick={handleTestAccount}
-                      disabled={authLoading}
-                    >
-                      {authLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating Test Account...
-                        </>
-                      ) : (
-                        "🚀 Try Test Account"
                       )}
                     </Button>
                   </form>
@@ -539,7 +567,11 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                           value={adminFirstName}
                           onChange={(e) => setAdminFirstName(e.target.value)}
                           required
+                          className={validationErrors.firstName ? "border-red-500" : ""}
                         />
+                        {validationErrors.firstName && (
+                          <p className="text-sm text-red-500">{validationErrors.firstName}</p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="admin-last-name">Last Name</Label>
@@ -550,72 +582,102 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                           value={adminLastName}
                           onChange={(e) => setAdminLastName(e.target.value)}
                           required
+                          className={validationErrors.lastName ? "border-red-500" : ""}
                         />
+                        {validationErrors.lastName && (
+                          <p className="text-sm text-red-500">{validationErrors.lastName}</p>
+                        )}
                       </div>
                     </div>
-                    
                     <div className="space-y-2">
-                      <Label htmlFor="admin-email">Email Address</Label>
+                      <Label htmlFor="admin-company-name">Company Name</Label>
                       <Input
-                        id="admin-email"
-                        type="email"
-                        placeholder="admin@company.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="admin-password">Password</Label>
-                      <Input
-                        id="admin-password"
-                        type="password"
-                        placeholder="Choose a strong password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        minLength={6}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="company-name">Company Name</Label>
-                      <Input
-                        id="company-name"
+                        id="admin-company-name"
                         type="text"
-                        placeholder="Aon, Marsh, Willis Towers Watson..."
+                        placeholder="Your Insurance Brokerage"
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
                         required
+                        className={validationErrors.companyName ? "border-red-500" : ""}
                       />
+                      {validationErrors.companyName && (
+                        <p className="text-sm text-red-500">{validationErrors.companyName}</p>
+                      )}
                     </div>
-                    
                     <div className="space-y-2">
-                      <Label htmlFor="job-title">Your Job Title</Label>
+                      <Label htmlFor="admin-job-title">Job Title</Label>
                       <Input
-                        id="job-title"
+                        id="admin-job-title"
                         type="text"
-                        placeholder="Senior Broker, Team Lead, Director..."
+                        placeholder="Managing Director"
                         value={jobTitle}
                         onChange={(e) => setJobTitle(e.target.value)}
+                        required
+                        className={validationErrors.jobTitle ? "border-red-500" : ""}
                       />
+                      {validationErrors.jobTitle && (
+                        <p className="text-sm text-red-500">{validationErrors.jobTitle}</p>
+                      )}
                     </div>
-                    
                     <div className="space-y-2">
-                      <Label htmlFor="company-domain">Company Email Domain (Optional)</Label>
+                      <Label htmlFor="admin-company-domain">Company Domain (Optional)</Label>
                       <Input
-                        id="company-domain"
+                        id="admin-company-domain"
                         type="text"
-                        placeholder="aon.com, marsh.com..."
+                        placeholder="yourcompany.co.uk"
                         value={companyDomain}
                         onChange={(e) => setCompanyDomain(e.target.value)}
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="admin-email">Email</Label>
+                      <Input
+                        id="admin-email"
+                        type="email"
+                        placeholder="your@company.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className={validationErrors.email ? "border-red-500" : ""}
+                      />
+                      {validationErrors.email && (
+                        <p className="text-sm text-red-500">{validationErrors.email}</p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="admin-password">Password</Label>
+                      <div className="relative">
+                        <Input
+                          id="admin-password"
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Choose a strong password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                          minLength={8}
+                          className={validationErrors.password ? "border-red-500" : ""}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                      {validationErrors.password && (
+                        <p className="text-sm text-red-500">{validationErrors.password}</p>
+                      )}
                       <p className="text-xs text-muted-foreground">
-                        This helps with automatic team member verification
+                        Password must be at least 8 characters with uppercase, lowercase, and number.
                       </p>
                     </div>
-                    
                     <Button type="submit" className="w-full" disabled={authLoading}>
                       {authLoading ? (
                         <>
@@ -624,32 +686,6 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                         </>
                       ) : (
                         "Create Company & Admin Account"
-                      )}
-                    </Button>
-                    
-                    <div className="relative">
-                      <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t" />
-                      </div>
-                      <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-card px-2 text-muted-foreground">Or</span>
-                      </div>
-                    </div>
-                    
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      className="w-full" 
-                      onClick={handleTestAccount}
-                      disabled={authLoading}
-                    >
-                      {authLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating Test Account...
-                        </>
-                      ) : (
-                        "🚀 Try Test Account"
                       )}
                     </Button>
                   </form>
