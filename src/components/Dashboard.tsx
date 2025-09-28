@@ -236,7 +236,7 @@ const Dashboard = ({ onBack }: DashboardProps) => {
                 <h1 className="text-2xl font-bold text-foreground">CoverCompass Dashboard</h1>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-6 mr-20">
               <Button variant="ghost" size="sm" onClick={fetchData}>
                 <Settings className="h-4 w-4 mr-2" />
                 Refresh Data
