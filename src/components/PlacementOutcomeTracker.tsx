@@ -70,18 +70,12 @@ const PlacementOutcomeTracker = () => {
 
       if (quotesError) throw quotesError;
 
-      console.log('All quotes data:', quotesData);
-
       // Extract unique client names, handling null/empty values
       const allClientNames = (quotesData || [])
         .map(quote => quote.client_name)
         .filter(name => name && name.trim() !== '');
       
-      console.log('All client names (including duplicates):', allClientNames);
-      
       const uniqueClients = [...new Set(allClientNames)].sort();
-      
-      console.log('Unique clients sorted:', uniqueClients);
 
       // Fetch existing placement outcomes
       const { data: outcomesData, error: outcomesError } = await supabase

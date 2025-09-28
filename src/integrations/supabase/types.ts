@@ -967,7 +967,7 @@ export type Database = {
           coverage_limits: Json | null
           created_at: string
           deductible_amount: number | null
-          document_id: string
+          document_id: string | null
           exclusions: string[] | null
           expiry_date: string | null
           id: string
@@ -990,7 +990,7 @@ export type Database = {
           coverage_limits?: Json | null
           created_at?: string
           deductible_amount?: number | null
-          document_id: string
+          document_id?: string | null
           exclusions?: string[] | null
           expiry_date?: string | null
           id?: string
@@ -1013,7 +1013,7 @@ export type Database = {
           coverage_limits?: Json | null
           created_at?: string
           deductible_amount?: number | null
-          document_id?: string
+          document_id?: string | null
           exclusions?: string[] | null
           expiry_date?: string | null
           id?: string
