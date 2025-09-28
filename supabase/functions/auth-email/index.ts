@@ -3,6 +3,7 @@ import { Webhook } from 'https://esm.sh/standardwebhooks@1.0.0';
 import { Resend } from 'https://esm.sh/resend@4.0.0';
 import { renderAsync } from 'https://esm.sh/@react-email/components@0.0.22';
 import { WelcomeEmail } from './_templates/welcome-email.tsx';
+import { PasswordResetEmail } from './_templates/password-reset-email.tsx';
 
 const resend = new Resend(Deno.env.get('RESEND_API_KEY') as string);
 const hookSecret = Deno.env.get('AUTH_EMAIL_HOOK_SECRET') as string;
@@ -81,9 +82,23 @@ Deno.serve(async (req) => {
         subject = 'CoverCompass Account Verification';
     }
 
+    // Choose the appropriate template based on email action type
+    let TemplateComponent;
+    switch (email_action_type) {
+      case 'recovery':
+        TemplateComponent = PasswordResetEmail;
+        break;
+      case 'signup':
+      case 'email_change':
+      case 'invite':
+      default:
+        TemplateComponent = WelcomeEmail;
+        break;
+    }
+
     // Render the email template
     const html = await renderAsync(
-      React.createElement(WelcomeEmail, {
+      React.createElement(TemplateComponent, {
         supabase_url: Deno.env.get('SUPABASE_URL') ?? '',
         token,
         token_hash,
