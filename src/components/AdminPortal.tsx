@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Users, FileText, Database, BarChart3, Settings, Upload, BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +27,7 @@ interface AdminStats {
 }
 
 const AdminPortal = ({ onBack }: AdminPortalProps) => {
+  const [activeTab, setActiveTab] = useState('brokers');
   const [stats, setStats] = useState<AdminStats>({
     totalBrokers: 0,
     activeBrokers: 0,
@@ -188,40 +188,85 @@ const AdminPortal = ({ onBack }: AdminPortalProps) => {
         </div>
 
         {/* Main Content */}
-        <Tabs defaultValue="brokers" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 h-12">
-            <TabsTrigger value="brokers" className="text-base py-3 px-4 font-medium">Broker Management</TabsTrigger>
-            <TabsTrigger value="clients" className="text-base py-3 px-4 font-medium">Client Overview</TabsTrigger>
-            <TabsTrigger value="appetites" className="text-base py-3 px-4 font-medium">Appetite Guides</TabsTrigger>
-            <TabsTrigger value="pdfs" className="text-base py-3 px-4 font-medium">PDF Management</TabsTrigger>
-            <TabsTrigger value="data" className="text-base py-3 px-4 font-medium">Data Visualization</TabsTrigger>
-            <TabsTrigger value="settings" className="text-base py-3 px-4 font-medium">System Settings</TabsTrigger>
-          </TabsList>
+        <div className="space-y-6">
+          {/* Navigation Buttons */}
+          <div className="flex flex-wrap justify-center gap-4 mb-8">
+            <Button
+              variant={activeTab === 'brokers' ? 'default' : 'secondary'}
+              onClick={() => setActiveTab('brokers')}
+              className={`text-lg px-6 py-3 font-semibold min-w-[180px] ${
+                activeTab === 'brokers' 
+                  ? 'bg-primary text-primary-foreground' 
+                  : 'bg-primary/10 text-primary border-primary/20'
+              }`}
+            >
+              Team Management
+            </Button>
+            <Button
+              variant={activeTab === 'appetites' ? 'default' : 'secondary'}
+              onClick={() => setActiveTab('appetites')}
+              className={`text-lg px-6 py-3 font-semibold min-w-[180px] ${
+                activeTab === 'appetites' 
+                  ? 'bg-primary text-primary-foreground' 
+                  : 'bg-primary/10 text-primary border-primary/20'
+              }`}
+            >
+              ⚡ Appetite Guides
+            </Button>
+            <Button
+              variant={activeTab === 'clients' ? 'default' : 'secondary'}
+              onClick={() => setActiveTab('clients')}
+              className={`text-lg px-6 py-3 font-semibold min-w-[180px] ${
+                activeTab === 'clients' 
+                  ? 'bg-primary text-primary-foreground' 
+                  : 'bg-secondary/10 text-secondary border-secondary/20'
+              }`}
+            >
+              Client Overview
+            </Button>
+            <Button
+              variant={activeTab === 'pdfs' ? 'default' : 'secondary'}
+              onClick={() => setActiveTab('pdfs')}
+              className={`text-lg px-6 py-3 font-semibold min-w-[180px] ${
+                activeTab === 'pdfs' 
+                  ? 'bg-primary text-primary-foreground' 
+                  : 'bg-secondary/10 text-secondary border-secondary/20'
+              }`}
+            >
+              PDF Management
+            </Button>
+            <Button
+              variant={activeTab === 'data' ? 'default' : 'secondary'}
+              onClick={() => setActiveTab('data')}
+              className={`text-lg px-6 py-3 font-semibold min-w-[180px] ${
+                activeTab === 'data' 
+                  ? 'bg-primary text-primary-foreground' 
+                  : 'bg-secondary/10 text-secondary border-secondary/20'
+              }`}
+            >
+              Data Visualization
+            </Button>
+            <Button
+              variant={activeTab === 'settings' ? 'default' : 'secondary'}
+              onClick={() => setActiveTab('settings')}
+              className={`text-lg px-6 py-3 font-semibold min-w-[180px] ${
+                activeTab === 'settings' 
+                  ? 'bg-primary text-primary-foreground' 
+                  : 'bg-secondary/10 text-secondary border-secondary/20'
+              }`}
+            >
+              System Settings
+            </Button>
+          </div>
 
-          <TabsContent value="brokers">
-            <BrokerManagement onStatsUpdate={fetchAdminStats} />
-          </TabsContent>
-
-          <TabsContent value="clients">
-            <ClientOverview />
-          </TabsContent>
-
-          <TabsContent value="appetites">
-            <UnderwriterAppetiteManager />
-          </TabsContent>
-
-          <TabsContent value="pdfs">
-            <PDFManagement onStatsUpdate={fetchAdminStats} />
-          </TabsContent>
-
-          <TabsContent value="data">
-            <DataVisualization />
-          </TabsContent>
-
-          <TabsContent value="settings">
-            <SystemSettings />
-          </TabsContent>
-        </Tabs>
+          {/* Content based on active tab */}
+          {activeTab === 'brokers' && <BrokerManagement onStatsUpdate={fetchAdminStats} />}
+          {activeTab === 'clients' && <ClientOverview />}
+          {activeTab === 'appetites' && <UnderwriterAppetiteManager />}
+          {activeTab === 'pdfs' && <PDFManagement onStatsUpdate={fetchAdminStats} />}
+          {activeTab === 'data' && <DataVisualization />}
+          {activeTab === 'settings' && <SystemSettings />}
+        </div>
       </div>
     </div>
   );
