@@ -186,7 +186,7 @@ export const DocumentUpload = ({ open, onOpenChange, onClientExtracted }: Docume
         <DialogHeader>
           <DialogTitle>Upload Client Document</DialogTitle>
           <DialogDescription>
-            Upload handwritten notes, business forms, insurance documents, or photos to automatically extract client information using AI-powered OCR and handwriting recognition
+            Quickly create client profiles by uploading business forms, insurance documents, handwritten notes, quotes or photos to automatically extract client information using AI-powered OCR and handwriting recognition
           </DialogDescription>
         </DialogHeader>
         
