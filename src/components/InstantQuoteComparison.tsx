@@ -455,16 +455,20 @@ const InstantQuoteComparison = () => {
 
   const downloadIndividualQuote = async (quoteId: string, insurer: string) => {
     try {
-      // Get the quote data
+      // First get the quote data with document_id
       const { data: quoteData, error: quoteError } = await supabase
         .from('structured_quotes')
-        .select('*')
+        .select('document_id, client_name')
         .eq('id', quoteId)
         .single();
 
       if (quoteError) throw quoteError;
 
-      // Get the original document
+      if (!quoteData?.document_id) {
+        throw new Error('No associated document found for this quote');
+      }
+
+      // Now get the document using the document_id from the quote
       const { data: docData, error: docError } = await supabase
         .from('documents')
         .select('*')

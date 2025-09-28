@@ -119,18 +119,27 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
 
   const downloadQuote = async (quote: StructuredQuote) => {
     try {
-      // Get the original document
-      const { data: docData, error: docError } = await supabase
-        .from('documents')
-        .select('*')
+      // First get the quote data with document_id
+      const { data: quoteData, error: quoteError } = await supabase
+        .from('structured_quotes')
+        .select('document_id')
         .eq('id', quote.id)
         .single();
 
-      if (docError) {
-        // If no document found by quote ID, try to find by quote data
-        console.warn('Document not found directly, attempting alternative lookup');
-        throw new Error('Original document not found for this quote');
+      if (quoteError) throw quoteError;
+
+      if (!quoteData?.document_id) {
+        throw new Error('No associated document found for this quote');
       }
+
+      // Now get the document using the document_id from the quote
+      const { data: docData, error: docError } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('id', quoteData.document_id)
+        .single();
+
+      if (docError) throw docError;
 
       if (docData.storage_path) {
         // Download from Supabase storage
