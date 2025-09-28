@@ -49,8 +49,7 @@ const PlacementOutcomeTracker = () => {
   const [outcomeForm, setOutcomeForm] = useState({
     outcome: "",
     winReason: "",
-    responseDays: "",
-    competitivenessScore: "",
+    businessType: "",
     notes: ""
   });
   const [submitting, setSubmitting] = useState(false);
@@ -139,8 +138,6 @@ const PlacementOutcomeTracker = () => {
           premium_amount: selectedQuote.premium_amount,
           outcome: outcomeForm.outcome,
           win_reason: outcomeForm.winReason,
-          response_time_days: parseInt(outcomeForm.responseDays) || null,
-          competitiveness_score: parseInt(outcomeForm.competitivenessScore) || null,
           notes: outcomeForm.notes,
           placed_at: outcomeForm.outcome === 'won' ? new Date().toISOString() : null
         });
@@ -156,8 +153,7 @@ const PlacementOutcomeTracker = () => {
       setOutcomeForm({
         outcome: "",
         winReason: "",
-        responseDays: "",
-        competitivenessScore: "",
+        businessType: "",
         notes: ""
       });
       setSelectedClient("");
@@ -188,32 +184,21 @@ const PlacementOutcomeTracker = () => {
     }
   };
 
-  const getCompetitivenessColor = (score: number) => {
-    if (score >= 8) return 'text-green-600';
-    if (score >= 6) return 'text-amber-600';
-    return 'text-red-600';
-  };
-
   // Calculate analytics
   const analytics = placementOutcomes.reduce((acc, outcome) => {
     acc.total++;
     if (outcome.outcome === 'won') acc.wins++;
     if (outcome.outcome === 'quoted') acc.quotes++;
-    if (outcome.response_time_days) {
-      acc.totalResponseTime += outcome.response_time_days;
-      acc.responseTimeCount++;
-    }
     return acc;
-  }, { total: 0, wins: 0, quotes: 0, totalResponseTime: 0, responseTimeCount: 0 });
+  }, { total: 0, wins: 0, quotes: 0 });
 
   const winRate = analytics.total > 0 ? (analytics.wins / analytics.total * 100) : 0;
   const quoteRate = analytics.total > 0 ? (analytics.quotes / analytics.total * 100) : 0;
-  const avgResponseTime = analytics.responseTimeCount > 0 ? (analytics.totalResponseTime / analytics.responseTimeCount) : 0;
 
   return (
     <div className="space-y-6">
       {/* Analytics Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
             <BarChart3 className="h-8 w-8 text-blue-500 mx-auto mb-2" />
@@ -235,14 +220,6 @@ const PlacementOutcomeTracker = () => {
             <Target className="h-8 w-8 text-blue-500 mx-auto mb-2" />
             <div className="text-2xl font-bold text-blue-600">{quoteRate.toFixed(1)}%</div>
             <div className="text-sm text-muted-foreground">Quote Rate</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Clock className="h-8 w-8 text-amber-500 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-amber-600">{avgResponseTime.toFixed(1)}</div>
-            <div className="text-sm text-muted-foreground">Avg Response Days</div>
           </CardContent>
         </Card>
       </div>
@@ -323,25 +300,19 @@ const PlacementOutcomeTracker = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Response Time (Days)</Label>
-              <Input
-                type="number"
-                placeholder="How many days to respond?"
-                value={outcomeForm.responseDays}
-                onChange={(e) => setOutcomeForm(prev => ({ ...prev, responseDays: e.target.value }))}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Competitiveness Score (1-10)</Label>
-              <Input
-                type="number"
-                min="1"
-                max="10"
-                placeholder="How competitive was their quote?"
-                value={outcomeForm.competitivenessScore}
-                onChange={(e) => setOutcomeForm(prev => ({ ...prev, competitivenessScore: e.target.value }))}
-              />
+              <Label>New Business or Existing Client *</Label>
+              <Select 
+                value={outcomeForm.businessType} 
+                onValueChange={(value) => setOutcomeForm(prev => ({ ...prev, businessType: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select business type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="new_business">New Business</SelectItem>
+                  <SelectItem value="existing_client">Existing Client</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
@@ -399,16 +370,6 @@ const PlacementOutcomeTracker = () => {
                         <Badge className={getOutcomeBadge(outcome.outcome)}>
                           {outcome.outcome.toUpperCase()}
                         </Badge>
-                        {outcome.response_time_days && (
-                          <Badge variant="outline" className="text-xs">
-                            {outcome.response_time_days}d response
-                          </Badge>
-                        )}
-                        {outcome.competitiveness_score && (
-                          <Badge variant="outline" className="text-xs">
-                            {outcome.competitiveness_score}/10 competitive
-                          </Badge>
-                        )}
                       </div>
                     </div>
                     <div className="text-right text-sm text-muted-foreground">
@@ -427,18 +388,6 @@ const PlacementOutcomeTracker = () => {
                     <div className="bg-blue-50 rounded p-2 text-sm">
                       <span className="font-medium">Notes: </span>
                       {outcome.notes}
-                    </div>
-                  )}
-
-                  {outcome.competitiveness_score && (
-                    <div className="mt-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs">Competitiveness:</span>
-                        <Progress value={outcome.competitiveness_score * 10} className="w-20 h-2" />
-                        <span className={`text-xs font-medium ${getCompetitivenessColor(outcome.competitiveness_score)}`}>
-                          {outcome.competitiveness_score}/10
-                        </span>
-                      </div>
                     </div>
                   )}
                 </div>
