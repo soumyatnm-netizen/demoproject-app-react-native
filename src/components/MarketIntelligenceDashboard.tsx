@@ -60,8 +60,8 @@ const MarketIntelligenceDashboard = () => {
     { value: "trade_credit", label: "Trade Credit" },
     { value: "marine_cargo", label: "Marine & Cargo" },
     { value: "general_liability", label: "General Liability" },
-    { value: "tech", label: "Technology Insurance" },
-    { value: "life_sciences", label: "Life Sciences Insurance" }
+    { value: "tech", label: "Technology & IT" },
+    { value: "life_sciences", label: "Life Sciences" }
   ];
 
   useEffect(() => {

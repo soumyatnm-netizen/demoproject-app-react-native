@@ -211,7 +211,7 @@ const PlacementOutcomeTracker = () => {
     { value: "trade_credit", label: "Trade Credit Insurance" },
     { value: "marine_cargo", label: "Marine & Cargo Insurance" },
     { value: "general_liability", label: "General Liability Insurance" },
-    { value: "tech", label: "Technology Insurance" },
+    { value: "tech", label: "Technology & IT Insurance" },
     { value: "life_sciences", label: "Life Sciences Insurance" }
   ];
 
