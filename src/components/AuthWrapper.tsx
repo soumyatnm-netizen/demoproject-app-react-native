@@ -494,7 +494,6 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
-                        disabled={!!inviteData}
                         className={validationErrors.email ? "border-red-500" : ""}
                       />
                       {validationErrors.email && (
@@ -507,11 +506,9 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                         <Input
                           id="signup-password"
                           type={showPassword ? "text" : "password"}
-                          placeholder="Choose a strong password"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           required
-                          minLength={8}
                           className={validationErrors.password ? "border-red-500" : ""}
                         />
                         <Button
@@ -532,7 +529,7 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                         <p className="text-sm text-red-500">{validationErrors.password}</p>
                       )}
                       <p className="text-xs text-muted-foreground">
-                        Password must be at least 8 characters with uppercase, lowercase, and number.
+                        Password must be at least 8 characters with uppercase, lowercase, and number
                       </p>
                     </div>
                     <Button type="submit" className="w-full" disabled={authLoading}>
@@ -550,9 +547,9 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                 
                 <TabsContent value="admin" className="space-y-4 mt-4">
                   <div className="text-center mb-4">
-                    <h3 className="text-lg font-semibold">Create Company Admin Account</h3>
+                    <Shield className="h-8 w-8 mx-auto mb-2 text-primary" />
                     <p className="text-sm text-muted-foreground">
-                      Set up your broker company and invite team members
+                      Create a new company and become the admin
                     </p>
                   </div>
                   
@@ -578,7 +575,7 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                         <Input
                           id="admin-last-name"
                           type="text"
-                          placeholder="Smith"
+                          placeholder="Doe"
                           value={adminLastName}
                           onChange={(e) => setAdminLastName(e.target.value)}
                           required
@@ -589,12 +586,13 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                         )}
                       </div>
                     </div>
+                    
                     <div className="space-y-2">
                       <Label htmlFor="admin-company-name">Company Name</Label>
                       <Input
                         id="admin-company-name"
                         type="text"
-                        placeholder="Your Insurance Brokerage"
+                        placeholder="Acme Insurance Brokers"
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
                         required
@@ -604,6 +602,7 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                         <p className="text-sm text-red-500">{validationErrors.companyName}</p>
                       )}
                     </div>
+                    
                     <div className="space-y-2">
                       <Label htmlFor="admin-job-title">Job Title</Label>
                       <Input
@@ -619,16 +618,18 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                         <p className="text-sm text-red-500">{validationErrors.jobTitle}</p>
                       )}
                     </div>
+                    
                     <div className="space-y-2">
                       <Label htmlFor="admin-company-domain">Company Domain (Optional)</Label>
                       <Input
                         id="admin-company-domain"
                         type="text"
-                        placeholder="yourcompany.co.uk"
+                        placeholder="acmeinsurance.com"
                         value={companyDomain}
                         onChange={(e) => setCompanyDomain(e.target.value)}
                       />
                     </div>
+                    
                     <div className="space-y-2">
                       <Label htmlFor="admin-email">Email</Label>
                       <Input
@@ -644,17 +645,16 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                         <p className="text-sm text-red-500">{validationErrors.email}</p>
                       )}
                     </div>
+                    
                     <div className="space-y-2">
                       <Label htmlFor="admin-password">Password</Label>
                       <div className="relative">
                         <Input
                           id="admin-password"
                           type={showPassword ? "text" : "password"}
-                          placeholder="Choose a strong password"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           required
-                          minLength={8}
                           className={validationErrors.password ? "border-red-500" : ""}
                         />
                         <Button
@@ -675,17 +675,18 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                         <p className="text-sm text-red-500">{validationErrors.password}</p>
                       )}
                       <p className="text-xs text-muted-foreground">
-                        Password must be at least 8 characters with uppercase, lowercase, and number.
+                        Password must be at least 8 characters with uppercase, lowercase, and number
                       </p>
                     </div>
+                    
                     <Button type="submit" className="w-full" disabled={authLoading}>
                       {authLoading ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating Company Admin Account...
+                          Creating company...
                         </>
                       ) : (
-                        "Create Company & Admin Account"
+                        "Create Company & Account"
                       )}
                     </Button>
                   </form>
