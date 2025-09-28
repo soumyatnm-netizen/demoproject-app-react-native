@@ -156,7 +156,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in intelligent-insurer-matching:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: (error as any).message,
       matches: [],
       analysis_timestamp: new Date().toISOString()
     }), {
@@ -460,7 +460,7 @@ Keep responses concise and practical for broker use.`;
       }
     }
   } catch (error) {
-    console.log('AI enhancement failed (non-fatal):', error.message);
+    console.log('AI enhancement failed (non-fatal):', (error as any).message);
   }
 
   return matches;

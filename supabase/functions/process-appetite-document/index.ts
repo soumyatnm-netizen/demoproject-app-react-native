@@ -269,7 +269,7 @@ Extract as much relevant information as possible. If a field cannot be determine
           .from('underwriter_appetites')
           .update({ 
             status: 'error',
-            processing_error: error.message 
+            processing_error: (error as any).message 
           })
           .eq('id', appetiteDocumentId);
       }
@@ -277,7 +277,7 @@ Extract as much relevant information as possible. If a field cannot be determine
       console.error('Failed to update appetite document status:', updateError);
     }
 
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: (error as any).message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

@@ -224,8 +224,8 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('=== PROCESS DOCUMENT ERROR ===');
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
+    console.error('Error message:', (error as any).message);
+    console.error('Error stack:', (error as any).stack);
     console.error('Error details:', error);
     
     // Try to update document status to error
@@ -244,7 +244,7 @@ serve(async (req) => {
             .from('documents')
             .update({ 
               status: 'error',
-              processing_error: error.message 
+              processing_error: (error as any).message 
             })
             .eq('id', documentId);
           
@@ -260,8 +260,8 @@ serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ 
-      error: error.message,
-      details: error.stack,
+      error: (error as any).message,
+      details: (error as any).stack,
       timestamp: new Date().toISOString()
     }), {
       status: 500,

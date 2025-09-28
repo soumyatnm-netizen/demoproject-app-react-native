@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
     const allInclusions = quotes.map(q => q.inclusions || [])
     const commonInclusions = allInclusions.length > 0 
       ? allInclusions.reduce((common, current) => 
-          common.filter(inclusion => current.includes(inclusion))
+          common.filter((inclusion: string) => current.includes(inclusion))
         )
       : []
 

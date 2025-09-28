@@ -285,22 +285,22 @@ serve(async (req) => {
 
       } catch (docxError) {
         console.error('DOCX processing error:', docxError);
-        console.error('Error stack:', docxError.stack);
+        console.error('Error stack:', (docxError as any).stack);
         
         // Update document status with specific error
         await supabase
           .from('documents')
           .update({ 
             status: 'error', 
-            processing_error: `DOCX parsing failed: ${docxError.message}` 
+            processing_error: `DOCX parsing failed: ${(docxError as any).message}` 
           })
           .eq('id', documentId);
 
         return new Response(
           JSON.stringify({ 
             success: false, 
-            error: `DOCX processing failed: ${docxError.message}`,
-            details: docxError.stack
+            error: `DOCX processing failed: ${(docxError as any).message}`,
+            details: (docxError as any).stack
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
         );
@@ -360,7 +360,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message 
+        error: (error as any).message 
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
