@@ -117,6 +117,56 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
     }
   };
 
+  const downloadQuote = async (quote: StructuredQuote) => {
+    try {
+      // Get the original document
+      const { data: docData, error: docError } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('id', quote.id)
+        .single();
+
+      if (docError) {
+        // If no document found by quote ID, try to find by quote data
+        console.warn('Document not found directly, attempting alternative lookup');
+        throw new Error('Original document not found for this quote');
+      }
+
+      if (docData.storage_path) {
+        // Download from Supabase storage
+        const { data: fileData, error: downloadError } = await supabase.storage
+          .from('documents')
+          .download(docData.storage_path);
+
+        if (downloadError) throw downloadError;
+
+        // Create download link
+        const url = URL.createObjectURL(fileData);
+        const link = window.document.createElement('a');
+        link.href = url;
+        link.download = `${quote.insurer_name}_Quote_${quote.client_name || 'Document'}.${docData.filename.split('.').pop()}`;
+        window.document.body.appendChild(link);
+        link.click();
+        window.document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        toast({
+          title: "Download Complete",
+          description: `${quote.insurer_name} quote downloaded successfully`,
+        });
+      } else {
+        throw new Error('No file available for download');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      toast({
+        title: "Download Failed",
+        description: `Could not download ${quote.insurer_name} quote: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
   const exportComparison = async () => {
     if (!comparisonData) return;
 
@@ -260,16 +310,30 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">
                       {quote.premium_currency} {quote.premium_amount?.toLocaleString() || 'N/A'}
-                    </span>
-                    <Badge 
-                      variant={quote.quote_status === 'quoted' ? 'default' : 'secondary'}
-                      className="text-xs"
-                    >
-                      {quote.quote_status}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
+                     </span>
+                     <Badge 
+                       variant={quote.quote_status === 'quoted' ? 'default' : 'secondary'}
+                       className="text-xs"
+                     >
+                       {quote.quote_status}
+                     </Badge>
+                   </div>
+                   <div className="mt-2 flex justify-end">
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       onClick={(e) => {
+                         e.stopPropagation();
+                         downloadQuote(quote);
+                       }}
+                       className="flex items-center space-x-1"
+                     >
+                       <Download className="h-3 w-3" />
+                       <span>Download</span>
+                     </Button>
+                   </div>
+                 </CardContent>
+               </Card>
             ))}
           </div>
 

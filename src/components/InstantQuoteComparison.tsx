@@ -453,6 +453,61 @@ const InstantQuoteComparison = () => {
     }).sort((a, b) => b.overall_score - a.overall_score); // Sort by score, highest first
   };
 
+  const downloadIndividualQuote = async (quoteId: string, insurer: string) => {
+    try {
+      // Get the quote data
+      const { data: quoteData, error: quoteError } = await supabase
+        .from('structured_quotes')
+        .select('*')
+        .eq('id', quoteId)
+        .single();
+
+      if (quoteError) throw quoteError;
+
+      // Get the original document
+      const { data: docData, error: docError } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('id', quoteData.document_id)
+        .single();
+
+      if (docError) throw docError;
+
+      if (docData.storage_path) {
+        // Download from Supabase storage
+        const { data: fileData, error: downloadError } = await supabase.storage
+          .from('documents')
+          .download(docData.storage_path);
+
+        if (downloadError) throw downloadError;
+
+        // Create download link
+        const url = URL.createObjectURL(fileData);
+        const link = window.document.createElement('a');
+        link.href = url;
+        link.download = `${insurer}_Quote_${quoteData.client_name || 'Document'}.${docData.filename.split('.').pop()}`;
+        window.document.body.appendChild(link);
+        link.click();
+        window.document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        toast({
+          title: "Download Complete",
+          description: `${insurer} quote downloaded successfully`,
+        });
+      } else {
+        throw new Error('No file available for download');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      toast({
+        title: "Download Failed",
+        description: `Could not download ${insurer} quote: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
   const generatePDFReport = async () => {
     if (!selectedClient || rankings.length === 0) {
       toast({
@@ -1228,14 +1283,25 @@ const InstantQuoteComparison = () => {
                           </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold">
-                          £{ranking.premium_amount?.toLocaleString() || 'N/A'}
-                        </div>
-                        <div className={`text-sm px-2 py-1 rounded border ${getScoreColor(ranking.overall_score)}`}>
-                          Overall Score: {ranking.overall_score}%
-                        </div>
-                      </div>
+                       <div className="text-right">
+                         <div className="text-2xl font-bold">
+                           £{ranking.premium_amount?.toLocaleString() || 'N/A'}
+                         </div>
+                         <div className={`text-sm px-2 py-1 rounded border ${getScoreColor(ranking.overall_score)}`}>
+                           Overall Score: {ranking.overall_score}%
+                         </div>
+                         <div className="mt-2">
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             onClick={() => downloadIndividualQuote(ranking.quote_id, ranking.insurer_name)}
+                             className="flex items-center space-x-1"
+                           >
+                             <Download className="h-3 w-3" />
+                             <span>Download</span>
+                           </Button>
+                         </div>
+                       </div>
                     </div>
 
                     <div className="grid grid-cols-3 gap-4 mb-4">
