@@ -42,6 +42,11 @@ interface EnhancedMatch {
     competitive_position: string;
     capacity_status: string;
   };
+  similar_clients_success: {
+    count: number;
+    examples: string[];
+    success_rate: number;
+  };
 }
 
 const InsurerMatching = () => {
@@ -93,9 +98,9 @@ const InsurerMatching = () => {
   const generateMatches = async (quoteId: string) => {
     setLoading(true);
     try {
-      console.log('Generating intelligent matches for quote:', quoteId);
+      console.log('Generating enhanced insurer matches for quote:', quoteId);
       
-      const { data, error } = await supabase.functions.invoke('intelligent-insurer-matching', {
+      const { data, error } = await supabase.functions.invoke('enhanced-insurer-matching', {
         body: { client_id: quoteId }
       });
 
@@ -103,21 +108,21 @@ const InsurerMatching = () => {
         throw new Error(error.message || 'Failed to generate matches');
       }
 
-      console.log('Received matching results:', data);
+      console.log('Received enhanced matching results:', data);
       
       setMatches(data.matches || []);
       setAnalysisTimestamp(data.analysis_timestamp || new Date().toISOString());
       
       toast({
-        title: "Analysis Complete",
-        description: `Found ${data.matches?.length || 0} potential matches using CoverCompassAI-powered analysis`,
+        title: "Enhanced Analysis Complete",
+        description: `Found ${data.matches?.length || 0} matches by analyzing ${data.similar_clients_analyzed || 0} similar clients and ${data.appetite_guides_analyzed || 0} appetite guides`,
       });
 
     } catch (error) {
-      console.error('Error generating matches:', error);
+      console.error('Error generating enhanced matches:', error);
       toast({
         title: "Error",
-        description: "Failed to generate insurer matches. Please try again.",
+        description: "Failed to generate enhanced insurer matches. Please try again.",
         variant: "destructive",
       });
       setMatches([]);
@@ -317,6 +322,37 @@ const InsurerMatching = () => {
                               </ul>
                             </div>
                           )}
+                        </div>
+
+                        {/* Similar Clients Success Section */}
+                        <div className="bg-blue-50/50 rounded-lg p-4">
+                          <h5 className="font-medium mb-3 flex items-center text-blue-600">
+                            <Building2 className="h-4 w-4 mr-2" />
+                            Similar Clients Success
+                          </h5>
+                          <div className="grid grid-cols-3 gap-4 text-center">
+                            <div>
+                              <div className="text-lg font-semibold text-blue-600">
+                                {match.similar_clients_success.count}
+                              </div>
+                              <div className="text-xs text-muted-foreground">Similar Clients</div>
+                            </div>
+                            <div>
+                              <div className="text-lg font-semibold text-blue-600">
+                                {Math.round(match.similar_clients_success.success_rate)}%
+                              </div>
+                              <div className="text-xs text-muted-foreground">Success Rate</div>
+                            </div>
+                            <div>
+                              <div className="text-xs text-muted-foreground">
+                                {match.similar_clients_success.examples.length > 0 
+                                  ? match.similar_clients_success.examples.slice(0, 2).join(', ')
+                                  : 'No examples available'
+                                }
+                              </div>
+                              <div className="text-xs text-muted-foreground">Examples</div>
+                            </div>
+                          </div>
                         </div>
 
                         {match.historical_performance && (
