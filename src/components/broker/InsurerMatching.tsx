@@ -205,7 +205,7 @@ const InsurerMatching = () => {
               <SelectContent>
                 {clientQuotes.map((quote) => (
                   <SelectItem key={quote.id} value={quote.id}>
-                    {quote.client_name} - {quote.industry} (£{quote.premium_amount.toLocaleString()})
+                    {quote.client_name} - {quote.industry}
                   </SelectItem>
                 ))}
               </SelectContent>
