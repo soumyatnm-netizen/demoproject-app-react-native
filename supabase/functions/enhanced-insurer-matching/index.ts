@@ -274,7 +274,7 @@ Generate 6 diverse matches with varying scores (70-95) and confidence levels.
       }
     );
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in enhanced insurer matching:', error);
     return new Response(
       JSON.stringify({ 
