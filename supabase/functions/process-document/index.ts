@@ -102,12 +102,15 @@ serve(async (req) => {
     // pdf.js configured via npm legacy build at top-level (no DOM/polyfills needed)
     console.log('Extracting text from PDF...');
     const arrayBuffer = await fileData.arrayBuffer();
+    const pdfBytes = new Uint8Array(arrayBuffer);
     const loadingTask = getDocument({
-      data: new Uint8Array(arrayBuffer),
+      data: pdfBytes,
       isEvalSupported: false,
       disableFontFace: true,
     });
     const pdf = await loadingTask.promise;
+    
+    console.log("PDF size:", pdfBytes.byteLength, "pages:", pdf.numPages);
 
     let extractedText = '';
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
