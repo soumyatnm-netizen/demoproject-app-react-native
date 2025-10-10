@@ -6,6 +6,7 @@ try {
 } catch {}
 
 console.log("pdfjs-smoke: loaded npm:pdfjs-dist@3.4.120/legacy");
+console.log("workerSrc:", String(GlobalWorkerOptions.workerSrc));
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -49,9 +50,10 @@ serve(async (req) => {
     }
     
     const pdf = await task.promise;
+    console.log("Smoke test success - Pages:", pdf.numPages, "| Worker:", String(GlobalWorkerOptions.workerSrc));
     
     return new Response(
-      JSON.stringify({ ok: true, pages: pdf.numPages, message: "PDF.js is working correctly" }), 
+      JSON.stringify({ ok: true, pages: pdf.numPages, message: "PDF.js is working correctly", workerSrc: String(GlobalWorkerOptions.workerSrc) }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {

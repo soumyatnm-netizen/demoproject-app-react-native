@@ -8,6 +8,7 @@ try {
 } catch {}
 
 console.log("pdfjs legacy build active via npm: specifier");
+console.log("workerSrc:", String(GlobalWorkerOptions.workerSrc));
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -117,7 +118,7 @@ serve(async (req) => {
       pages: pdf.numPages,
       size: pdfBytes.byteLength
     };
-    console.log("PDF size:", pdfMetadata.size, "pages:", pdfMetadata.pages);
+    console.log("PDF loaded successfully - Pages:", pdfMetadata.pages, "| Size:", pdfMetadata.size, "bytes | Worker:", String(GlobalWorkerOptions.workerSrc));
 
     let extractedText = '';
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
