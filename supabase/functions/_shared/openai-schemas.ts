@@ -36,9 +36,9 @@ export const QUOTE_COMPARISON_SCHEMA = {
               additionalProperties: false,
               required: ["base", "taxes_fees", "total"],
               properties: {
-                base: { type: "number" },
-                taxes_fees: { type: "number", default: 0 },
-                total: { type: "number" }
+                base: { type: ["number", "null"] },
+                taxes_fees: { type: ["number", "null"] },
+                total: { type: ["number", "null"] }
               }
             },
             limits: {
@@ -164,9 +164,9 @@ export const POLICY_WORDING_SCHEMA = {
             additionalProperties: false,
             required: ["type", "retro_date", "notice_requirements"],
             properties: {
-              type: { type: "string", enum: ["claims-made", "occurrence", "unknown"] },
-              retro_date: { type: "string" },
-              notice_requirements: { type: "string" }
+              type: { type: ["string", "null"], enum: ["claims-made", "occurrence", "unknown"] },
+              retro_date: { type: ["string", "null"] },
+              notice_requirements: { type: ["string", "null"] }
             }
           }
         }

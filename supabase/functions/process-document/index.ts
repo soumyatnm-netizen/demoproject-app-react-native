@@ -137,8 +137,17 @@ serve(async (req) => {
     const fileId = uploadData.id;
     console.log('[openai] uploaded fileId:', fileId);
 
-    // Import schemas
+    // Import schemas and normalizer
     const { QUOTE_COMPARISON_SCHEMA } = await import("../_shared/openai-schemas.ts");
+    const { normalizeStrictJsonSchema, assertObjectSchema } = await import("../_shared/schema-utils.ts");
+    
+    console.log('[schema] QC root.type:', QUOTE_COMPARISON_SCHEMA.schema?.type);
+    
+    // Normalize schema for strict mode
+    const QUOTE_COMPARISON_STRICT = normalizeStrictJsonSchema(
+      structuredClone(QUOTE_COMPARISON_SCHEMA.schema)
+    );
+    assertObjectSchema("QUOTE_COMPARISON_STRICT", QUOTE_COMPARISON_STRICT);
 
     // Call OpenAI Responses API with native PDF
     console.log('Calling OpenAI Responses API...');
@@ -165,7 +174,7 @@ serve(async (req) => {
           type: "json_schema",
           strict: true,
           name: "QuoteComparison",
-          schema: QUOTE_COMPARISON_SCHEMA.schema
+          schema: QUOTE_COMPARISON_STRICT
         }
       },
       temperature: 0,
