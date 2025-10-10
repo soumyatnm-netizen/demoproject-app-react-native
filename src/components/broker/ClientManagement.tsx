@@ -6,10 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Edit, Eye, Mail, Building2, FileUp, Target } from "lucide-react";
+import { Plus, Search, Edit, Eye, Mail, Building2, FileUp, Target, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { DocumentUpload } from "./DocumentUpload";
@@ -41,6 +42,8 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
   const [selectedClient, setSelectedClient] = useState<ClientData | null>(null);
   const [isEditingClient, setIsEditingClient] = useState(false);
   const [editingClientData, setEditingClientData] = useState<any>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<ClientData | null>(null);
   const { toast } = useToast();
 
   // Status options with their corresponding colors
@@ -359,6 +362,53 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleDeleteClient = async () => {
+    if (!clientToDelete) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No authenticated user');
+
+      const { error } = await supabase
+        .from('client_reports')
+        .delete()
+        .eq('id', clientToDelete.id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Client deleted successfully",
+      });
+
+      setDeleteDialogOpen(false);
+      setClientToDelete(null);
+      
+      // If the deleted client was being viewed, close the details dialog
+      if (selectedClient?.id === clientToDelete.id) {
+        setShowClientDetails(false);
+        setSelectedClient(null);
+      }
+
+      await fetchClients();
+      onStatsUpdate();
+
+    } catch (error) {
+      console.error('Error deleting client:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete client",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const confirmDeleteClient = (client: ClientData) => {
+    setClientToDelete(client);
+    setDeleteDialogOpen(true);
   };
 
   if (loading) {
@@ -682,6 +732,14 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                       </Button>
                       <Button size="sm" variant="outline">
                         <Mail className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => confirmDeleteClient(client)}
+                        className="hover:bg-destructive hover:text-destructive-foreground"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </TableCell>
@@ -1054,6 +1112,28 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this client?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete <strong>{clientToDelete?.client_name}</strong> and all associated data.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setClientToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteClient}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
