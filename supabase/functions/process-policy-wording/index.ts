@@ -67,7 +67,11 @@ serve(async (req) => {
     });
     const pdf = await loadingTask.promise;
     
-    console.log("PDF size:", pdfBytes.byteLength, "pages:", pdf.numPages);
+    const pdfMetadata = {
+      pages: pdf.numPages,
+      size: pdfBytes.byteLength
+    };
+    console.log("PDF size:", pdfMetadata.size, "pages:", pdfMetadata.pages);
 
     let extractedText = '';
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
@@ -289,7 +293,8 @@ ${extractedText}`;
     }
 
     const aiResult = await aiResponse.json();
-    console.log('OpenAI token usage:', JSON.stringify(aiResult.usage || {}));
+    const tokenUsage = aiResult.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+    console.log('OpenAI token usage:', JSON.stringify(tokenUsage));
     console.log('AI analysis complete');
 
     const content = aiResult.choices[0].message.content;
@@ -338,9 +343,16 @@ ${extractedText}`;
 
     return new Response(
       JSON.stringify({
-        success: true,
-        policyWordingId: policyWording.id,
-        insurerName: policyWording.insurer_name
+        ok: true,
+        result: analysisData,
+        tokens: tokenUsage,
+        metadata: {
+          ...pdfMetadata,
+          documentId,
+          policyWordingId: policyWording.id,
+          insurerName: policyWording.insurer_name,
+          processedAt: new Date().toISOString()
+        }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
