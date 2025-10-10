@@ -5,9 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BarChart3, Download, Eye, TrendingUp, Users, Trash2, Calendar } from "lucide-react";
+import { BarChart3, Download, Eye, TrendingUp, Users, Trash2, Calendar, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { reprocessQuote } from "@/utils/reprocessQuotes";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -471,7 +472,7 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
                       <span>Uploaded {formatDate(quote.created_at)}</span>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between space-x-2">
                     <Button
                       variant="outline"
                       size="sm"
@@ -479,10 +480,39 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
                         e.stopPropagation();
                         downloadQuote(quote);
                       }}
-                      className="flex items-center space-x-1 h-7 px-2"
+                      className="flex items-center space-x-1 h-7 px-2 flex-1"
                     >
                       <Download className="h-3 w-3" />
                       <span className="text-xs">Download</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          toast({
+                            title: "Rescanning Quote",
+                            description: "AI is extracting data from the document...",
+                          });
+                          const result = await reprocessQuote(quote.id);
+                          toast({
+                            title: "Rescan Complete!",
+                            description: `Updated to: ${result.newInsurer}`,
+                          });
+                          onRefresh();
+                        } catch (error) {
+                          toast({
+                            title: "Rescan Failed",
+                            description: error.message,
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                      className="flex items-center space-x-1 h-7 px-2 flex-1"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      <span className="text-xs">Rescan</span>
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
@@ -490,7 +520,7 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
                           variant="outline"
                           size="sm"
                           onClick={(e) => e.stopPropagation()}
-                          className="flex items-center space-x-1 h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="flex items-center space-x-1 h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 flex-1"
                         >
                           <Trash2 className="h-3 w-3" />
                           <span className="text-xs">Delete</span>
