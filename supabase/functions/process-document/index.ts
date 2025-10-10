@@ -145,7 +145,14 @@ serve(async (req) => {
           ]
         }
       ],
-      response_format: { type: "json_schema", json_schema: QUOTE_COMPARISON_SCHEMA },
+      text: {
+        format: {
+          type: "json_schema",
+          strict: true,
+          name: "QuoteComparison",
+          schema: QUOTE_COMPARISON_SCHEMA
+        }
+      },
       temperature: 0,
       max_output_tokens: 2000
     };

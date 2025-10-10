@@ -129,7 +129,14 @@ serve(async (req) => {
           ]
         }
       ],
-      response_format: { type: "json_schema", json_schema: POLICY_WORDING_SCHEMA },
+      text: {
+        format: {
+          type: "json_schema",
+          strict: true,
+          name: "PolicyWording",
+          schema: POLICY_WORDING_SCHEMA
+        }
+      },
       temperature: 0,
       max_output_tokens: 3000
     };
