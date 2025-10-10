@@ -103,144 +103,137 @@ serve(async (req) => {
       return json(req, 413, { ok: false, error: 'PDF too large (max 30MB). Please use a smaller document or split it into sections.' });
     }
 
-    // Upload PDF to OpenAI Files API
-    const pdfFile = new File([pdfBytes], document.filename || 'policy.pdf', { type: 'application/pdf' });
-    const formData = new FormData();
-    formData.append('file', pdfFile);
-    formData.append('purpose', 'assistants');
+    // --- Upload to OpenAI Files API (with granular error handling) ---
+    let fileId: string | null = null;
+    try {
+      const pdfFile = new File([pdfBytes], document.filename || 'policy.pdf', { type: 'application/pdf' });
+      const formData = new FormData();
+      formData.append('file', pdfFile);
+      formData.append('purpose', 'assistants');
 
-    console.log('Uploading PDF to OpenAI Files API...');
-    const uploadResponse = await fetch('https://api.openai.com/v1/files', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${openAIApiKey}` },
-      body: formData
-    });
-
-    const uploadText = await uploadResponse.text();
-    if (!uploadResponse.ok) {
-      console.error('[OpenAI] Upload error:', uploadText.slice(0, 400));
-      return json(req, 500, { ok: false, error: `OpenAI upload failed: ${uploadText.slice(0, 400)}` });
+      console.log('[PW] Uploading PDF to OpenAI Files API…');
+      const upRes = await fetch('https://api.openai.com/v1/files', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${openAIApiKey}` },
+        body: formData
+      });
+      
+      const upText = await upRes.text();
+      console.log('[PW] upload status:', upRes.status, 'len:', upText.length);
+      
+      if (!upRes.ok) {
+        console.error('[PW][OpenAI Upload] error (first 400):', upText.slice(0, 400));
+        return json(req, upRes.status, { ok: false, stage: 'upload', error: upText.slice(0, 400) });
+      }
+      
+      const uploadData = JSON.parse(upText);
+      fileId = uploadData.id;
+      console.log('[PW] uploaded fileId:', fileId);
+    } catch (e) {
+      console.error('[PW] upload threw:', String(e), (e as any)?.stack);
+      return json(req, 500, { ok: false, stage: 'upload', error: String(e) });
     }
 
-    const uploadData = JSON.parse(uploadText);
-    const fileId = uploadData.id;
-    console.log('[openai] uploaded fileId:', fileId);
-
-    // Import schemas and normalizer
-    const { POLICY_WORDING_SCHEMA } = await import("../_shared/openai-schemas.ts");
+    // --- Build schema & prevalidate ---
+    const schemaModule = await import("../_shared/openai-schemas.ts");
     const { normalizeStrictJsonSchema, findFirstRequiredMismatch, assertObjectSchema } = await import("../_shared/schema-utils.ts");
     
+    const POLICY_WORDING_SCHEMA = schemaModule.POLICY_WORDING_SCHEMA ?? schemaModule.default;
     console.log('[schema PW] typeof:', typeof POLICY_WORDING_SCHEMA, 'root.type:', POLICY_WORDING_SCHEMA?.type);
     
-    // Normalize schema for strict mode
-    const PW_STRICT = normalizeStrictJsonSchema(
-      structuredClone(POLICY_WORDING_SCHEMA)
-    );
+    const PW_STRICT = normalizeStrictJsonSchema(structuredClone(POLICY_WORDING_SCHEMA));
     assertObjectSchema("POLICY_WORDING_SCHEMA", PW_STRICT);
     
-    console.log('[schema PW] first keys:', Object.keys(PW_STRICT.properties || {}).slice(0,5));
-    const mismatchPW = findFirstRequiredMismatch(PW_STRICT);
-    if (mismatchPW) {
-      console.error('[schema PW] required mismatch at:', mismatchPW);
-      return json(req, 500, { ok: false, error: `Schema 'PolicyWording' not strict: ${mismatchPW}` });
+    console.log('[schema PW] first keys:', Object.keys(PW_STRICT.properties || {}).slice(0, 5));
+    const mismatch = findFirstRequiredMismatch(PW_STRICT);
+    if (mismatch) {
+      console.error('[schema PW] required mismatch at:', mismatch);
+      return json(req, 500, { ok: false, stage: 'schema_precheck', error: `required mismatch at ${mismatch}` });
     }
 
-    // Call OpenAI Responses API with native PDF
-    console.log('Calling OpenAI Responses API...');
+    // --- Prepare API call parameters ---
+    const systemText = "You analyse insurance policy wordings for brokers. Extract structure (insuring clause, definitions, conditions, warranties, limits/sublimits/deductibles, territory, jurisdiction, claims basis) plus exclusions and endorsements. Flag ambiguities and broker actions. Include citations. Be concise but complete. Only output valid JSON per the schema.";
+    const userText = "Analyze the attached policy wording PDF and return structured JSON per schema. Be thorough but concise.";
     
-    // Increase max_output_tokens for complex documents
-    const body = {
-      model: "gpt-4o-mini",
-      input: [
-        { 
-          role: "system", 
-          content: [{ 
-            type: "input_text", 
-            text: "You analyse insurance policy wordings for brokers. Extract structure (insuring clause, definitions, conditions, warranties, limits/sublimits/deductibles, territory, jurisdiction, claims basis) plus exclusions and endorsements. Flag ambiguities and broker actions. Include citations. Be concise but complete. Only output valid JSON per the schema."
-          }] 
+    console.log('[PW] systemText defined:', systemText ? 'yes' : 'no');
+    console.log('[PW] userText defined:', userText ? 'yes' : 'no');
+    
+    // --- Call Responses API (with granular error handling) ---
+    let respStatus = 0;
+    let respText = "";
+    try {
+      console.log('[PW] Calling OpenAI Responses API…');
+      const body = {
+        model: "gpt-4o-mini",
+        input: [
+          { role: "system", content: [{ type: "input_text", text: systemText }] },
+          { 
+            role: "user", 
+            content: [
+              { type: "input_text", text: userText },
+              { type: "input_file", file_id: fileId }
+            ]
+          }
+        ],
+        text: { 
+          format: { 
+            type: "json_schema", 
+            strict: true, 
+            name: "PolicyWording", 
+            schema: PW_STRICT 
+          } 
         },
-        { 
-          role: "user", 
-          content: [
-            { type: "input_text", text: "Analyze the attached policy wording PDF and return structured JSON per schema. Be thorough but concise." },
-            { type: "input_file", file_id: fileId }
-          ]
-        }
-      ],
-      text: {
-        format: {
-          type: "json_schema",
-          strict: true,
-          name: "PolicyWording",
-          schema: PW_STRICT
-        }
-      },
-      temperature: 0,
-      max_output_tokens: 4000 // Increased from 3000 to handle more complex documents
-    };
-    
-    console.log('[OpenAI] Request payload size:', JSON.stringify(body).length);
+        temperature: 0,
+        max_output_tokens: 3000
+      };
 
-    const responsesResponse = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(body)
-    });
+      console.log('[PW] Request payload size:', JSON.stringify(body).length);
 
-    // Check response status first before trying to read body
-    if (!responsesResponse.ok) {
-      const errorText = await responsesResponse.text().catch(() => 'Unable to read error response');
-      console.error('[OpenAI] Responses error status:', responsesResponse.status);
-      console.error('[OpenAI] Responses error:', errorText.slice(0, 400));
-      return json(req, 500, { ok: false, error: `OpenAI API error (${responsesResponse.status}): ${errorText.slice(0, 400)}` });
-    }
-
-    // Read response with better error handling
-    let responsesText: string;
-    try {
-      const contentLength = responsesResponse.headers.get('content-length');
-      console.log('[OpenAI] Response content-length:', contentLength);
+      const r = await fetch('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${openAIApiKey}`, 
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify(body)
+      });
       
-      responsesText = await responsesResponse.text();
-      console.log('[OpenAI] Response body length:', responsesText.length);
-    } catch (readError) {
-      console.error('[OpenAI] Failed to read response body:', readError);
-      return json(req, 500, { 
-        ok: false, 
-        error: `Failed to read OpenAI response: ${readError instanceof Error ? readError.message : 'Unknown error'}. The document may be too large or complex.` 
-      });
+      respStatus = r.status;
+      respText = await r.text();
+      console.log('[PW] responses status:', respStatus, 'len:', respText.length);
+      
+      if (!r.ok) {
+        console.error('[PW][OpenAI Responses] error (first 400):', respText.slice(0, 400));
+        return json(req, r.status, { ok: false, stage: 'responses', error: respText.slice(0, 400) });
+      }
+    } catch (e) {
+      console.error('[PW] responses threw:', String(e), (e as any)?.stack);
+      return json(req, 500, { ok: false, stage: 'responses_throw', error: String(e) });
     }
 
+    // --- Parse output safely ---
     let responsesData: any;
+    let outputText: any;
+    let structured: any;
     try {
-      responsesData = JSON.parse(responsesText);
-    } catch (parseError) {
-      console.error('[OpenAI] Failed to parse response JSON');
-      console.error('[OpenAI] Response preview:', responsesText.slice(0, 500));
-      return json(req, 500, { 
-        ok: false, 
-        error: 'OpenAI returned invalid JSON response' 
-      });
-    }
-    let outputText = responsesData?.output?.[0]?.content?.[0]?.text 
-      ?? responsesData?.content?.[0]?.text 
-      ?? responsesData?.output_text
-      ?? responsesData?.choices?.[0]?.message?.content;
-    
-    console.log('[openai] output preview:', String(outputText).slice(0, 400));
-    
-    let analysisData: any;
-    try {
-      analysisData = typeof outputText === 'string' ? JSON.parse(outputText) : outputText;
+      responsesData = JSON.parse(respText);
+      outputText =
+        responsesData?.output?.[0]?.content?.[0]?.text ??
+        responsesData?.content?.[0]?.text ??
+        responsesData?.output_text ??
+        responsesData?.choices?.[0]?.message?.content;
+      
+      console.log('[PW] output preview:', String(outputText).slice(0, 200));
+      structured = typeof outputText === "string" ? JSON.parse(outputText) : outputText;
+      
+      console.log('[PW] model:', responsesData?.model, 'usage:', JSON.stringify(responsesData?.usage ?? null));
     } catch (e) {
-      console.error('[openai] JSON.parse failed. First 400 chars:', String(outputText).slice(0, 400));
-      return json(req, 502, { ok: false, error: 'Model returned non-JSON. See logs for details.' });
+      console.error('[PW] parse fail. responses status:', respStatus, 'first 400:', respText.slice(0, 400));
+      console.error('[PW] JSON.parse threw:', String(e));
+      return json(req, 502, { ok: false, stage: 'parse', error: 'Model returned non-JSON or unexpected shape' });
     }
     
-    console.log('[openai] model:', responsesData?.model, 'usage:', JSON.stringify(responsesData?.usage ?? null));
+    const analysisData = structured;
 
     // Store the analysis in the database
     console.log('[db] Mapping analysis data to database structure...');
@@ -319,12 +312,13 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('=== PROCESS POLICY WORDING ERROR ===');
-    console.error('Error:', (error as any).message);
-    console.error('Stack:', (error as any).stack);
+    console.error('[PW] error:', String(error));
+    console.error('[PW] stack:', (error as any)?.stack);
     
     return json(req, 500, {
       ok: false,
-      error: (error as any).message,
+      stage: 'top_catch',
+      error: String(error),
       timestamp: new Date().toISOString()
     });
   }
