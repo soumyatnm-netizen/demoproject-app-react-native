@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -19,11 +19,95 @@ interface UploadingFile {
   status: 'uploading' | 'processing' | 'completed' | 'error';
   id?: string;
   error?: string;
+  extractedData?: any;
 }
 
 export const DocumentUpload = ({ open, onOpenChange, onClientExtracted }: DocumentUploadProps) => {
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
+  const [allFilesProcessed, setAllFilesProcessed] = useState(false);
   const { toast } = useToast();
+
+  // Merge extracted data from multiple documents
+  const mergeClientData = useCallback((dataArray: any[]) => {
+    const merged: any = {
+      client_name: "",
+      industry: "",
+      revenue_band: "",
+      employee_count: "",
+      coverage_requirements: "",
+      contact_email: "",
+      contact_phone: "",
+      notes: "",
+      main_address: "",
+      postcode: "",
+      date_established: "",
+      organisation_type: "",
+      website: "",
+      wage_roll: ""
+    };
+
+    // Helper to prioritize non-empty values
+    const pickBestValue = (values: any[]) => {
+      return values.find(v => v && v !== "" && v !== "N/A") || "";
+    };
+
+    // Merge each field, prioritizing populated data
+    merged.client_name = pickBestValue(dataArray.map(d => d.client_name || d["Business/Client name"]));
+    merged.industry = pickBestValue(dataArray.map(d => d.industry || d["Industry"]));
+    merged.revenue_band = pickBestValue(dataArray.map(d => d.revenue_band || d["Revenue Band"]));
+    merged.employee_count = pickBestValue(dataArray.map(d => d.employee_count || d["Employee Count"] || d["Total number of employees"]));
+    merged.contact_email = pickBestValue(dataArray.map(d => d.contact_email || d["Contact Email"]));
+    merged.contact_phone = pickBestValue(dataArray.map(d => d.contact_phone || d["Contact Phone"]));
+    merged.main_address = pickBestValue(dataArray.map(d => d.main_address || d["Main address"]));
+    merged.postcode = pickBestValue(dataArray.map(d => d.postcode || d["Postcode"]));
+    merged.date_established = pickBestValue(dataArray.map(d => d.date_established || d["Date business established"]));
+    merged.organisation_type = pickBestValue(dataArray.map(d => d.organisation_type || d["Type of organisation"]));
+    merged.website = pickBestValue(dataArray.map(d => d.website || d["Website"]));
+    merged.wage_roll = pickBestValue(dataArray.map(d => d.wage_roll || d["Total wage roll"]));
+
+    // Merge coverage requirements arrays
+    const allCoverages = dataArray.flatMap(d => {
+      const coverage = d.coverage_requirements || d["Coverage Requirements"] || [];
+      if (Array.isArray(coverage)) return coverage;
+      if (typeof coverage === 'string') return coverage.split(',').map(s => s.trim());
+      return [];
+    });
+    merged.coverage_requirements = [...new Set(allCoverages)].filter(Boolean).join(', ');
+
+    // Combine notes from all documents
+    const allNotes = dataArray
+      .map((d, i) => {
+        const notes = d.notes || "";
+        if (notes) return `Document ${i + 1}: ${notes}`;
+        return "";
+      })
+      .filter(Boolean);
+    merged.notes = allNotes.join('\n\n');
+
+    return merged;
+  }, []);
+
+  // Check if all files are completed and merge data
+  const checkAndMergeData = useCallback(() => {
+    const allCompleted = uploadingFiles.every(f => 
+      f.status === 'completed' || f.status === 'error'
+    );
+
+    if (allCompleted && uploadingFiles.length > 0 && !allFilesProcessed) {
+      const completedFiles = uploadingFiles.filter(f => f.status === 'completed' && f.extractedData);
+      
+      if (completedFiles.length > 0) {
+        const mergedData = mergeClientData(completedFiles.map(f => f.extractedData));
+        onClientExtracted(mergedData);
+        setAllFilesProcessed(true);
+        
+        toast({
+          title: "Success",
+          description: `Processed ${completedFiles.length} document(s) and merged client data!`,
+        });
+      }
+    }
+  }, [uploadingFiles, allFilesProcessed, mergeClientData, onClientExtracted, toast]);
 
   const uploadFile = useCallback(async (file: File) => {
     const fileId = Math.random().toString(36).substring(7);
@@ -113,22 +197,14 @@ export const DocumentUpload = ({ open, onOpenChange, onClientExtracted }: Docume
         throw new Error(scanResult.error || 'Failed to scan document');
       }
 
-      // Update progress to complete
+      // Update progress to complete and store extracted data
       setUploadingFiles(prev => 
         prev.map(f => 
           f.file === file 
-            ? { ...f, progress: 100, status: 'completed' } 
+            ? { ...f, progress: 100, status: 'completed', extractedData: scanResult.extractedData } 
             : f
         )
       );
-
-      // Call the callback with extracted data
-      onClientExtracted(scanResult.extractedData);
-
-      toast({
-        title: "Success",
-        description: "Document scanned successfully. Client data extracted!",
-      });
 
     } catch (error: any) {
       console.error('Upload/scan error:', error);
@@ -150,10 +226,19 @@ export const DocumentUpload = ({ open, onOpenChange, onClientExtracted }: Docume
   }, [onClientExtracted, toast]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
+    // Reset state for new batch of files
+    setAllFilesProcessed(false);
+    setUploadingFiles([]);
+    
     acceptedFiles.forEach(file => {
       uploadFile(file);
     });
   }, [uploadFile]);
+
+  // Check for completion whenever uploadingFiles changes
+  useEffect(() => {
+    checkAndMergeData();
+  }, [uploadingFiles, checkAndMergeData]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -167,9 +252,10 @@ export const DocumentUpload = ({ open, onOpenChange, onClientExtracted }: Docume
     },
     accept: {
       'image/*': ['.jpeg', '.jpg', '.png', '.gif'],
+      'application/pdf': ['.pdf'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
     },
-    maxSize: 10 * 1024 * 1024, // 10MB
+    maxSize: 20 * 1024 * 1024, // 20MB
     multiple: true,
     noClick: false,
     noKeyboard: false,
@@ -202,22 +288,25 @@ export const DocumentUpload = ({ open, onOpenChange, onClientExtracted }: Docume
             <input {...getInputProps()} />
             <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-lg font-medium mb-2">
-              {isDragActive ? 'Drop the files here...' : 'Drag & drop quotes, documents or handwritten client forms here'}
+              {isDragActive ? 'Drop the files here...' : 'Drag & drop multiple client documents here'}
             </p>
             <p className="text-sm text-muted-foreground mb-4">
-              or click to select files - supports handwriting recognition
+              Upload multiple documents to extract complete client information - all data will be automatically merged
             </p>
             <Button variant="outline" type="button">
-              Select Files
+              Select Multiple Files
             </Button>
             <p className="text-xs text-muted-foreground mt-4">
-              Supports: Handwritten notes (JPG, PNG), DOCX documents, GIF images (max 10MB). AI-powered OCR and handwriting recognition included.
+              Supports: PDF, Handwritten notes (JPG, PNG), DOCX documents (max 20MB per file). AI-powered OCR and handwriting recognition included.
             </p>
           </div>
 
           {uploadingFiles.length > 0 && (
             <div className="space-y-2">
-              <h3 className="font-medium">Processing Files</h3>
+              <h3 className="font-medium">Processing {uploadingFiles.length} File(s)</h3>
+              <p className="text-sm text-muted-foreground">
+                Data from all completed documents will be automatically merged
+              </p>
               {uploadingFiles.map((uploadingFile, index) => (
                 <div key={index} className="flex items-center space-x-3 p-3 border rounded-lg">
                   <FileText className="h-8 w-8 text-muted-foreground flex-shrink-0" />
