@@ -165,7 +165,7 @@ serve(async (req) => {
           type: "json_schema",
           strict: true,
           name: "QuoteComparison",
-          schema: QUOTE_COMPARISON_SCHEMA
+          schema: QUOTE_COMPARISON_SCHEMA.schema
         }
       },
       temperature: 0,

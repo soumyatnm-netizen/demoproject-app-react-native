@@ -149,7 +149,7 @@ serve(async (req) => {
           type: "json_schema",
           strict: true,
           name: "PolicyWording",
-          schema: POLICY_WORDING_SCHEMA
+          schema: POLICY_WORDING_SCHEMA.schema
         }
       },
       temperature: 0,
