@@ -4,7 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 
 // ✅ 100% server-safe import (no esm.sh rewriting, no es2022 path)
 const { getDocument, GlobalWorkerOptions } = await import(
-  "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.4.120/legacy/build/pdf.min.mjs"
+  "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.mjs"
 );
 
 // ✅ Run pdf.js without a worker (Edge-friendly, no DOM/canvas)

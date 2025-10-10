@@ -36,7 +36,7 @@ export async function uploadFileToOpenAI(file: File, key: string): Promise<strin
 }
 
 export async function callResponsesJSON(key: string, body: unknown): Promise<{ result: any; raw: any }> {
-  const r = await fetch("https://api.openai.com/v1/responses", {
+  const r = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { 
       Authorization: `Bearer ${key}`, 
@@ -47,17 +47,12 @@ export async function callResponsesJSON(key: string, body: unknown): Promise<{ r
   
   const txt = await r.text();
   if (!r.ok) {
+    console.error('[OpenAI] Error response:', txt.slice(0, 400));
     throw new Error(`OpenAI ${r.status}: ${txt.slice(0, 400)}`);
   }
   
-  // Normalise Responses API shapes
   const j = JSON.parse(txt);
-  const jsonText =
-    j?.output?.[0]?.content?.[0]?.text ??
-    j?.content?.[0]?.text ??
-    j?.output_text ??
-    j?.choices?.[0]?.message?.content;
-  
+  const jsonText = j?.choices?.[0]?.message?.content;
   const result = typeof jsonText === "string" ? JSON.parse(jsonText) : jsonText;
   return { result, raw: j };
 }
