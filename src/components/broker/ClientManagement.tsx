@@ -96,9 +96,9 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
   const getRenewalBadgeColor = (daysToRenewal: number | null): string => {
     if (daysToRenewal === null) return 'bg-gray-500';
     if (daysToRenewal < 0) return 'bg-red-500'; // Overdue
-    if (daysToRenewal <= 30) return 'bg-orange-500'; // Due soon
-    if (daysToRenewal <= 90) return 'bg-yellow-500'; // Approaching
-    return 'bg-green-500'; // Future
+    if (daysToRenewal < 30) return 'bg-red-500'; // Under 30 days - red
+    if (daysToRenewal < 60) return 'bg-orange-500'; // Under 60 days - orange
+    return 'bg-green-500'; // 60+ days - green
   };
 
   const handleStatusChange = async (clientId: string, newStatus: string) => {
@@ -160,6 +160,46 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
   useEffect(() => {
     fetchClients();
   }, []);
+
+  // Check and update renewal statuses automatically
+  useEffect(() => {
+    const updateRenewalStatuses = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Find clients with renewal dates within 60 days that aren't already in renewal_approaching status
+        const clientsNeedingUpdate = clients.filter(client => {
+          const daysToRenewal = calculateDaysToRenewal(client.renewal_date);
+          return daysToRenewal !== null && 
+                 daysToRenewal >= 0 && 
+                 daysToRenewal < 60 && 
+                 client.report_status !== 'renewal_approaching';
+        });
+
+        // Update each client's status
+        for (const client of clientsNeedingUpdate) {
+          await supabase
+            .from('client_reports')
+            .update({ report_status: 'renewal_approaching' })
+            .eq('id', client.id)
+            .eq('user_id', user.id);
+        }
+
+        // Refresh if we made any updates
+        if (clientsNeedingUpdate.length > 0) {
+          await fetchClients();
+          onStatsUpdate();
+        }
+      } catch (error) {
+        console.error('Error updating renewal statuses:', error);
+      }
+    };
+
+    if (clients.length > 0) {
+      updateRenewalStatuses();
+    }
+  }, [clients.length]); // Run when clients are loaded
 
   const fetchClients = async () => {
     try {
