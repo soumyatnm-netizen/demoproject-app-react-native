@@ -38,16 +38,8 @@ serve(async (req) => {
 
     console.log('Document found:', document.storage_path);
 
-    // Generate a signed URL (works well with Gemini); also prepare base64 for data URI fallback
-    const { data: signed, error: signedErr } = await supabase.storage
-      .from('documents')
-      .createSignedUrl(document.storage_path, 600);
-    if (signedErr || !signed?.signedUrl) throw signedErr || new Error('Failed to create signed URL');
-    const fileUrl = signed.signedUrl;
-    console.log('Signed URL generated for document');
-
-    // Also download and convert to base64 for data URI fallback
-    console.log('Downloading file from storage for optional data URI...');
+    // Download the PDF file for text extraction
+    console.log('Downloading file from storage...');
     const { data: fileData, error: downloadError } = await supabase.storage
       .from('documents')
       .download(document.storage_path);
@@ -56,19 +48,23 @@ serve(async (req) => {
       throw new Error('Failed to download document from storage');
     }
 
-    console.log('File downloaded, converting to base64...');
+    // Import PDF.js for text extraction (Deno-compatible)
+    const pdfjsLib = await import('https://esm.sh/pdfjs-dist@4.0.379/build/pdf.min.mjs');
+    
+    console.log('Extracting text from PDF...');
     const arrayBuffer = await fileData.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
-    let binaryString = '';
-    const chunkSize = 8192;
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-      const sub = bytes.subarray(i, i + chunkSize);
-      for (let j = 0; j < sub.length; j++) {
-        binaryString += String.fromCharCode(sub[j]);
-      }
+    const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
+    const pdf = await loadingTask.promise;
+    
+    let extractedText = '';
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map((item: any) => item.str).join(' ');
+      extractedText += `\n--- Page ${pageNum} ---\n${pageText}`;
     }
-    const base64Data = btoa(binaryString);
-    console.log('PDF converted to base64, size:', base64Data.length, 'chars');
+    
+    console.log('Text extracted, length:', extractedText.length, 'chars');
 
     // Create comprehensive prompt for AI analysis
     const systemPrompt = `You are an expert insurance policy analyst specializing in comparing and extracting structured data from insurance policy wording documents.
@@ -231,15 +227,12 @@ IMPORTANT:
 - Extract exact wording and page/section references where possible
 - Normalize monetary amounts to consistent format (e.g., £1M, £500K)`;
 
-    const userPrompt = `Please analyze this insurance policy wording document and extract all the structured information as specified. The document is a PDF.`;
+    const userPrompt = `Please analyze this insurance policy wording document and extract all the structured information as specified.
 
-    // Call Lovable AI Gateway with Gemini Flash
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY not configured');
-    }
+DOCUMENT TEXT:
+${extractedText}`;
 
-    // Use OpenAI directly for PDF processing (GPT-5-mini has excellent document understanding)
+    // Use OpenAI directly for text analysis (GPT-5-mini excels at structured extraction)
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
       throw new Error('OPENAI_API_KEY not configured');
@@ -257,18 +250,7 @@ IMPORTANT:
         model: 'gpt-5-mini',
         messages: [
           { role: 'system', content: systemPrompt },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: userPrompt },
-              { 
-                type: 'image_url',
-                image_url: { 
-                  url: `data:application/pdf;base64,${base64Data}`
-                } 
-              }
-            ]
-          }
+          { role: 'user', content: userPrompt }
         ],
         max_completion_tokens: 8192
       }),

@@ -93,64 +93,31 @@ serve(async (req) => {
 
     console.log('File downloaded, size:', fileData.size);
 
-    // Convert to base64 for AI processing
+    // Import PDF.js for text extraction (Deno-compatible)
+    const pdfjsLib = await import('https://esm.sh/pdfjs-dist@4.0.379/build/pdf.min.mjs');
+    
+    console.log('Extracting text from PDF...');
     const arrayBuffer = await fileData.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
-    let binaryString = '';
-    const chunkSize = 8192;
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-      const sub = bytes.subarray(i, i + chunkSize);
-      for (let j = 0; j < sub.length; j++) {
-        binaryString += String.fromCharCode(sub[j]);
-      }
+    const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
+    const pdf = await loadingTask.promise;
+    
+    let extractedText = '';
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map((item: any) => item.str).join(' ');
+      extractedText += `\n--- Page ${pageNum} ---\n${pageText}`;
     }
-    const base64Data = btoa(binaryString);
-
-    console.log('File converted to base64, size:', base64Data.length, 'chars, calling AI for extraction...');
+    
+    console.log('Text extracted, length:', extractedText.length, 'chars');
 
     // Prepare AI prompt for insurance quote extraction
-    const extractionPrompt = `Extract structured insurance quote data from this document. You MUST return ONLY valid JSON with these exact fields (no markdown, no explanations):
+    const fullPrompt = `${extractionPrompt}
 
-{
-  "insurer_name": "Full insurer company name (e.g., Hiscox, CFC, Allianz, Aviva, RSA, etc.)",
-  "product_type": "Type of insurance product (e.g., Professional Indemnity, Public Liability, Combined Commercial)",
-  "industry": "Industry/sector of the insured business",
-  "revenue_band": "Revenue range (e.g., 1M-5M, 5M-10M)",
-  "premium_amount": <number - annual premium in GBP>,
-  "premium_currency": "GBP",
-  "quote_date": "YYYY-MM-DD",
-  "expiry_date": "YYYY-MM-DD",
-  "deductible_amount": <number - excess/deductible amount>,
-  "coverage_limits": {
-    "professional_indemnity": <number or null - coverage limit>,
-    "public_liability": <number or null - coverage limit>,
-    "employers_liability": <number or null - coverage limit>
-  },
-  "inner_limits": {
-    "any_one_claim": <number or null>,
-    "aggregate": <number or null>
-  },
-  "inclusions": ["Array of covered items/benefits"],
-  "exclusions": ["Array of exclusions/limitations"],
-  "policy_terms": {
-    "territory": "Coverage territory (e.g., United Kingdom, Worldwide)",
-    "period": "Policy duration (e.g., 12 months)",
-    "renewal_date": "YYYY-MM-DD"
-  }
-}
+DOCUMENT TEXT:
+${extractedText}`;
 
-CRITICAL INSTRUCTIONS:
-1. Extract the ACTUAL insurer name from the document - do not make it up
-2. Extract the REAL premium amount - look for "Premium", "Total Premium", "Annual Premium"
-3. Look for policy numbers, quote references, and coverage details
-4. If a field cannot be found, use null for numbers or empty arrays for lists
-5. Return ONLY the JSON object, no additional text`;
-
-    // Call Lovable AI using proper document processing format
-    // Gemini natively supports PDF documents through data URI
-    const dataUri = `data:application/pdf;base64,${base64Data}`;
-    
-    // Use OpenAI directly for PDF processing (GPT-5-mini has excellent document understanding)
+    // Use OpenAI directly for text analysis (GPT-5-mini excels at structured extraction)
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
       throw new Error('OPENAI_API_KEY not configured');
@@ -169,15 +136,7 @@ CRITICAL INSTRUCTIONS:
         messages: [
           {
             role: 'user',
-            content: [
-              { type: 'text', text: extractionPrompt },
-              { 
-                type: 'image_url',
-                image_url: { 
-                  url: `data:application/pdf;base64,${base64Data}`
-                } 
-              }
-            ]
+            content: fullPrompt
           }
         ],
         max_completion_tokens: 4096
