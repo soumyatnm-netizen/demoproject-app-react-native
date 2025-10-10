@@ -8,6 +8,8 @@ GlobalWorkerOptions.workerSrc = "npm:pdfjs-dist@3.4.120/legacy/build/pdf.worker.
 // If worker fetching fails in your region, comment the line above and use this fallback:
 // GlobalWorkerOptions.workerSrc = null as unknown as string;
 
+console.log("pdfjs legacy build active; workerSrc:", String(GlobalWorkerOptions.workerSrc));
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
