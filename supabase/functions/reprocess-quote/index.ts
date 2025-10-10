@@ -110,6 +110,8 @@ CRITICAL: Extract the ACTUAL insurer name from the document. Look for company lo
     const mimeType = document.file_type || 'application/pdf';
     const dataUrl = `data:${mimeType};base64,${base64Data}`;
 
+    console.log('Calling Lovable AI with file size:', base64Data.length, 'mime type:', mimeType);
+
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -131,6 +133,8 @@ CRITICAL: Extract the ACTUAL insurer name from the document. Look for company lo
         temperature: 0.1
       }),
     });
+
+    console.log('AI Response status:', aiResponse.status);
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
