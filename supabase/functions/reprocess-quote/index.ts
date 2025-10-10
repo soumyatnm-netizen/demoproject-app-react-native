@@ -93,6 +93,7 @@ serve(async (req) => {
   "premium_currency": "GBP",
   "quote_date": "YYYY-MM-DD",
   "expiry_date": "YYYY-MM-DD",
+  "renewal_date": "YYYY-MM-DD - policy renewal date (look for renewal date, policy expiry, or expiration date)",
   "deductible_amount": <number - excess>,
   "coverage_limits": {
     "professional_indemnity": <number or null>,
@@ -112,7 +113,8 @@ serve(async (req) => {
   }
 }
 
-CRITICAL: Extract the ACTUAL insurer name from the document. Look for company logos, letterheads, policy issuer details.`;
+CRITICAL: Extract the ACTUAL insurer name from the document. Look for company logos, letterheads, policy issuer details.
+IMPORTANT: Look for policy renewal date, expiry date, or renewal date - these might be labeled as "Renewal Date", "Policy Expires", "Expiry Date", or "Valid Until".`;
 
     const mimeType = document.file_type || 'application/pdf';
     const dataUrl = `data:${mimeType};base64,${base64Data}`;

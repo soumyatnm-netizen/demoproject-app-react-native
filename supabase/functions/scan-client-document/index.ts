@@ -147,17 +147,20 @@ serve(async (req) => {
     - Income breakdown (last year, current year expectation, next 12 months estimate)
     - Customer location & jurisdiction breakdown (UK, EU, USA/Canada, Rest of world percentages)
     - USA/Canada specific: subsidiaries, income, largest contracts (customer name, work, length, value)
+    - Policy renewal date (look for "Renewal Date", "Policy Expires", "Expiry Date", "Valid Until" - format as YYYY-MM-DD)
 
     **IMPORTANT**: 
     - For handwritten text, be extra careful with letter recognition (e.g., distinguish between 'a' and 'o', '1' and 'l', '5' and 'S')
     - If handwriting is unclear, make your best interpretation but note uncertainty in the field name with a "?" 
     - Extract information from any format: forms, notes, business cards, letters, etc.
+    - Look for policy renewal dates, expiry dates - these might be labeled as "Renewal Date", "Policy Expires", "Expiry Date", "Valid Until", or similar
 
     Return ONLY a valid JSON object with the extracted data. Use null for fields that cannot be found. 
     For arrays, return empty arrays if no data found.
     For revenue_band, use format like "1-5m" for £1M - £5M.
     For risk_profile, return one of: "low", "medium", "high".
     For coverage_requirements, return as array of strings.
+    For dates including renewal_date, use format: "YYYY-MM-DD"
     `;
 
     const mime = (document.file_type || '').toLowerCase();

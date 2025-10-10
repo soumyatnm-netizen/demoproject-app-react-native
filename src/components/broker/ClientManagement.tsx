@@ -14,10 +14,13 @@ import { Plus, Search, Edit, Eye, Mail, Building2, FileUp, Target, Trash2 } from
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { DocumentUpload } from "./DocumentUpload";
+import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, CalendarIcon } from "lucide-react";
 import ClientInsurerMatching from "./ClientInsurerMatching";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface ClientData {
   id: string;
@@ -26,6 +29,7 @@ interface ClientData {
   report_status: string;
   created_at: string;
   report_data: any;
+  renewal_date?: string | null;
 }
 
 interface ClientManagementProps {
@@ -64,6 +68,29 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
   const getStatusLabel = (status: string) => {
     const statusOption = statusOptions.find(option => option.value === status);
     return statusOption ? statusOption.label : status;
+  };
+
+  const calculateDaysToRenewal = (renewalDate: string | null | undefined): number | null => {
+    if (!renewalDate) return null;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const renewal = new Date(renewalDate);
+    renewal.setHours(0, 0, 0, 0);
+    
+    const diffTime = renewal.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays;
+  };
+
+  const getRenewalBadgeColor = (daysToRenewal: number | null): string => {
+    if (daysToRenewal === null) return 'bg-gray-500';
+    if (daysToRenewal < 0) return 'bg-red-500'; // Overdue
+    if (daysToRenewal <= 30) return 'bg-orange-500'; // Due soon
+    if (daysToRenewal <= 90) return 'bg-yellow-500'; // Approaching
+    return 'bg-green-500'; // Future
   };
 
   const handleStatusChange = async (clientId: string, newStatus: string) => {
@@ -112,7 +139,8 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
     date_established: "",
     organisation_type: "",
     website: "",
-    wage_roll: ""
+    wage_roll: "",
+    renewal_date: ""
   });
 
   useEffect(() => {
@@ -168,7 +196,8 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
           client_name: newClient.client_name,
           report_title: `${newClient.client_name} - Initial Assessment`,
           report_data: clientData,
-          report_status: 'draft'
+          report_status: 'draft',
+          renewal_date: newClient.renewal_date || null
         });
 
       if (error) throw error;
@@ -193,7 +222,8 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
         date_established: "",
         organisation_type: "",
         website: "",
-        wage_roll: ""
+        wage_roll: "",
+        renewal_date: ""
       });
       fetchClients();
       onStatsUpdate();
@@ -227,7 +257,8 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
       date_established: extractedData["Date business established"] || extractedData.date_established || "",
       organisation_type: extractedData["Type of organisation"] || extractedData.organisation_type || "",
       website: extractedData["Website"] || extractedData.website || "",
-      wage_roll: (extractedData["Total wage roll"] || extractedData.wage_roll)?.toString() || ""
+      wage_roll: (extractedData["Total wage roll"] || extractedData.wage_roll)?.toString() || "",
+      renewal_date: extractedData["Policy renewal date"] || extractedData.renewal_date || ""
     };
 
     setNewClient(mappedClient);
@@ -260,7 +291,8 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
       website: client.report_data?.website || '',
       wage_roll: client.report_data?.wage_roll?.toString() || '',
       report_title: client.report_title,
-      report_status: client.report_status || 'draft'
+      report_status: client.report_status || 'draft',
+      renewal_date: client.renewal_date || ''
     });
     setShowClientDetails(true);
   };
@@ -291,7 +323,8 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
         website: selectedClient.report_data?.website || '',
         wage_roll: selectedClient.report_data?.wage_roll?.toString() || '',
         report_title: selectedClient.report_title,
-        report_status: selectedClient.report_status || 'draft'
+        report_status: selectedClient.report_status || 'draft',
+        renewal_date: selectedClient.renewal_date || ''
       });
     }
   };
@@ -327,7 +360,8 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
           client_name: editingClientData.client_name,
           report_title: editingClientData.report_title,
           report_data: updatedClientData,
-          report_status: editingClientData.report_status
+          report_status: editingClientData.report_status,
+          renewal_date: editingClientData.renewal_date || null
         })
         .eq('id', selectedClient.id)
         .eq('user_id', user.id);
@@ -610,6 +644,34 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
               </div>
 
               <div>
+                <Label htmlFor="renewal_date">Policy Renewal Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !newClient.renewal_date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {newClient.renewal_date ? format(new Date(newClient.renewal_date), "PPP") : "Select renewal date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={newClient.renewal_date ? new Date(newClient.renewal_date) : undefined}
+                      onSelect={(date) => setNewClient({ ...newClient, renewal_date: date ? format(date, "yyyy-MM-dd") : "" })}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+                <p className="text-xs text-muted-foreground mt-1">Set when the policy is due for renewal</p>
+              </div>
+
+              <div>
                 <Label htmlFor="notes">Notes</Label>
                 <Textarea
                   id="notes"
@@ -655,6 +717,7 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                 <TableHead>Client Name</TableHead>
                 <TableHead>Industry</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Renewal</TableHead>
                 <TableHead>Last Updated</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -718,6 +781,31 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                         </Command>
                       </PopoverContent>
                     </Popover>
+                  </TableCell>
+                  <TableCell>
+                    {(() => {
+                      const daysToRenewal = calculateDaysToRenewal(client.renewal_date);
+                      if (daysToRenewal === null) {
+                        return <span className="text-muted-foreground text-sm">Not set</span>;
+                      }
+                      return (
+                        <div className="flex flex-col gap-1">
+                          <Badge 
+                            variant="secondary"
+                            className={`text-white ${getRenewalBadgeColor(daysToRenewal)} w-fit`}
+                          >
+                            {daysToRenewal < 0 
+                              ? `${Math.abs(daysToRenewal)}d overdue` 
+                              : daysToRenewal === 0 
+                              ? 'Today'
+                              : `${daysToRenewal}d`}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {client.renewal_date ? format(new Date(client.renewal_date), "dd MMM yyyy") : ''}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     {new Date(client.created_at).toLocaleDateString()}
@@ -890,6 +978,57 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                           {getStatusLabel(selectedClient.report_status || 'draft')}
                         </Badge>
                       )}
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Policy Renewal Date</Label>
+                      {isEditingClient ? (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal mt-1",
+                                !editingClientData.renewal_date && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {editingClientData.renewal_date ? format(new Date(editingClientData.renewal_date), "PPP") : "Set renewal date"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={editingClientData.renewal_date ? new Date(editingClientData.renewal_date) : undefined}
+                              onSelect={(date) => setEditingClientData({...editingClientData, renewal_date: date ? format(date, "yyyy-MM-dd") : ""})}
+                              initialFocus
+                              className="pointer-events-auto"
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      ) : (
+                        <p className="text-sm">{selectedClient.renewal_date ? format(new Date(selectedClient.renewal_date), "PPP") : 'Not set'}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Days to Renewal</Label>
+                      {(() => {
+                        const daysToRenewal = calculateDaysToRenewal(selectedClient.renewal_date);
+                        if (daysToRenewal === null) {
+                          return <p className="text-sm text-muted-foreground">No renewal date set</p>;
+                        }
+                        return (
+                          <Badge 
+                            variant="secondary"
+                            className={`text-white ${getRenewalBadgeColor(daysToRenewal)} mt-1`}
+                          >
+                            {daysToRenewal < 0 
+                              ? `${Math.abs(daysToRenewal)} days overdue` 
+                              : daysToRenewal === 0 
+                              ? 'Renews today'
+                              : `${daysToRenewal} days`}
+                          </Badge>
+                        );
+                      })()}
                     </div>
                   </div>
                 </CardContent>

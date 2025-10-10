@@ -79,6 +79,7 @@ export type Database = {
           key_changes: Json | null
           pdf_storage_path: string | null
           recommendations: string[] | null
+          renewal_date: string | null
           report_data: Json
           report_status: string | null
           report_title: string
@@ -95,6 +96,7 @@ export type Database = {
           key_changes?: Json | null
           pdf_storage_path?: string | null
           recommendations?: string[] | null
+          renewal_date?: string | null
           report_data: Json
           report_status?: string | null
           report_title: string
@@ -111,6 +113,7 @@ export type Database = {
           key_changes?: Json | null
           pdf_storage_path?: string | null
           recommendations?: string[] | null
+          renewal_date?: string | null
           report_data?: Json
           report_status?: string | null
           report_title?: string
