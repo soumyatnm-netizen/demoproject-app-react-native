@@ -5,6 +5,8 @@ try {
   GlobalWorkerOptions.workerSrc = "npm:pdfjs-dist@3.4.120/legacy/build/pdf.worker.mjs"; 
 } catch {}
 
+console.log("pdfjs-smoke: loaded npm:pdfjs-dist@3.4.120/legacy");
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
