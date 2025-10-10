@@ -307,8 +307,15 @@ serve(async (req) => {
       }
 
     } else if (filename.endsWith('.pdf') || mime === 'application/pdf') {
-      // PDF FLOW: Send PDF directly to OpenAI (gpt-4o can read PDFs)
+      // PDF FLOW: Parse with Gemini (OpenAI vision doesn't support PDFs)
       console.log('Starting PDF processing for file:', document.filename);
+      
+      // Get Lovable AI key for Gemini
+      const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+      if (!lovableApiKey) {
+        throw new Error('Lovable AI key not configured');
+      }
+
       const arrayBuffer = await fileData.arrayBuffer();
       const bytes = new Uint8Array(arrayBuffer);
       let binaryString = '';
@@ -319,27 +326,22 @@ serve(async (req) => {
       }
       const base64Data = btoa(binaryString);
 
-      console.log('Calling OpenAI with PDF, size:', base64Data.length);
+      console.log('Calling Gemini with PDF, size:', base64Data.length);
 
-      const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      const geminiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
+          'Authorization': `Bearer ${lovableApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: 'google/gemini-2.5-flash',
           messages: [
             {
               role: 'user',
               content: [
                 { type: 'text', text: buildPrompt() },
-                { 
-                  type: 'image_url', 
-                  image_url: { 
-                    url: `data:application/pdf;base64,${base64Data}` 
-                  } 
-                }
+                { type: 'image_url', image_url: { url: `data:application/pdf;base64,${base64Data}` } }
               ]
             }
           ],
@@ -348,15 +350,43 @@ serve(async (req) => {
         }),
       });
 
-      if (!openAIResponse.ok) {
-        const err = await openAIResponse.text();
-        console.error('OpenAI (PDF) error:', err);
-        await supabase.from('documents').update({ status: 'error', processing_error: 'AI failed to analyze PDF' }).eq('id', documentId);
-        return new Response(JSON.stringify({ success: false, error: 'AI failed to analyze PDF document.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
-      }
+      if (!geminiResponse.ok) {
+        const err = await geminiResponse.text();
+        console.error('Gemini (PDF) error:', err);
+        
+        // Fallback: Try extracting text with simple regex and send to OpenAI
+        console.log('Attempting text extraction fallback...');
+        const text = new TextDecoder().decode(bytes);
+        const cleanText = text.replace(/[^\x20-\x7E\n\r]/g, ' ').slice(0, 10000);
+        
+        const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: 'Extract structured client details from provided text. Always return JSON only.' },
+              { role: 'user', content: `${buildPrompt()}\n\nDocument Text:\n${cleanText}` }
+            ],
+            max_tokens: 2000,
+            temperature: 0.1
+          }),
+        });
 
-      const openAIResult = await openAIResponse.json();
-      extractedText = openAIResult.choices?.[0]?.message?.content || null;
+        if (!openAIResponse.ok) {
+          await supabase.from('documents').update({ status: 'error', processing_error: 'AI failed to analyze PDF' }).eq('id', documentId);
+          return new Response(JSON.stringify({ success: false, error: 'AI failed to analyze PDF document.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+        }
+
+        const openAIResult = await openAIResponse.json();
+        extractedText = openAIResult.choices?.[0]?.message?.content || null;
+      } else {
+        const geminiResult = await geminiResponse.json();
+        extractedText = geminiResult.choices?.[0]?.message?.content || null;
+      }
 
     } else {
       await supabase.from('documents').update({ status: 'error', processing_error: 'Unsupported file type' }).eq('id', documentId);
