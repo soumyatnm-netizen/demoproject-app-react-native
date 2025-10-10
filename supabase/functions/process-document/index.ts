@@ -1,14 +1,13 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import * as pdfjs from "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.mjs";
+// ✅ Force server-safe legacy pdf.js via URL import (bypasses bundler/import-map):
+const { getDocument, GlobalWorkerOptions } = await import(
+  "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.mjs"
+);
 
-try { 
-  pdfjs.GlobalWorkerOptions.workerSrc = "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.worker.mjs"; 
-} catch {}
-
-console.log("pdfjs legacy build active via esm.sh CDN");
-console.log("workerSrc:", String(pdfjs.GlobalWorkerOptions.workerSrc));
+// ✅ Run without a worker in Edge (safest, no DOM or cross-thread needed):
+GlobalWorkerOptions.workerSrc = null as unknown as string;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,6 +35,9 @@ serve(async (req) => {
       hasLovableApiKey: !!lovableApiKey,
       supabaseUrl: supabaseUrl ? `${supabaseUrl.substring(0, 20)}...` : 'missing'
     });
+
+    console.log("[pdfjs] entry=legacy; workerSrc=", String(GlobalWorkerOptions.workerSrc));
+    console.log("[openai] keyPresent=", Deno.env.get("OPENAI_API_KEY") ? "yes" : "no");
 
     if (!supabaseUrl || !supabaseKey) {
       throw new Error('Missing Supabase environment variables');
@@ -105,12 +107,12 @@ serve(async (req) => {
     console.log('Extracting text from PDF...');
     const arrayBuffer = await fileData.arrayBuffer();
     const pdfBytes = new Uint8Array(arrayBuffer);
-    let loadingTask = pdfjs.getDocument({ data: pdfBytes, isEvalSupported: false, disableFontFace: true });
+    let loadingTask = getDocument({ data: pdfBytes, isEvalSupported: false, disableFontFace: true });
     try {
       await (await loadingTask).promise; // triggers worker errors early
     } catch {
-      pdfjs.GlobalWorkerOptions.workerSrc = null as unknown as string; // run without worker
-      loadingTask = pdfjs.getDocument({ data: pdfBytes, isEvalSupported: false, disableFontFace: true });
+      GlobalWorkerOptions.workerSrc = null as unknown as string; // run without worker
+      loadingTask = getDocument({ data: pdfBytes, isEvalSupported: false, disableFontFace: true });
     }
     const pdf = await loadingTask.promise;
     
