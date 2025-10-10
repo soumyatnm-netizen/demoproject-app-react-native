@@ -2,7 +2,6 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import JSZip from "https://esm.sh/jszip@3.10.1";
-import * as pdfjsLib from "https://esm.sh/pdfjs-dist@3.10.111/legacy/build/pdf.mjs";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -308,77 +307,56 @@ serve(async (req) => {
       }
 
     } else if (filename.endsWith('.pdf') || mime === 'application/pdf') {
-      // PDF FLOW: Extract text using pdfjs and send text to OpenAI
-      try {
-        console.log('Starting PDF processing for file:', document.filename);
-        const arrayBuffer = await fileData.arrayBuffer();
-
-        // Configure pdfjs worker
-        (pdfjsLib as any).GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.10.111/build/pdf.worker.min.js';
-
-        const loadingTask = (pdfjsLib as any).getDocument({
-          data: arrayBuffer,
-          cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.10.111/cmaps/',
-          cMapPacked: true,
-          useWorkerFetch: true,
-          isEvalSupported: false
-        });
-        const pdf = await loadingTask.promise;
-        console.log('PDF loaded. Pages:', pdf.numPages);
-
-        let combinedText = '';
-        const maxPages = Math.min(pdf.numPages, 30); // safety limit
-        for (let p = 1; p <= maxPages; p++) {
-          const page = await pdf.getPage(p);
-          const content = await page.getTextContent();
-          const pageText = (content.items as any[]).map((i: any) => i.str || '').join(' ');
-          combinedText += `\n\n--- Page ${p} ---\n${pageText}`;
-        }
-
-        if (!combinedText || combinedText.length < 20) {
-          throw new Error('No meaningful text content found in PDF');
-        }
-
-        console.log('PDF text extracted. Length:', combinedText.length);
-
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openAIApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-              { role: 'system', content: 'Extract structured client details from provided document text. Always return JSON only.' },
-              { role: 'user', content: `${buildPrompt()}\n\nDocument Text (first 20-30 pages):\n${combinedText.slice(0, 15000)}` }
-            ],
-            max_tokens: 2000,
-            temperature: 0.1
-          }),
-        });
-
-        if (!response.ok) {
-          const err = await response.text();
-          console.error('OpenAI (pdf text) error:', err);
-          throw new Error('AI failed to analyze PDF text');
-        }
-
-        const ai = await response.json();
-        extractedText = ai.choices?.[0]?.message?.content || null;
-
-      } catch (pdfError) {
-        console.error('PDF processing error:', pdfError);
-        await supabase
-          .from('documents')
-          .update({ status: 'error', processing_error: `PDF processing failed: ${(pdfError as any).message}` })
-          .eq('id', documentId);
-
-        return new Response(
-          JSON.stringify({ success: false, error: `PDF processing failed: ${(pdfError as any).message}` }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-        );
+      // PDF FLOW: Send PDF directly to OpenAI (gpt-4o can read PDFs)
+      console.log('Starting PDF processing for file:', document.filename);
+      const arrayBuffer = await fileData.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binaryString = '';
+      const chunkSize = 8192;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        const sub = bytes.subarray(i, i + chunkSize);
+        for (let j = 0; j < sub.length; j++) binaryString += String.fromCharCode(sub[j]);
       }
+      const base64Data = btoa(binaryString);
+
+      console.log('Calling OpenAI with PDF, size:', base64Data.length);
+
+      const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: buildPrompt() },
+                { 
+                  type: 'image_url', 
+                  image_url: { 
+                    url: `data:application/pdf;base64,${base64Data}` 
+                  } 
+                }
+              ]
+            }
+          ],
+          max_tokens: 2000,
+          temperature: 0.1
+        }),
+      });
+
+      if (!openAIResponse.ok) {
+        const err = await openAIResponse.text();
+        console.error('OpenAI (PDF) error:', err);
+        await supabase.from('documents').update({ status: 'error', processing_error: 'AI failed to analyze PDF' }).eq('id', documentId);
+        return new Response(JSON.stringify({ success: false, error: 'AI failed to analyze PDF document.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      }
+
+      const openAIResult = await openAIResponse.json();
+      extractedText = openAIResult.choices?.[0]?.message?.content || null;
 
     } else {
       await supabase.from('documents').update({ status: 'error', processing_error: 'Unsupported file type' }).eq('id', documentId);
