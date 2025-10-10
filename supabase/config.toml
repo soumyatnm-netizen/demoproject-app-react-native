@@ -1,5 +1,8 @@
 project_id = "ijhiavpjobzfxoirhnux"
 
+[functions.process-policy-wording]
+verify_jwt = true
+
 [auth]
 enabled = true
 # Configuration for Supabase Auth

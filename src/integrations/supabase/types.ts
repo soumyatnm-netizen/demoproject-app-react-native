@@ -709,6 +709,77 @@ export type Database = {
           },
         ]
       }
+      policy_wordings: {
+        Row: {
+          coverage_sections: Json | null
+          created_at: string
+          document_id: string | null
+          emerging_risks: Json | null
+          id: string
+          insured_name: string | null
+          insurer_name: string
+          jurisdiction: string | null
+          key_variables: Json | null
+          plain_language_summary: Json | null
+          policy_date: string | null
+          policy_period: string | null
+          policy_version: string | null
+          processing_error: string | null
+          services: Json | null
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          coverage_sections?: Json | null
+          created_at?: string
+          document_id?: string | null
+          emerging_risks?: Json | null
+          id?: string
+          insured_name?: string | null
+          insurer_name: string
+          jurisdiction?: string | null
+          key_variables?: Json | null
+          plain_language_summary?: Json | null
+          policy_date?: string | null
+          policy_period?: string | null
+          policy_version?: string | null
+          processing_error?: string | null
+          services?: Json | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          coverage_sections?: Json | null
+          created_at?: string
+          document_id?: string | null
+          emerging_risks?: Json | null
+          id?: string
+          insured_name?: string | null
+          insurer_name?: string
+          jurisdiction?: string | null
+          key_variables?: Json | null
+          plain_language_summary?: Json | null
+          policy_date?: string | null
+          policy_period?: string | null
+          policy_version?: string | null
+          processing_error?: string | null
+          services?: Json | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "policy_wordings_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_access_audit: {
         Row: {
           access_reason: string | null

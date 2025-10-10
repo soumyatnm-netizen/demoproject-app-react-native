@@ -27,6 +27,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import CoverageComparisonTable from "./CoverageComparisonTable";
+import PolicyWordingComparison from "./PolicyWordingComparison";
 import { getInsurerInfo } from "@/lib/insurers";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -59,7 +60,9 @@ const InstantQuoteComparison = () => {
   const [selectedClient, setSelectedClient] = useState<string>("");
   const [uploadedQuotes, setUploadedQuotes] = useState<File[]>([]);
   const [policyWordingDocs, setPolicyWordingDocs] = useState<File[]>([]);
+  const [policyWordingIds, setPolicyWordingIds] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isProcessingPolicyWordings, setIsProcessingPolicyWordings] = useState(false);
   const [processingStep, setProcessingStep] = useState("");
   const [rankings, setRankings] = useState<QuoteRanking[]>([]);
   const [analysisComplete, setAnalysisComplete] = useState(false);
@@ -176,6 +179,87 @@ const InstantQuoteComparison = () => {
       title: "Document Removed",
       description: `${updatedDocs.length} policy wording document${updatedDocs.length !== 1 ? 's' : ''} remaining`,
     });
+  };
+
+  const processPolicyWordings = async () => {
+    if (policyWordingDocs.length === 0) {
+      toast({
+        title: "No Documents",
+        description: "Please upload policy wording documents first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessingPolicyWordings(true);
+    const processedIds: string[] = [];
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No authenticated user');
+
+      setProcessingStep(`Processing ${policyWordingDocs.length} policy wording document${policyWordingDocs.length !== 1 ? 's' : ''}...`);
+
+      for (let i = 0; i < policyWordingDocs.length; i++) {
+        const file = policyWordingDocs[i];
+        setProcessingStep(`Processing policy wording ${i + 1} of ${policyWordingDocs.length}...`);
+
+        // Upload to storage
+        const fileName = `${user.id}/${Date.now()}-${file.name}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('documents')
+          .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        // Create document record
+        const { data: docData, error: docError } = await supabase
+          .from('documents')
+          .insert({
+            user_id: user.id,
+            filename: file.name,
+            storage_path: uploadData.path,
+            file_type: file.type,
+            file_size: file.size,
+            status: 'uploaded'
+          })
+          .select()
+          .single();
+
+        if (docError) throw docError;
+
+        // Process with AI
+        setProcessingStep(`Analyzing policy wording ${i + 1} with AI...`);
+        const { data: processResult, error: processError } = await supabase.functions
+          .invoke('process-policy-wording', {
+            body: { documentId: docData.id }
+          });
+
+        if (processError) throw processError;
+
+        if (processResult?.policyWordingId) {
+          processedIds.push(processResult.policyWordingId);
+        }
+      }
+
+      setPolicyWordingIds(processedIds);
+      
+      toast({
+        title: "Analysis Complete!",
+        description: `${processedIds.length} policy wording${processedIds.length !== 1 ? 's' : ''} analyzed successfully`,
+      });
+
+    } catch (error) {
+      console.error('Policy wording processing error:', error);
+      toast({
+        title: "Processing Failed",
+        description: `Error: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessingPolicyWordings(false);
+      setProcessingStep("");
+    }
   };
 
   const analyzeQuotes = async () => {
@@ -1247,9 +1331,27 @@ const InstantQuoteComparison = () => {
                       }
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground mb-3">
                     These documents will be analyzed alongside quotes for comprehensive coverage comparison.
                   </p>
+                  <Button
+                    onClick={processPolicyWordings}
+                    disabled={isProcessingPolicyWordings}
+                    className="w-full"
+                    size="sm"
+                  >
+                    {isProcessingPolicyWordings ? (
+                      <>
+                        <span className="animate-spin mr-2">⚙️</span>
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="h-4 w-4 mr-2" />
+                        Analyze Policy Wordings
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
             )}
@@ -1499,6 +1601,11 @@ const InstantQuoteComparison = () => {
           </CardContent>
           </Card>
         </>
+      )}
+
+      {/* Policy Wording Comparison Results */}
+      {policyWordingIds.length > 0 && (
+        <PolicyWordingComparison policyWordingIds={policyWordingIds} />
       )}
     </div>
   );
