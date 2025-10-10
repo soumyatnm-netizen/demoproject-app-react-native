@@ -188,6 +188,7 @@ serve(async (req) => {
     }
 
     const aiResult = await aiResponse.json();
+    console.log('OpenAI token usage:', JSON.stringify(aiResult.usage || {}));
     const aiContent = aiResult.choices?.[0]?.message?.content || null;
 
     if (!aiContent) {

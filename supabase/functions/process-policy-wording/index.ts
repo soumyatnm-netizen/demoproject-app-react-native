@@ -277,6 +277,7 @@ ${extractedText}`;
     }
 
     const aiResult = await aiResponse.json();
+    console.log('OpenAI token usage:', JSON.stringify(aiResult.usage || {}));
     console.log('AI analysis complete');
 
     const content = aiResult.choices[0].message.content;
