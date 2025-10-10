@@ -250,8 +250,8 @@ const InstantQuoteComparison = () => {
 
         if (processError) throw processError;
 
-        if (processResult?.policyWordingId) {
-          processedIds.push(processResult.policyWordingId);
+        if (processResult?.meta?.policyWordingId) {
+          processedIds.push(processResult.meta.policyWordingId);
         }
       }
 
