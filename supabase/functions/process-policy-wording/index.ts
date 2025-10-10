@@ -94,8 +94,13 @@ serve(async (req) => {
     const sizeMB = (pdfBytes.byteLength / (1024 * 1024)).toFixed(2);
     console.log('[pdf] fetched bytes:', pdfBytes.byteLength, '(', sizeMB, 'MB)', 'host:', new URL(urlData.signedUrl).host);
 
+    // Check PDF size - be more conservative to avoid timeout issues
+    if (pdfBytes.byteLength > 10 * 1024 * 1024) {
+      console.warn('[pdf] Large document detected:', sizeMB, 'MB - may take longer to process');
+    }
+    
     if (pdfBytes.byteLength > 30 * 1024 * 1024) {
-      return json(req, 413, { ok: false, error: 'PDF too large (max 30MB)' });
+      return json(req, 413, { ok: false, error: 'PDF too large (max 30MB). Please use a smaller document or split it into sections.' });
     }
 
     // Upload PDF to OpenAI Files API
@@ -142,6 +147,8 @@ serve(async (req) => {
 
     // Call OpenAI Responses API with native PDF
     console.log('Calling OpenAI Responses API...');
+    
+    // Increase max_output_tokens for complex documents
     const body = {
       model: "gpt-4o-mini",
       input: [
@@ -149,13 +156,13 @@ serve(async (req) => {
           role: "system", 
           content: [{ 
             type: "input_text", 
-            text: "You analyse insurance policy wordings for brokers. Extract structure (insuring clause, definitions, conditions, warranties, limits/sublimits/deductibles, territory, jurisdiction, claims basis) plus exclusions and endorsements. Flag ambiguities and broker actions. Include citations. Only output valid JSON per the schema."
+            text: "You analyse insurance policy wordings for brokers. Extract structure (insuring clause, definitions, conditions, warranties, limits/sublimits/deductibles, territory, jurisdiction, claims basis) plus exclusions and endorsements. Flag ambiguities and broker actions. Include citations. Be concise but complete. Only output valid JSON per the schema."
           }] 
         },
         { 
           role: "user", 
           content: [
-            { type: "input_text", text: "Analyze the attached policy wording PDF and return structured JSON per schema." },
+            { type: "input_text", text: "Analyze the attached policy wording PDF and return structured JSON per schema. Be thorough but concise." },
             { type: "input_file", file_id: fileId }
           ]
         }
@@ -169,8 +176,10 @@ serve(async (req) => {
         }
       },
       temperature: 0,
-      max_output_tokens: 3000
+      max_output_tokens: 4000 // Increased from 3000 to handle more complex documents
     };
+    
+    console.log('[OpenAI] Request payload size:', JSON.stringify(body).length);
 
     const responsesResponse = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
@@ -181,13 +190,41 @@ serve(async (req) => {
       body: JSON.stringify(body)
     });
 
-    const responsesText = await responsesResponse.text();
+    // Check response status first before trying to read body
     if (!responsesResponse.ok) {
-      console.error('[OpenAI] Responses error:', responsesText.slice(0, 400));
-      return json(req, 500, { ok: false, error: `OpenAI Responses failed: ${responsesText.slice(0, 400)}` });
+      const errorText = await responsesResponse.text().catch(() => 'Unable to read error response');
+      console.error('[OpenAI] Responses error status:', responsesResponse.status);
+      console.error('[OpenAI] Responses error:', errorText.slice(0, 400));
+      return json(req, 500, { ok: false, error: `OpenAI API error (${responsesResponse.status}): ${errorText.slice(0, 400)}` });
     }
 
-    const responsesData = JSON.parse(responsesText);
+    // Read response with better error handling
+    let responsesText: string;
+    try {
+      const contentLength = responsesResponse.headers.get('content-length');
+      console.log('[OpenAI] Response content-length:', contentLength);
+      
+      responsesText = await responsesResponse.text();
+      console.log('[OpenAI] Response body length:', responsesText.length);
+    } catch (readError) {
+      console.error('[OpenAI] Failed to read response body:', readError);
+      return json(req, 500, { 
+        ok: false, 
+        error: `Failed to read OpenAI response: ${readError instanceof Error ? readError.message : 'Unknown error'}. The document may be too large or complex.` 
+      });
+    }
+
+    let responsesData: any;
+    try {
+      responsesData = JSON.parse(responsesText);
+    } catch (parseError) {
+      console.error('[OpenAI] Failed to parse response JSON');
+      console.error('[OpenAI] Response preview:', responsesText.slice(0, 500));
+      return json(req, 500, { 
+        ok: false, 
+        error: 'OpenAI returned invalid JSON response' 
+      });
+    }
     let outputText = responsesData?.output?.[0]?.content?.[0]?.text 
       ?? responsesData?.content?.[0]?.text 
       ?? responsesData?.output_text
@@ -206,34 +243,45 @@ serve(async (req) => {
     console.log('[openai] model:', responsesData?.model, 'usage:', JSON.stringify(responsesData?.usage ?? null));
 
     // Store the analysis in the database
+    console.log('[db] Mapping analysis data to database structure...');
     const { data: policyWording, error: insertError } = await supabase
       .from('policy_wordings')
       .insert({
         document_id: documentId,
         user_id: document.user_id,
-        insurer_name: 'Extracted',
-        policy_version: null,
-        policy_date: null,
+        insurer_name: analysisData.policy?.carrier || 'Extracted',
+        policy_version: analysisData.policy?.version || null,
+        policy_date: analysisData.policy?.edition_date || null,
         insured_name: null,
-        policy_period: null,
-        jurisdiction: analysisData.structure?.jurisdiction || null,
-        coverage_sections: analysisData.structure || {},
+        policy_period: analysisData.policy?.effective_date && analysisData.policy?.expiry_date 
+          ? `${analysisData.policy.effective_date} to ${analysisData.policy.expiry_date}`
+          : null,
+        jurisdiction: analysisData.policy?.jurisdiction || analysisData.structure?.jurisdiction || null,
+        coverage_sections: {
+          policy: analysisData.policy || {},
+          structure: analysisData.structure || {}
+        },
         key_variables: {
           claims_basis: analysisData.structure?.claims_basis || {},
           limits: analysisData.structure?.limits || [],
           sublimits: analysisData.structure?.sublimits || [],
           deductibles: analysisData.structure?.deductibles || [],
-          territory: analysisData.structure?.territory || null,
-          conditions: analysisData.structure?.conditions || [],
-          warranties: analysisData.structure?.warranties || []
+          territory: analysisData.policy?.territory || null,
+          conditions: analysisData.terms?.conditions || [],
+          warranties: analysisData.terms?.warranties || []
         },
         emerging_risks: {},
         services: {},
         plain_language_summary: {
-          key_terms: analysisData.key_terms || [],
-          exclusions: analysisData.exclusions || [],
-          endorsements: analysisData.endorsements || [],
-          notable_issues: analysisData.notable_issues || {},
+          policy_info: analysisData.policy || {},
+          terms: {
+            exclusions: analysisData.terms?.exclusions || [],
+            endorsements: analysisData.terms?.endorsements || [],
+            conditions: analysisData.terms?.conditions || [],
+            warranties: analysisData.terms?.warranties || [],
+            notable_terms: analysisData.terms?.notable_terms || []
+          },
+          definitions: analysisData.definitions || [],
           citations: analysisData.citations || []
         },
         status: 'completed'
@@ -247,6 +295,13 @@ serve(async (req) => {
     }
 
     console.log('Policy wording analysis stored:', policyWording.id);
+    console.log('[db] Stored data summary:', {
+      insurer: policyWording.insurer_name,
+      policy_version: policyWording.policy_version,
+      jurisdiction: policyWording.jurisdiction,
+      limits_count: analysisData.structure?.limits?.length || 0,
+      exclusions_count: analysisData.terms?.exclusions?.length || 0
+    });
     console.log('=== Process Policy Wording Completed Successfully ===');
 
     return json(req, 200, {

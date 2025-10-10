@@ -248,10 +248,19 @@ const InstantQuoteComparison = () => {
             body: { documentId: docData.id }
           });
 
-        if (processError) throw processError;
+        if (processError) {
+          console.error('Policy wording processing error:', processError);
+          throw new Error(processError.message || 'Failed to process policy wording');
+        }
+
+        if (!processResult?.ok) {
+          throw new Error(processResult?.error || 'Policy wording processing returned unsuccessful result');
+        }
 
         if (processResult?.meta?.policyWordingId) {
           processedIds.push(processResult.meta.policyWordingId);
+        } else {
+          console.warn('No policyWordingId returned for document:', docData.id);
         }
       }
 
@@ -264,11 +273,26 @@ const InstantQuoteComparison = () => {
 
     } catch (error) {
       console.error('Policy wording processing error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      
       toast({
         title: "Processing Failed",
-        description: `Error: ${error.message}`,
+        description: errorMessage.includes('too large') 
+          ? "Document is too large. Try splitting it or using a smaller file."
+          : errorMessage.includes('timeout') || errorMessage.includes('connection')
+          ? "Processing timed out. The document may be too complex. Try a simpler document or split it into sections."
+          : `Error: ${errorMessage}`,
         variant: "destructive",
       });
+      
+      // Still set any successfully processed IDs
+      if (processedIds.length > 0) {
+        setPolicyWordingIds(processedIds);
+        toast({
+          title: "Partial Success",
+          description: `${processedIds.length} document${processedIds.length !== 1 ? 's' : ''} processed successfully before error`,
+        });
+      }
     } finally {
       setIsProcessingPolicyWordings(false);
       setProcessingStep("");
