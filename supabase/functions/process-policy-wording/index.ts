@@ -49,9 +49,9 @@ serve(async (req) => {
     }
 
     // Import PDF.js for text extraction (Deno-compatible)
-    const pdfjsLib = await import('https://esm.sh/pdfjs-dist@4.0.379/build/pdf.min.mjs');
+    const pdfjsLib = await import('https://esm.sh/pdfjs-dist@4.0.379/es2022/build/pdf.min.mjs');
     // Configure worker src for pdf.js in Edge runtime
-    (pdfjsLib as any).GlobalWorkerOptions.workerSrc = 'https://esm.sh/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs';
+    (pdfjsLib as any).GlobalWorkerOptions.workerSrc = 'https://esm.sh/pdfjs-dist@4.0.379/es2022/build/pdf.worker.min.mjs';
     
     console.log('Extracting text from PDF...');
     const arrayBuffer = await fileData.arrayBuffer();

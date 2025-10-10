@@ -94,11 +94,13 @@ serve(async (req) => {
     console.log('File downloaded, size:', fileData.size);
 
     // Import PDF.js for text extraction (Deno-compatible)
-    const pdfjsLib = await import('https://esm.sh/pdfjs-dist@4.0.379/build/pdf.min.mjs');
+    const pdfjsLib = await import('https://esm.sh/pdfjs-dist@4.0.379/es2022/build/pdf.min.mjs');
+    // Configure worker src for pdf.js in Edge runtime
+    (pdfjsLib as any).GlobalWorkerOptions.workerSrc = 'https://esm.sh/pdfjs-dist@4.0.379/es2022/build/pdf.worker.min.mjs';
     
     console.log('Extracting text from PDF...');
     const arrayBuffer = await fileData.arrayBuffer();
-    const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
+    const loadingTask = (pdfjsLib as any).getDocument({ data: new Uint8Array(arrayBuffer) });
     const pdf = await loadingTask.promise;
     
     let extractedText = '';
@@ -112,10 +114,28 @@ serve(async (req) => {
     console.log('Text extracted, length:', extractedText.length, 'chars');
 
     // Prepare AI prompt for insurance quote extraction
-    const fullPrompt = `${extractionPrompt}
+    const extractionPrompt = `You are an expert assistant that extracts structured insurance quote data from PDF text. Return ONLY valid JSON with these fields:
+{
+  "insurer_name": string,
+  "product_type": string | null,
+  "industry": string | null,
+  "revenue_band": string | null,
+  "premium_amount": number | null,
+  "premium_currency": string | null,
+  "quote_date": string | null,
+  "expiry_date": string | null,
+  "deductible_amount": number | null,
+  "coverage_limits": object,
+  "inner_limits": object,
+  "inclusions": string[],
+  "exclusions": string[],
+  "policy_terms": object
+}
+- Use null when not found.
+- Normalize currency to ISO code and amounts to numbers when possible.
+- Do not include markdown or commentary.`;
 
-DOCUMENT TEXT:
-${extractedText}`;
+    const fullPrompt = `${extractionPrompt}\n\nDOCUMENT TEXT:\n${extractedText}`;
 
     // Use OpenAI directly for text analysis (GPT-5-mini excels at structured extraction)
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
