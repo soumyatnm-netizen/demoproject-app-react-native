@@ -38,13 +38,29 @@ serve(async (req) => {
 
     console.log('Document found:', document.storage_path);
 
-    // Generate a signed URL for AI to fetch the PDF directly (avoids large base64 payloads)
-    const { data: signed, error: signedErr } = await supabase.storage
+    // Download the PDF for Claude processing (Claude requires base64, not URLs)
+    console.log('Downloading file from storage for Claude processing...');
+    const { data: fileData, error: downloadError } = await supabase.storage
       .from('documents')
-      .createSignedUrl(document.storage_path, 600);
-    if (signedErr || !signed?.signedUrl) throw signedErr || new Error('Failed to create signed URL');
-    const fileUrl = signed.signedUrl;
-    console.log('Signed URL generated for document');
+      .download(document.storage_path);
+
+    if (downloadError || !fileData) {
+      throw new Error('Failed to download document from storage');
+    }
+
+    console.log('File downloaded, converting to base64...');
+    const arrayBuffer = await fileData.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+    let binaryString = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const sub = bytes.subarray(i, i + chunkSize);
+      for (let j = 0; j < sub.length; j++) {
+        binaryString += String.fromCharCode(sub[j]);
+      }
+    }
+    const base64Data = btoa(binaryString);
+    console.log('PDF converted to base64, size:', base64Data.length, 'chars');
 
     // Create comprehensive prompt for AI analysis
     const systemPrompt = `You are an expert insurance policy analyst specializing in comparing and extracting structured data from insurance policy wording documents.
@@ -217,69 +233,42 @@ IMPORTANT:
 
     console.log('Calling AI for policy analysis...');
     
-    const payloadVariants = [
-      {
-        model: 'google/gemini-2.5-pro',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: userPrompt },
-              { type: 'image_url', image_url: { url: fileUrl } }
-            ]
-          }
-        ]
+    // Call Lovable AI Gateway with Claude Sonnet 4.5 (excellent PDF understanding)
+    console.log('Calling Claude for policy analysis...');
+    
+    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
       },
-      {
-        model: 'google/gemini-2.5-pro',
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
         messages: [
-          { role: 'system', content: systemPrompt },
-          {
-            role: 'user',
+          { role: 'user', content: systemPrompt },
+          { 
+            role: 'user', 
             content: [
               { type: 'text', text: userPrompt },
-              { type: 'image_url', image_url: { url: fileUrl, detail: 'high' } }
+              {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: 'application/pdf',
+                  data: base64Data
+                }
+              }
             ]
           }
-        ]
-      },
-      {
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: userPrompt },
-              { type: 'image_url', image_url: { url: fileUrl } }
-            ]
-          }
-        ]
-      }
-    ];
+        ],
+        max_tokens: 8192
+      }),
+    });
 
-    let aiResponse: Response | null = null;
-    let lastError = '';
-
-    for (let i = 0; i < payloadVariants.length; i++) {
-      console.log(`Calling AI for policy analysis (attempt ${i + 1}/${payloadVariants.length})...`);
-      const rsp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payloadVariants[i]),
-      });
-
-      if (rsp.ok) { aiResponse = rsp; break; }
-      lastError = await rsp.text();
-      console.error('AI attempt failed:', rsp.status, lastError);
-    }
-
-    if (!aiResponse) {
-      throw new Error(`AI API error: ${lastError || 'Unknown error'}`);
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error('AI API error:', aiResponse.status, errorText);
+      throw new Error(`AI API error: ${aiResponse.status} ${errorText}`);
     }
 
     const aiResult = await aiResponse.json();

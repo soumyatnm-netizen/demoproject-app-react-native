@@ -150,67 +150,41 @@ CRITICAL INSTRUCTIONS:
     // Gemini natively supports PDF documents through data URI
     const dataUri = `data:application/pdf;base64,${base64Data}`;
     
-    // Build robust payload variants to handle provider quirks with PDFs
-    const payloadVariants = [
-      {
-        model: 'google/gemini-2.5-pro',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: extractionPrompt },
-              { type: 'image_url', image_url: { url: dataUri } }
-            ]
-          }
-        ]
+    // Call Lovable AI using Claude Sonnet 4.5 (excellent PDF document understanding)
+    const dataUri = `data:application/pdf;base64,${base64Data}`;
+    
+    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${lovableApiKey}`,
+        'Content-Type': 'application/json',
       },
-      {
-        model: 'google/gemini-2.5-pro',
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
         messages: [
           {
             role: 'user',
             content: [
               { type: 'text', text: extractionPrompt },
-              { type: 'image_url', image_url: { url: dataUri, detail: 'high' } }
+              { 
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: 'application/pdf',
+                  data: base64Data
+                }
+              }
             ]
           }
-        ]
-      },
-      {
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: extractionPrompt },
-              { type: 'image_url', image_url: { url: dataUri } }
-            ]
-          }
-        ]
-      }
-    ];
+        ],
+        max_tokens: 4096
+      }),
+    });
 
-    let aiResponse: Response | null = null;
-    let lastErrorText = '';
-
-    for (let i = 0; i < payloadVariants.length; i++) {
-      console.log(`Calling AI for extraction attempt ${i + 1}/${payloadVariants.length}...`);
-      const rsp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${lovableApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payloadVariants[i]),
-      });
-
-      if (rsp.ok) { aiResponse = rsp; break; }
-      lastErrorText = await rsp.text();
-      console.error('AI attempt failed:', rsp.status, lastErrorText);
-    }
-
-    if (!aiResponse) {
-      throw new Error(`AI extraction failed: ${lastErrorText || 'Unknown error'}`);
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error('AI API error:', aiResponse.status, errorText);
+      throw new Error(`AI extraction failed: ${errorText}`);
     }
 
     if (!aiResponse.ok) {
