@@ -161,12 +161,25 @@ const InstantQuoteComparison = () => {
     if (!files) return;
     
     const newFiles = Array.from(files);
-    const updatedDocs = [...policyWordingDocs, ...newFiles];
+    const remainingSlots = 5 - policyWordingDocs.length;
+    
+    if (remainingSlots <= 0) {
+      toast({
+        title: "Maximum Reached",
+        description: "You can upload a maximum of 5 policy wording documents. Remove some files first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Add new files to existing ones, up to the limit
+    const filesToAdd = newFiles.slice(0, remainingSlots);
+    const updatedDocs = [...policyWordingDocs, ...filesToAdd];
     
     setPolicyWordingDocs(updatedDocs);
     
     toast({
-      title: `${newFiles.length} Policy Wording Document${newFiles.length !== 1 ? 's' : ''} Added`,
+      title: `${filesToAdd.length} Policy Wording Document${filesToAdd.length !== 1 ? 's' : ''} Added`,
       description: `Total: ${updatedDocs.length} document${updatedDocs.length !== 1 ? 's' : ''} uploaded`,
     });
   };
@@ -1243,31 +1256,45 @@ const InstantQuoteComparison = () => {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <FileText className="h-5 w-5" />
-            <span>Step 2b: Upload Policy Wording Documents (Optional)</span>
+            <span>Step 2b: Upload Policy Wording Documents (Optional, 1-5)</span>
           </CardTitle>
           <CardDescription>Upload policy wording documents for detailed coverage comparison</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div 
-              className="border-2 border-dashed rounded-lg p-8 text-center border-muted-foreground/25 cursor-pointer hover:border-primary/50"
+              className={`border-2 border-dashed rounded-lg p-8 text-center ${
+                policyWordingDocs.length >= 5 
+                  ? 'border-gray-300 bg-gray-50 cursor-not-allowed' 
+                  : 'border-muted-foreground/25 cursor-pointer hover:border-primary/50'
+              }`}
               onDrop={(e) => {
                 e.preventDefault();
+                if (policyWordingDocs.length >= 5) return;
                 const files = e.dataTransfer.files;
                 handlePolicyWordingUpload(files);
               }}
               onDragOver={(e) => e.preventDefault()}
               onDragEnter={(e) => e.preventDefault()}
             >
-              <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-              <Label htmlFor="policy-wording-upload" className="cursor-pointer">
-                <span className="text-sm font-medium">
-                  {policyWordingDocs.length === 0 ? 'Click to upload policy wording documents' : 'Click to add more documents'}
-                </span>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Upload PDF policy wording documents ({policyWordingDocs.length} uploaded)
-                </p>
-              </Label>
+              <FileText className={`h-8 w-8 mx-auto mb-2 ${
+                policyWordingDocs.length >= 5 ? 'text-gray-400' : 'text-muted-foreground'
+              }`} />
+              {policyWordingDocs.length >= 5 ? (
+                <>
+                  <span className="text-sm font-medium text-gray-500">Maximum 5 documents reached</span>
+                  <p className="text-xs text-gray-400 mt-1">Remove a document to add another</p>
+                </>
+              ) : (
+                <Label htmlFor="policy-wording-upload" className="cursor-pointer">
+                  <span className="text-sm font-medium">
+                    {policyWordingDocs.length === 0 ? 'Click to upload policy wording documents' : 'Click to add more documents'}
+                  </span>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Upload PDF policy wording documents ({policyWordingDocs.length}/5 uploaded)
+                  </p>
+                </Label>
+              )}
               <Input
                 id="policy-wording-upload"
                 type="file"
@@ -1275,6 +1302,7 @@ const InstantQuoteComparison = () => {
                 multiple
                 onChange={(e) => handlePolicyWordingUpload(e.target.files)}
                 className="hidden"
+                disabled={policyWordingDocs.length >= 5}
               />
             </div>
             
