@@ -111,23 +111,27 @@ serve(async (req) => {
 
     // Call OpenAI Responses API with native PDF
     console.log('Calling OpenAI Responses API...');
-    const responsesBody = {
-      model: 'gpt-4o-mini',
-      modalities: ['text'],
-      instructions: 'You analyse insurance policy wordings for brokers. Extract structure (insuring clause, definitions, conditions, warranties, limits/sublimits/deductibles, territory, jurisdiction, claims basis) plus exclusions and endorsements. Flag ambiguities and broker actions. Include citations. Only output valid JSON per the schema.',
+    const body = {
+      model: "gpt-4o-mini",
       input: [
-        {
-          type: 'user',
+        { 
+          role: "system", 
+          content: [{ 
+            type: "input_text", 
+            text: "You analyse insurance policy wordings for brokers. Extract structure (insuring clause, definitions, conditions, warranties, limits/sublimits/deductibles, territory, jurisdiction, claims basis) plus exclusions and endorsements. Flag ambiguities and broker actions. Include citations. Only output valid JSON per the schema."
+          }] 
+        },
+        { 
+          role: "user", 
           content: [
-            { type: 'input_file', input_file: { file_id: fileId } },
-            { type: 'input_text', input_text: 'Analyze the attached policy wording PDF and return structured JSON per schema.' }
+            { type: "input_text", text: "Analyze the attached policy wording PDF and return structured JSON per schema." },
+            { type: "input_file", mime_type: "application/pdf", transfer_method: "auto", file_id: fileId }
           ]
         }
       ],
-      text: {
-        format: 'json_schema',
-        json_schema: POLICY_WORDING_SCHEMA
-      }
+      response_format: { type: "json_schema", json_schema: POLICY_WORDING_SCHEMA },
+      temperature: 0,
+      max_output_tokens: 3000
     };
 
     const responsesResponse = await fetch('https://api.openai.com/v1/responses', {
@@ -136,7 +140,7 @@ serve(async (req) => {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(responsesBody)
+      body: JSON.stringify(body)
     });
 
     const responsesText = await responsesResponse.text();
