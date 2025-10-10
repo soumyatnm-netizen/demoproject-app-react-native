@@ -40,3 +40,6 @@ verify_jwt = false
 
 [functions.ai-health]
 verify_jwt = false
+
+[functions.files-health]
+verify_jwt = false
