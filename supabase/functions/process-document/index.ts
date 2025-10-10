@@ -19,12 +19,12 @@ serve(async (req) => {
     // Check environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
 
     console.log('Environment variables check:', {
       hasSupabaseUrl: !!supabaseUrl,
       hasSupabaseKey: !!supabaseKey,
-      hasOpenAIKey: !!openAIApiKey,
+      hasLovableApiKey: !!lovableApiKey,
       supabaseUrl: supabaseUrl ? `${supabaseUrl.substring(0, 20)}...` : 'missing'
     });
 
@@ -32,33 +32,25 @@ serve(async (req) => {
       throw new Error('Missing Supabase environment variables');
     }
 
-    // Parse request body
-    console.log('Parsing request body...');
-    let requestBody;
-    try {
-      requestBody = await req.json();
-      console.log('Request body:', requestBody);
-    } catch (parseError) {
-      console.error('Failed to parse request body:', parseError);
-      throw new Error('Invalid JSON in request body');
+    if (!lovableApiKey) {
+      throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    const { documentId, clientName } = requestBody;
+    // Parse request body
+    console.log('Parsing request body...');
+    const { documentId, clientName } = await req.json();
 
     if (!documentId) {
-      console.error('No document ID provided in request');
       throw new Error('Document ID is required');
     }
 
     if (!clientName) {
-      console.error('No client name provided in request');
       throw new Error('Client name is required - all quotes must be associated with a client');
     }
 
-    console.log('Processing document ID:', documentId);
+    console.log('Processing document ID:', documentId, 'for client:', clientName);
 
     // Initialize Supabase client
-    console.log('Initializing Supabase client...');
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Get document details
@@ -69,14 +61,8 @@ serve(async (req) => {
       .eq('id', documentId)
       .single();
 
-    if (docError) {
-      console.error('Document fetch error:', docError);
-      throw new Error(`Document not found: ${docError.message}`);
-    }
-
-    if (!document) {
-      console.error('Document not found in database');
-      throw new Error('Document not found');
+    if (docError || !document) {
+      throw new Error(`Document not found: ${docError?.message}`);
     }
 
     console.log('Document found:', {
@@ -88,110 +74,166 @@ serve(async (req) => {
     });
 
     // Update status to processing
-    console.log('Updating document status to processing...');
-    const { error: updateError } = await supabase
+    await supabase
       .from('documents')
       .update({ status: 'processing' })
       .eq('id', documentId);
 
-    if (updateError) {
-      console.error('Failed to update document status:', updateError);
-      // Don't throw here, just log the error
+    // Download file from storage
+    console.log('Downloading file from storage:', document.storage_path);
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from('documents')
+      .download(document.storage_path);
+
+    if (downloadError || !fileData) {
+      throw new Error('Failed to download document from storage');
     }
 
-    // Generate sample quote data based on filename
-    console.log('Generating sample quote data...');
-    
-    // Create deterministic but varied data based on filename
-    const filename = document.filename.toLowerCase();
-    const isBasic = filename.includes('basic');
-    const isComprehensive = filename.includes('comprehensive') || filename.includes('premium');
-    const isPI = filename.includes('pi') || filename.includes('professional') || filename.includes('indemnity');
-    const isPL = filename.includes('pl') || filename.includes('public') || filename.includes('liability');
-    
-    // Generate realistic sample data
-    const baseAmount = isBasic ? 1500 : isComprehensive ? 8000 : 3500;
-    const variance = Math.floor(Math.random() * 1000);
-    const premiumAmount = baseAmount + variance;
-    
-    const sampleInsurerNames = [
-      'AXA Insurance UK',
-      'Zurich Insurance',
-      'Allianz Commercial',
-      'Aviva Business',
-      'RSA Insurance Group',
-      'Hiscox Insurance',
-      'QBE European Operations',
-      'Liberty Specialty Markets'
-    ];
-    
-    const randomInsurer = sampleInsurerNames[Math.floor(Math.random() * sampleInsurerNames.length)];
+    console.log('File downloaded, size:', fileData.size);
 
-    const structuredData = {
-      insurer_name: randomInsurer,
-      product_type: isPI ? 'Professional Indemnity' : isPL ? 'Public Liability' : 'Combined Commercial',
-      industry: 'Professional Services',
-      revenue_band: premiumAmount > 5000 ? '5M-10M' : '1M-5M',
-      premium_amount: premiumAmount,
-      premium_currency: 'GBP',
-      quote_date: '2024-12-15',
-      expiry_date: '2025-12-15',
-      deductible_amount: isBasic ? 1000 : 2500,
-      coverage_limits: {
-        professional_indemnity: isPI ? (isBasic ? 1000000 : 2000000) : null,
-        public_liability: isPL ? 2000000 : 1000000,
-        employers_liability: 10000000
-      },
-      inner_limits: {
-        any_one_claim: isBasic ? 1000000 : 2000000,
-        aggregate: isBasic ? 2000000 : 4000000
-      },
-      inclusions: [
-        'Professional services cover',
-        'Data protection liability',
-        'Court attendance costs',
-        'Emergency legal costs',
-        isComprehensive ? 'Extended territorial coverage' : null
-      ].filter(Boolean),
-      exclusions: [
-        'War and terrorism',
-        'Nuclear risks',
-        'Pollution (unless specifically covered)',
-        'Cyber attacks (basic cover only)'
-      ],
-      policy_terms: {
-        territory: 'United Kingdom',
-        period: '12 months',
-        renewal_date: '2025-12-15'
-      },
-      quote_status: 'quoted'
-    };
+    // Convert file to base64 for AI processing
+    const arrayBuffer = await fileData.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+    let binaryString = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const sub = bytes.subarray(i, i + chunkSize);
+      for (let j = 0; j < sub.length; j++) {
+        binaryString += String.fromCharCode(sub[j]);
+      }
+    }
+    const base64Data = btoa(binaryString);
 
-    console.log('Generated structured data:', structuredData);
+    console.log('File converted to base64, calling AI for extraction...');
+
+    // Prepare AI prompt for insurance quote extraction
+    const extractionPrompt = `Extract structured insurance quote data from this document. You MUST return ONLY valid JSON with these exact fields (no markdown, no explanations):
+
+{
+  "insurer_name": "Full insurer company name (e.g., Hiscox, CFC, Allianz, Aviva, RSA, etc.)",
+  "product_type": "Type of insurance product (e.g., Professional Indemnity, Public Liability, Combined Commercial)",
+  "industry": "Industry/sector of the insured business",
+  "revenue_band": "Revenue range (e.g., 1M-5M, 5M-10M)",
+  "premium_amount": <number - annual premium in GBP>,
+  "premium_currency": "GBP",
+  "quote_date": "YYYY-MM-DD",
+  "expiry_date": "YYYY-MM-DD",
+  "deductible_amount": <number - excess/deductible amount>,
+  "coverage_limits": {
+    "professional_indemnity": <number or null - coverage limit>,
+    "public_liability": <number or null - coverage limit>,
+    "employers_liability": <number or null - coverage limit>
+  },
+  "inner_limits": {
+    "any_one_claim": <number or null>,
+    "aggregate": <number or null>
+  },
+  "inclusions": ["Array of covered items/benefits"],
+  "exclusions": ["Array of exclusions/limitations"],
+  "policy_terms": {
+    "territory": "Coverage territory (e.g., United Kingdom, Worldwide)",
+    "period": "Policy duration (e.g., 12 months)",
+    "renewal_date": "YYYY-MM-DD"
+  }
+}
+
+CRITICAL INSTRUCTIONS:
+1. Extract the ACTUAL insurer name from the document - do not make it up
+2. Extract the REAL premium amount - look for "Premium", "Total Premium", "Annual Premium"
+3. Look for policy numbers, quote references, and coverage details
+4. If a field cannot be found, use null for numbers or empty arrays for lists
+5. Return ONLY the JSON object, no additional text`;
+
+    // Determine MIME type for AI request
+    const mimeType = document.file_type || 'application/pdf';
+    const dataUrl = `data:${mimeType};base64,${base64Data}`;
+
+    // Call Lovable AI with document
+    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${lovableApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: extractionPrompt },
+              { type: 'image_url', image_url: { url: dataUrl } }
+            ]
+          }
+        ],
+        max_tokens: 2000,
+        temperature: 0.1
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error('AI API error:', aiResponse.status, errorText);
+      throw new Error(`AI extraction failed: ${errorText}`);
+    }
+
+    const aiResult = await aiResponse.json();
+    const extractedText = aiResult.choices?.[0]?.message?.content || null;
+
+    if (!extractedText) {
+      throw new Error('No content extracted from AI response');
+    }
+
+    console.log('AI extraction successful, parsing JSON...');
+    console.log('Extracted text preview:', extractedText.substring(0, 200));
+
+    // Parse JSON from AI response (handle markdown code blocks if present)
+    let structuredData;
+    try {
+      // Try to extract JSON from markdown code blocks
+      const jsonMatch = extractedText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/) || 
+                       extractedText.match(/(\{[\s\S]*\})/);
+      
+      if (!jsonMatch) {
+        throw new Error('No JSON found in AI response');
+      }
+      
+      structuredData = JSON.parse(jsonMatch[1]);
+      console.log('Successfully parsed structured data:', structuredData);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      console.error('Raw AI response:', extractedText);
+      throw new Error(`Failed to parse AI response as JSON: ${parseError.message}`);
+    }
+
+    // Validate required fields
+    if (!structuredData.insurer_name) {
+      throw new Error('Insurer name not found in extracted data');
+    }
 
     // Save to database
-    console.log('Saving structured quote to database...');
+    console.log('Saving extracted quote to database...');
     const { data: insertData, error: insertError } = await supabase
       .from('structured_quotes')
       .insert({
         document_id: documentId,
         user_id: document.user_id,
         insurer_name: structuredData.insurer_name,
-        product_type: structuredData.product_type,
-        industry: structuredData.industry,
-        revenue_band: structuredData.revenue_band,
-        premium_amount: structuredData.premium_amount,
-        premium_currency: structuredData.premium_currency,
-        quote_date: structuredData.quote_date,
-        expiry_date: structuredData.expiry_date,
-        deductible_amount: structuredData.deductible_amount,
-        coverage_limits: structuredData.coverage_limits,
-        inner_limits: structuredData.inner_limits,
-        inclusions: structuredData.inclusions,
-        exclusions: structuredData.exclusions,
-        policy_terms: structuredData.policy_terms,
-        quote_status: structuredData.quote_status,
-        client_name: clientName  // Now guaranteed to exist from validation above
+        product_type: structuredData.product_type || 'Unknown',
+        industry: structuredData.industry || 'Not Specified',
+        revenue_band: structuredData.revenue_band || null,
+        premium_amount: structuredData.premium_amount || null,
+        premium_currency: structuredData.premium_currency || 'GBP',
+        quote_date: structuredData.quote_date || null,
+        expiry_date: structuredData.expiry_date || null,
+        deductible_amount: structuredData.deductible_amount || null,
+        coverage_limits: structuredData.coverage_limits || {},
+        inner_limits: structuredData.inner_limits || {},
+        inclusions: structuredData.inclusions || [],
+        exclusions: structuredData.exclusions || [],
+        policy_terms: structuredData.policy_terms || {},
+        quote_status: 'quoted',
+        client_name: clientName
       })
       .select()
       .single();
@@ -204,16 +246,10 @@ serve(async (req) => {
     console.log('Quote saved with ID:', insertData.id);
 
     // Update document status to processed
-    console.log('Updating document status to processed...');
-    const { error: finalUpdateError } = await supabase
+    await supabase
       .from('documents')
       .update({ status: 'processed' })
       .eq('id', documentId);
-
-    if (finalUpdateError) {
-      console.error('Failed to update final status:', finalUpdateError);
-      // Don't throw, just log
-    }
 
     console.log('=== Process Document Function Completed Successfully ===');
 
@@ -222,7 +258,7 @@ serve(async (req) => {
       documentId,
       quoteId: insertData.id,
       extractedData: structuredData,
-      message: 'Document processed successfully with sample data'
+      message: 'Document processed successfully with AI extraction'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -231,11 +267,9 @@ serve(async (req) => {
     console.error('=== PROCESS DOCUMENT ERROR ===');
     console.error('Error message:', (error as any).message);
     console.error('Error stack:', (error as any).stack);
-    console.error('Error details:', error);
     
     // Try to update document status to error
     try {
-      console.log('Attempting to update document status to error...');
       const body = await req.clone().json();
       const documentId = body?.documentId;
       
@@ -245,19 +279,13 @@ serve(async (req) => {
         
         if (supabaseUrl && supabaseKey) {
           const supabase = createClient(supabaseUrl, supabaseKey);
-          const { error: updateError } = await supabase
+          await supabase
             .from('documents')
             .update({ 
               status: 'error',
               processing_error: (error as any).message 
             })
             .eq('id', documentId);
-          
-          if (updateError) {
-            console.error('Failed to update document error status:', updateError);
-          } else {
-            console.log('Document status updated to error');
-          }
         }
       }
     } catch (updateError) {
