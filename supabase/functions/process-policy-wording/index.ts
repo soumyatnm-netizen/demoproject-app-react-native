@@ -54,11 +54,12 @@ serve(async (req) => {
     if (!nav.platform) nav.platform = 'Linux x86_64';
     (globalThis as any).navigator = nav;
 
-    const pdfjsLib = await import('https://esm.sh/pdfjs-dist@3.4.120/es2022/build/pdf.min.mjs');
+    const pdfjsModule = await import('https://esm.sh/pdfjs-dist@3.4.120/es2022/build/pdf.min.mjs');
+    const pdfjsLib = (pdfjsModule as any).default || pdfjsModule;
     
     console.log('Extracting text from PDF...');
     const arrayBuffer = await fileData.arrayBuffer();
-    const loadingTask = (pdfjsLib as any).getDocument({ 
+    const loadingTask = pdfjsLib.getDocument({ 
       data: new Uint8Array(arrayBuffer), 
       disableWorker: true,
       isEvalSupported: false,
