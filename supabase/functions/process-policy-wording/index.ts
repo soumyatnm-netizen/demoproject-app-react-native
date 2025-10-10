@@ -25,7 +25,7 @@ function json(req: Request, status: number, body: unknown) {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders(req) });
+    return new Response('ok', { status: 200, headers: corsHeaders(req) });
   }
 
   try {
@@ -77,6 +77,11 @@ serve(async (req) => {
     const pdfResponse = await fetch(urlData.signedUrl);
     if (!pdfResponse.ok) {
       return json(req, 500, { ok: false, error: 'Failed to fetch PDF from storage' });
+    }
+
+    const ct = pdfResponse.headers.get('content-type') || '';
+    if (!ct.includes('pdf')) {
+      console.warn('[pdf] unexpected content-type:', ct);
     }
 
     const pdfBytes = new Uint8Array(await pdfResponse.arrayBuffer());
@@ -157,11 +162,19 @@ serve(async (req) => {
     }
 
     const responsesData = JSON.parse(responsesText);
-    const outputText = responsesData?.output?.[0]?.content?.[0]?.text 
-      || responsesData?.content?.[0]?.text 
-      || responsesData?.choices?.[0]?.message?.content;
+    let outputText = responsesData?.output?.[0]?.content?.[0]?.text 
+      ?? responsesData?.content?.[0]?.text 
+      ?? responsesData?.output_text
+      ?? responsesData?.choices?.[0]?.message?.content;
     
-    const analysisData = typeof outputText === 'string' ? JSON.parse(outputText) : outputText;
+    let analysisData: any;
+    try {
+      analysisData = typeof outputText === 'string' ? JSON.parse(outputText) : outputText;
+    } catch (e) {
+      console.error('[openai] JSON.parse failed. First 400 chars:', String(outputText).slice(0, 400));
+      return json(req, 502, { ok: false, error: 'Model returned non-JSON. See logs for details.' });
+    }
+    
     console.log('[openai] model:', responsesData?.model, 'usage:', JSON.stringify(responsesData?.usage ?? null));
 
     // Store the analysis in the database
