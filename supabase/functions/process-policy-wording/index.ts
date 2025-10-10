@@ -5,6 +5,11 @@ import { getDocument, GlobalWorkerOptions } from "npm:pdfjs-dist@3.4.120/legacy/
 
 // Configure pdf.js worker for Edge Runtime (legacy server build)
 GlobalWorkerOptions.workerSrc = "npm:pdfjs-dist@3.4.120/legacy/build/pdf.worker.mjs";
+// Fallback to run pdf.js on the main thread (fake worker) if workers are blocked
+try {
+  // If worker import blows up or workers are disallowed, run without a worker.
+  GlobalWorkerOptions.workerSrc = null as unknown as string;
+} catch {}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
