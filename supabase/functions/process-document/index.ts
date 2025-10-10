@@ -94,11 +94,16 @@ serve(async (req) => {
     console.log('File downloaded, size:', fileData.size);
 
     // Import PDF.js for text extraction (Deno-compatible)
-    const pdfjsLib = await import('https://esm.sh/pdfjs-dist@4.0.379/es2022/build/pdf.min.mjs');
+    const pdfjsLib = await import('https://esm.sh/pdfjs-dist@4.0.379/build/pdf.min.js');
     
     console.log('Extracting text from PDF...');
     const arrayBuffer = await fileData.arrayBuffer();
-    const loadingTask = (pdfjsLib as any).getDocument({ data: new Uint8Array(arrayBuffer), disableWorker: true });
+    const loadingTask = (pdfjsLib as any).getDocument({ 
+      data: new Uint8Array(arrayBuffer), 
+      disableWorker: true,
+      isEvalSupported: false,
+      disableFontFace: true
+    });
     const pdf = await loadingTask.promise;
     
     let extractedText = '';
