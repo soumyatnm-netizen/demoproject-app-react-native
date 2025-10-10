@@ -1,14 +1,14 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import { getDocument, GlobalWorkerOptions } from "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.mjs";
+import * as pdfjs from "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.mjs";
 
 try { 
-  GlobalWorkerOptions.workerSrc = "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.worker.mjs"; 
+  pdfjs.GlobalWorkerOptions.workerSrc = "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.worker.mjs"; 
 } catch {}
 
 console.log("pdfjs legacy build active via esm.sh CDN");
-console.log("workerSrc:", String(GlobalWorkerOptions.workerSrc));
+console.log("workerSrc:", String(pdfjs.GlobalWorkerOptions.workerSrc));
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -60,12 +60,12 @@ serve(async (req) => {
     console.log('Extracting text from PDF...');
     const arrayBuffer = await fileData.arrayBuffer();
     const pdfBytes = new Uint8Array(arrayBuffer);
-    let loadingTask = getDocument({ data: pdfBytes, isEvalSupported: false, disableFontFace: true });
+    let loadingTask = pdfjs.getDocument({ data: pdfBytes, isEvalSupported: false, disableFontFace: true });
     try {
       await (await loadingTask).promise; // triggers worker errors early
     } catch {
-      GlobalWorkerOptions.workerSrc = null as unknown as string; // run without worker
-      loadingTask = getDocument({ data: pdfBytes, isEvalSupported: false, disableFontFace: true });
+      pdfjs.GlobalWorkerOptions.workerSrc = null as unknown as string; // run without worker
+      loadingTask = pdfjs.getDocument({ data: pdfBytes, isEvalSupported: false, disableFontFace: true });
     }
     const pdf = await loadingTask.promise;
     
@@ -73,7 +73,7 @@ serve(async (req) => {
       pages: pdf.numPages,
       size: pdfBytes.byteLength
     };
-    console.log("PDF loaded successfully - Pages:", pdfMetadata.pages, "| Size:", pdfMetadata.size, "bytes | Worker:", String(GlobalWorkerOptions.workerSrc));
+    console.log("PDF loaded successfully - Pages:", pdfMetadata.pages, "| Size:", pdfMetadata.size, "bytes | Worker:", String(pdfjs.GlobalWorkerOptions.workerSrc));
 
     let extractedText = '';
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {

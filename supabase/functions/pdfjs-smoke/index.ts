@@ -1,12 +1,12 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { getDocument, GlobalWorkerOptions } from "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.mjs";
+import * as pdfjs from "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.mjs";
 
 try { 
-  GlobalWorkerOptions.workerSrc = "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.worker.mjs"; 
+  pdfjs.GlobalWorkerOptions.workerSrc = "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.worker.mjs"; 
 } catch {}
 
 console.log("pdfjs-smoke: loaded esm.sh/pdfjs-dist@3.4.120/legacy");
-console.log("workerSrc:", String(GlobalWorkerOptions.workerSrc));
+console.log("workerSrc:", String(pdfjs.GlobalWorkerOptions.workerSrc));
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,19 +41,19 @@ serve(async (req) => {
       0x78,0x72,0x65,0x66,0x0a,0x31,0x30,0x30,0x0a,0x25,0x25,0x45,0x4f,0x46,0x0a
     ]);
     
-    let task = getDocument({ data: minimal, isEvalSupported: false, disableFontFace: true });
+    let task = pdfjs.getDocument({ data: minimal, isEvalSupported: false, disableFontFace: true });
     try { 
       await (await task).promise; 
     } catch { 
-      GlobalWorkerOptions.workerSrc = null as unknown as string; 
-      task = getDocument({ data: minimal, isEvalSupported: false, disableFontFace: true }); 
+      pdfjs.GlobalWorkerOptions.workerSrc = null as unknown as string; 
+      task = pdfjs.getDocument({ data: minimal, isEvalSupported: false, disableFontFace: true }); 
     }
     
     const pdf = await task.promise;
-    console.log("Smoke test success - Pages:", pdf.numPages, "| Worker:", String(GlobalWorkerOptions.workerSrc));
+    console.log("Smoke test success - Pages:", pdf.numPages, "| Worker:", String(pdfjs.GlobalWorkerOptions.workerSrc));
     
     return new Response(
-      JSON.stringify({ ok: true, pages: pdf.numPages, message: "PDF.js is working correctly", workerSrc: String(GlobalWorkerOptions.workerSrc) }),
+      JSON.stringify({ ok: true, pages: pdf.numPages, message: "PDF.js is working correctly", workerSrc: String(pdfjs.GlobalWorkerOptions.workerSrc) }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {
