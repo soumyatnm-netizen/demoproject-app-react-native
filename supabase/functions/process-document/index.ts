@@ -144,8 +144,8 @@ CRITICAL INSTRUCTIONS:
 4. If a field cannot be found, use null for numbers or empty arrays for lists
 5. Return ONLY the JSON object, no additional text`;
 
-    // Call Lovable AI with document using OpenAI GPT-5 mini which has better PDF support
-    // Using data URI format for base64 PDF as per OpenAI vision API spec
+    // Call Lovable AI with document using Gemini 2.5 Flash (default, has native PDF support)
+    // Gemini can process PDFs directly through vision API
     const dataUri = `data:application/pdf;base64,${base64Data}`;
     
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -155,7 +155,7 @@ CRITICAL INSTRUCTIONS:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'openai/gpt-5-mini',  // GPT-5 mini has excellent PDF support
+        model: 'google/gemini-2.5-flash',  // Default model with native PDF support
         messages: [
           {
             role: 'user',
@@ -164,14 +164,12 @@ CRITICAL INSTRUCTIONS:
               { 
                 type: 'image_url', 
                 image_url: { 
-                  url: dataUri,
-                  detail: 'high'  // Request high detail for better extraction
+                  url: dataUri
                 } 
               }
             ]
           }
-        ],
-        max_completion_tokens: 2000  // GPT-5 uses max_completion_tokens not max_tokens
+        ]
       }),
     });
 
