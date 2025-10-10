@@ -38,8 +38,16 @@ serve(async (req) => {
 
     console.log('Document found:', document.storage_path);
 
-    // Download the PDF for Claude processing (Claude requires base64, not URLs)
-    console.log('Downloading file from storage for Claude processing...');
+    // Generate a signed URL (works well with Gemini); also prepare base64 for data URI fallback
+    const { data: signed, error: signedErr } = await supabase.storage
+      .from('documents')
+      .createSignedUrl(document.storage_path, 600);
+    if (signedErr || !signed?.signedUrl) throw signedErr || new Error('Failed to create signed URL');
+    const fileUrl = signed.signedUrl;
+    console.log('Signed URL generated for document');
+
+    // Also download and convert to base64 for data URI fallback
+    console.log('Downloading file from storage for optional data URI...');
     const { data: fileData, error: downloadError } = await supabase.storage
       .from('documents')
       .download(document.storage_path);
@@ -232,43 +240,89 @@ IMPORTANT:
     }
 
     console.log('Calling AI for policy analysis...');
-    
-    // Call Lovable AI Gateway with Claude Sonnet 4.5 (excellent PDF understanding)
-    console.log('Calling Claude for policy analysis...');
-    
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
+
+    const dataUri = `data:application/pdf;base64,${base64Data}`;
+
+    const payloadVariants = [
+      // Prefer Gemini Pro with signed URL and explicit mime
+      {
+        model: 'google/gemini-2.5-pro',
         messages: [
-          { role: 'user', content: systemPrompt },
-          { 
-            role: 'user', 
+          { role: 'system', content: systemPrompt },
+          {
+            role: 'user',
             content: [
               { type: 'text', text: userPrompt },
-              {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: 'application/pdf',
-                  data: base64Data
-                }
-              }
+              { type: 'image_url', image_url: { url: fileUrl, mime_type: 'application/pdf' } }
             ]
           }
-        ],
-        max_tokens: 8192
-      }),
-    });
+        ]
+      },
+      // Gemini Pro with signed URL, no mime
+      {
+        model: 'google/gemini-2.5-pro',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: userPrompt },
+              { type: 'image_url', image_url: { url: fileUrl } }
+            ]
+          }
+        ]
+      },
+      // Gemini Pro with data URI
+      {
+        model: 'google/gemini-2.5-pro',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: userPrompt },
+              { type: 'image_url', image_url: { url: dataUri, mime_type: 'application/pdf' } }
+            ]
+          }
+        ]
+      },
+      // Gemini Flash fallback
+      {
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: userPrompt },
+              { type: 'image_url', image_url: { url: fileUrl } }
+            ]
+          }
+        ]
+      }
+    ];
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error('AI API error:', aiResponse.status, errorText);
-      throw new Error(`AI API error: ${aiResponse.status} ${errorText}`);
+    let aiResponse: Response | null = null;
+    let lastError = '';
+
+    for (let i = 0; i < payloadVariants.length; i++) {
+      console.log(`AI policy analysis attempt ${i + 1}/${payloadVariants.length}...`);
+      const rsp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payloadVariants[i]),
+      });
+
+      if (rsp.ok) { aiResponse = rsp; break; }
+      lastError = await rsp.text();
+      console.error('AI attempt failed:', rsp.status, lastError);
+    }
+
+    if (!aiResponse) {
+      throw new Error(`AI API error: ${lastError || 'Unknown error'}`);
     }
 
     const aiResult = await aiResponse.json();
