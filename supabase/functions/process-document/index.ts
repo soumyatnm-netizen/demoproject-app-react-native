@@ -94,6 +94,11 @@ serve(async (req) => {
     console.log('File downloaded, size:', fileData.size);
 
     // Import PDF.js for text extraction (Deno-compatible)
+    // Polyfill navigator for pdf.js in Deno edge
+    const nav: any = (globalThis as any).navigator ?? {};
+    if (!nav.platform) nav.platform = 'Linux x86_64';
+    (globalThis as any).navigator = nav;
+
     const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@3.4.120/build/pdf.min.mjs');
     
     console.log('Extracting text from PDF...');
