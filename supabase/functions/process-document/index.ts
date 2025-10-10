@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { fetchPdfAsFile, uploadFileToOpenAI, callResponsesJSON } from "../_shared/helpers.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,11 +24,7 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
-    console.log('Environment check:', {
-      hasSupabaseUrl: !!supabaseUrl,
-      hasSupabaseKey: !!supabaseKey,
-      hasOpenAIKey: !!openAIApiKey
-    });
+    console.log('[openai] keyPresent:', openAIApiKey ? 'yes' : 'no');
 
     if (!supabaseUrl || !supabaseKey) {
       throw new Error('Missing Supabase environment variables');
@@ -80,35 +77,14 @@ serve(async (req) => {
       throw new Error('Failed to create signed URL');
     }
 
-    console.log('Uploading PDF to OpenAI...');
+    // 1) Fetch PDF from storage as a File (safer in Edge)
+    const file = await fetchPdfAsFile(signedUrlData.signedUrl, document.filename);
 
-    // Fetch PDF and upload to OpenAI
-    const pdfRes = await fetch(signedUrlData.signedUrl);
-    if (!pdfRes.ok) {
-      throw new Error(`Failed to fetch PDF: ${pdfRes.status}`);
-    }
+    // 2) Upload to OpenAI Files
+    const fileId = await uploadFileToOpenAI(file, openAIApiKey);
+    console.log('[openai] uploaded fileId:', fileId);
 
-    const blob = new Blob([await pdfRes.arrayBuffer()], { type: 'application/pdf' });
-    const form = new FormData();
-    form.append('file', blob, document.filename);
-    form.append('purpose', 'assistants');
-
-    const uploadRes = await fetch('https://api.openai.com/v1/files', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${openAIApiKey}` },
-      body: form
-    });
-
-    const uploaded = await uploadRes.json();
-    if (!uploadRes.ok) {
-      console.error('OpenAI upload failed:', JSON.stringify(uploaded).slice(0, 300));
-      throw new Error(`OpenAI upload failed: ${uploadRes.status}`);
-    }
-
-    const fileId = uploaded.id;
-    console.log('PDF uploaded to OpenAI, file ID:', fileId);
-
-    // Call OpenAI Responses API
+    // 3) Build Responses body
     const systemText =
       'You are an expert insurance analyst for commercial lines. ' +
       'Extract and normalise quote details (limits, sublimits, deductibles/excess, exclusions, endorsements, conditions, premiums, taxes/fees, dates, jurisdiction/territory). ' +
@@ -133,33 +109,10 @@ serve(async (req) => {
       max_output_tokens: 2000
     };
 
+    // 4) Call Responses
     console.log('Calling OpenAI Responses API...');
-    const aiRes = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    const rawResponse = await aiRes.text();
-    if (!aiRes.ok) {
-      console.error('OpenAI API error:', aiRes.status, rawResponse.slice(0, 400));
-      throw new Error(`OpenAI API failed: ${aiRes.status}`);
-    }
-
-    const parsed = JSON.parse(rawResponse);
-    const jsonText =
-      parsed?.output?.[0]?.content?.[0]?.text ??
-      parsed?.content?.[0]?.text ??
-      parsed?.output_text ??
-      parsed?.choices?.[0]?.message?.content;
-
-    const structuredData = typeof jsonText === 'string' ? JSON.parse(jsonText) : jsonText;
-    const tokenUsage = parsed?.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
-    
-    console.log('OpenAI analysis complete, tokens:', JSON.stringify(tokenUsage));
+    const { result: structuredData, raw } = await callResponsesJSON(openAIApiKey, requestBody);
+    console.log('[openai] model:', raw?.model, 'usage:', JSON.stringify(raw?.usage ?? null));
 
     // Extract first quote from structured comparison data
     const firstQuote = structuredData.quotes?.[0];
@@ -243,14 +196,14 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       ok: true,
       result: structuredData,
-      tokens: tokenUsage,
+      tokens: raw?.usage ?? null,
       metadata: {
         documentId,
         quoteId: insertData.id,
         clientName,
         insurerName: dbQuoteData.insurer_name,
         processedAt: new Date().toISOString(),
-        model: parsed?.model || 'gpt-4o-mini'
+        model: raw?.model || 'gpt-4o-mini'
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
