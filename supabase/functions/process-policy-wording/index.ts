@@ -242,6 +242,7 @@ ${extractedText}`;
 
     // Use OpenAI directly for text analysis (GPT-5-mini excels at structured extraction)
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    console.log(`OPENAI key present: ${openAIApiKey ? "yes" : "no"}`);
     if (!openAIApiKey) {
       throw new Error('OPENAI_API_KEY not configured');
     }
