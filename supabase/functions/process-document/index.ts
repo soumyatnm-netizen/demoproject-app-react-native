@@ -2,22 +2,29 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 
-// ✅ 100% server-safe import (no esm.sh rewriting, no es2022 path)
-const { getDocument, GlobalWorkerOptions } = await import(
-  "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.mjs"
-);
+// CORS helpers
+function corsHeaders(req: Request) {
+  const origin = req.headers.get("Origin") ?? "*";
+  const reqHeaders = req.headers.get("Access-Control-Request-Headers")
+    ?? "authorization, x-client-info, apikey, content-type";
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Vary": "Origin",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": reqHeaders,
+  };
+}
 
-// ✅ Run pdf.js without a worker (Edge-friendly, no DOM/canvas)
-GlobalWorkerOptions.workerSrc = null as unknown as string;
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+function json(req: Request, status: number, body: unknown) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...corsHeaders(req) },
+  });
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   let requestDocumentId: string | null = null;
@@ -28,26 +35,25 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
-    console.log('[pdfjs] entry=legacy(jsDelivr); workerSrc=', String(GlobalWorkerOptions.workerSrc));
     console.log('[openai] keyPresent:', openAIApiKey ? 'yes' : 'no');
 
     if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Missing Supabase environment variables');
+      return json(req, 500, { ok: false, error: 'Missing Supabase environment variables' });
     }
 
     if (!openAIApiKey) {
-      throw new Error('OPENAI_API_KEY not configured');
+      return json(req, 500, { ok: false, error: 'OPENAI_API_KEY not configured' });
     }
 
     const { documentId, clientName } = await req.json();
     requestDocumentId = documentId;
 
     if (!documentId) {
-      throw new Error('Document ID is required');
+      return json(req, 400, { ok: false, error: 'Document ID is required' });
     }
 
     if (!clientName) {
-      throw new Error('Client name is required');
+      return json(req, 400, { ok: false, error: 'Client name is required' });
     }
 
     console.log('Processing document ID:', documentId, 'for client:', clientName);
@@ -62,7 +68,7 @@ serve(async (req) => {
       .single();
 
     if (docError || !document) {
-      throw new Error(`Document not found: ${docError?.message}`);
+      return json(req, 404, { ok: false, error: `Document not found: ${docError?.message}` });
     }
 
     console.log('Document found:', document.filename);
@@ -73,77 +79,99 @@ serve(async (req) => {
       .update({ status: 'processing' })
       .eq('id', documentId);
 
-    // Download file from storage
-    console.log('Downloading file from storage...');
-    const { data: fileData, error: downloadError } = await supabase.storage
+    // Get signed URL for the PDF
+    const { data: urlData, error: urlError } = await supabase.storage
       .from('documents')
-      .download(document.storage_path);
+      .createSignedUrl(document.storage_path, 300); // 5 min expiry
 
-    if (downloadError || !fileData) {
-      throw new Error('Failed to download document from storage');
+    if (urlError || !urlData?.signedUrl) {
+      return json(req, 500, { ok: false, error: 'Failed to get document URL' });
     }
 
-    console.log('File downloaded, size:', fileData.size);
+    console.log('Fetching PDF from signed URL...');
+    const pdfResponse = await fetch(urlData.signedUrl);
+    if (!pdfResponse.ok) {
+      return json(req, 500, { ok: false, error: 'Failed to fetch PDF from storage' });
+    }
 
-    // Extract text from PDF using pdfjs-dist
-    console.log('Extracting text from PDF...');
-    const arrayBuffer = await fileData.arrayBuffer();
-    const pdfBytes = new Uint8Array(arrayBuffer);
-    
-    console.log('[pdf] fetched bytes:', pdfBytes.byteLength, '(', (pdfBytes.byteLength / (1024 * 1024)).toFixed(2), 'MB)');
-    
-    const loadingTask = getDocument({ 
-      data: pdfBytes, 
-      isEvalSupported: false, 
-      disableFontFace: true 
+    const pdfBytes = new Uint8Array(await pdfResponse.arrayBuffer());
+    const sizeMB = (pdfBytes.byteLength / (1024 * 1024)).toFixed(2);
+    console.log('[pdf] fetched bytes:', pdfBytes.byteLength, '(', sizeMB, 'MB)', 'host:', new URL(urlData.signedUrl).host);
+
+    // Upload PDF to OpenAI Files API
+    const pdfFile = new File([pdfBytes], document.filename || 'document.pdf', { type: 'application/pdf' });
+    const formData = new FormData();
+    formData.append('file', pdfFile);
+    formData.append('purpose', 'assistants');
+
+    console.log('Uploading PDF to OpenAI Files API...');
+    const uploadResponse = await fetch('https://api.openai.com/v1/files', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${openAIApiKey}` },
+      body: formData
     });
-    const pdf = await loadingTask.promise;
-    
-    console.log('PDF loaded - Pages:', pdf.numPages);
 
-    let extractedText = '';
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      const page = await pdf.getPage(pageNum);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items.map((item: any) => item.str).join(' ');
-      extractedText += `\n--- Page ${pageNum} ---\n${pageText}`;
+    const uploadText = await uploadResponse.text();
+    if (!uploadResponse.ok) {
+      console.error('[OpenAI] Upload error:', uploadText.slice(0, 400));
+      return json(req, 500, { ok: false, error: `OpenAI upload failed: ${uploadText.slice(0, 400)}` });
     }
-    
-    console.log('Text extracted, length:', extractedText.length, 'chars');
 
-    // Import schemas and helper
-    const { QUOTE_COMPARISON_SCHEMA, callOpenAIResponses } = await import("../_shared/openai-schemas.ts");
+    const uploadData = JSON.parse(uploadText);
+    const fileId = uploadData.id;
+    console.log('[openai] uploaded fileId:', fileId);
 
-    console.log('Calling OpenAI Chat Completions API with JSON schema...');
-    
-    const requestBody = {
+    // Import schemas
+    const { QUOTE_COMPARISON_SCHEMA } = await import("../_shared/openai-schemas.ts");
+
+    // Call OpenAI Responses API with native PDF
+    console.log('Calling OpenAI Responses API...');
+    const responsesBody = {
       model: 'gpt-4o-mini',
-      messages: [
-        { 
-          role: 'system', 
-          content: 'You are an expert insurance analyst for commercial lines. Extract and normalise quote details (limits, sublimits, deductibles/excess, exclusions, endorsements, conditions, premiums, taxes/fees, dates, jurisdiction/territory). Compare carriers conservatively and include citations. Only output valid JSON per the schema.'
-        },
-        { 
-          role: 'user', 
-          content: `Client: ${clientName}\n\nRaw extracted policy text follows. Return JSON per schema.\n\n${extractedText}` 
+      modalities: ['text'],
+      instructions: 'You are an expert insurance analyst for commercial lines. Extract and normalise quote details (limits, sublimits, deductibles/excess, exclusions, endorsements, conditions, premiums, taxes/fees, dates, jurisdiction/territory). Compare carriers conservatively and include citations. Only output valid JSON per the schema.',
+      input: [
+        {
+          type: 'user',
+          content: [
+            { type: 'input_file', input_file: { file_id: fileId } },
+            { type: 'input_text', input_text: `Client: ${clientName}\n\nAnalyze the attached insurance quote PDF and return structured JSON per schema.` }
+          ]
         }
       ],
-      response_format: { 
-        type: 'json_schema', 
-        json_schema: QUOTE_COMPARISON_SCHEMA 
-      },
-      temperature: 0,
-      max_tokens: 2000
+      text: {
+        format: 'json_schema',
+        json_schema: QUOTE_COMPARISON_SCHEMA
+      }
     };
+
+    const responsesResponse = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(responsesBody)
+    });
+
+    const responsesText = await responsesResponse.text();
+    if (!responsesResponse.ok) {
+      console.error('[OpenAI] Responses error:', responsesText.slice(0, 400));
+      return json(req, 500, { ok: false, error: `OpenAI Responses failed: ${responsesText.slice(0, 400)}` });
+    }
+
+    const responsesData = JSON.parse(responsesText);
+    const outputText = responsesData?.output?.[0]?.content?.[0]?.text 
+      || responsesData?.content?.[0]?.text 
+      || responsesData?.choices?.[0]?.message?.content;
     
-    const { result: structuredData, raw, usage } = await callOpenAIResponses(openAIApiKey, requestBody);
-    
-    console.log('[openai] model:', raw?.model, 'usage:', JSON.stringify(usage ?? null));
+    const structuredData = typeof outputText === 'string' ? JSON.parse(outputText) : outputText;
+    console.log('[openai] model:', responsesData?.model, 'usage:', JSON.stringify(responsesData?.usage ?? null));
 
     // Extract first quote from structured comparison data
     const firstQuote = structuredData.quotes?.[0];
     if (!firstQuote || !firstQuote.carrier) {
-      throw new Error('No valid quote data found in extracted comparison');
+      return json(req, 422, { ok: false, error: 'No valid quote data found in extracted comparison' });
     }
 
     // Map to database format
@@ -206,7 +234,7 @@ serve(async (req) => {
 
     if (insertError) {
       console.error('Database insert error:', insertError);
-      throw new Error(`Failed to save quote data: ${insertError.message}`);
+      return json(req, 500, { ok: false, error: `Failed to save quote data: ${insertError.message}` });
     }
 
     console.log('Quote saved with ID:', insertData.id);
@@ -219,20 +247,18 @@ serve(async (req) => {
 
     console.log('=== Process Document Completed Successfully ===');
 
-    return new Response(JSON.stringify({
+    return json(req, 200, {
       ok: true,
       result: structuredData,
-      tokens: usage,
-      metadata: {
+      meta: {
         documentId,
         quoteId: insertData.id,
         clientName,
         insurerName: dbQuoteData.insurer_name,
         processedAt: new Date().toISOString(),
-        model: raw?.model || 'gpt-4o-mini'
+        model: responsesData?.model || 'gpt-4o-mini',
+        usage: responsesData?.usage
       }
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
@@ -260,13 +286,10 @@ serve(async (req) => {
       console.error('Failed to update document status:', updateError);
     }
 
-    return new Response(JSON.stringify({
+    return json(req, 500, {
       ok: false,
       error: (error as any).message,
       timestamp: new Date().toISOString()
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 });
