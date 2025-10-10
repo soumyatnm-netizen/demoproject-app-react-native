@@ -1,12 +1,12 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-// ✅ Force server-safe legacy pdf.js via URL import (bypasses bundler/import-map):
+// ✅ 100% server-safe import (no esm.sh rewriting, no es2022 path)
 const { getDocument, GlobalWorkerOptions } = await import(
-  "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.mjs"
+  "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.4.120/legacy/build/pdf.min.mjs"
 );
 
-// ✅ Run without a worker in Edge (safest, no DOM or cross-thread needed):
+// ✅ Run pdf.js without a worker (Edge-friendly, no DOM/canvas)
 GlobalWorkerOptions.workerSrc = null as unknown as string;
 
 const corsHeaders = {
