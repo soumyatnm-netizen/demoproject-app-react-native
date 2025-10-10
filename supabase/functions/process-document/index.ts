@@ -144,8 +144,8 @@ CRITICAL INSTRUCTIONS:
 4. If a field cannot be found, use null for numbers or empty arrays for lists
 5. Return ONLY the JSON object, no additional text`;
 
-    // Call Lovable AI with document using Gemini 2.5 Flash (default, has native PDF support)
-    // Gemini can process PDFs directly through vision API
+    // Call Lovable AI using proper document processing format
+    // Gemini natively supports PDF documents through data URI
     const dataUri = `data:application/pdf;base64,${base64Data}`;
     
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -155,14 +155,14 @@ CRITICAL INSTRUCTIONS:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',  // Default model with native PDF support
+        model: 'google/gemini-2.5-flash',  // Default model with native PDF document support
         messages: [
           {
             role: 'user',
             content: [
               { type: 'text', text: extractionPrompt },
               { 
-                type: 'image_url', 
+                type: 'image_url',  // Gemini processes PDFs through this endpoint
                 image_url: { 
                   url: dataUri
                 } 
