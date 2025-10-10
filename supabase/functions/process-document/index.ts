@@ -150,85 +150,44 @@ CRITICAL INSTRUCTIONS:
     // Gemini natively supports PDF documents through data URI
     const dataUri = `data:application/pdf;base64,${base64Data}`;
     
-    // Prepare multiple payload variants to maximize PDF compatibility on the gateway
-    const dataUri = `data:application/pdf;base64,${base64Data}`;
-
-    const payloadVariants = [
-      // Gemini Pro with explicit PDF mime type via data URI
-      {
-        model: 'google/gemini-2.5-pro',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: extractionPrompt },
-              { type: 'image_url', image_url: { url: dataUri, mime_type: 'application/pdf' } }
-            ]
-          }
-        ]
-      },
-      // Gemini Pro without mime (some gateways infer correctly)
-      {
-        model: 'google/gemini-2.5-pro',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: extractionPrompt },
-              { type: 'image_url', image_url: { url: dataUri } }
-            ]
-          }
-        ]
-      },
-      // Gemini Pro with detail: high
-      {
-        model: 'google/gemini-2.5-pro',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: extractionPrompt },
-              { type: 'image_url', image_url: { url: dataUri, detail: 'high' } }
-            ]
-          }
-        ]
-      },
-      // Gemini Flash fallback
-      {
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: extractionPrompt },
-              { type: 'image_url', image_url: { url: dataUri } }
-            ]
-          }
-        ]
-      }
-    ];
-
-    let aiResponse: Response | null = null;
-    let lastErrorText = '';
-
-    for (let i = 0; i < payloadVariants.length; i++) {
-      console.log(`Calling AI for extraction attempt ${i + 1}/${payloadVariants.length}...`);
-      const rsp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${lovableApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payloadVariants[i]),
-      });
-
-      if (rsp.ok) { aiResponse = rsp; break; }
-      lastErrorText = await rsp.text();
-      console.error('AI attempt failed:', rsp.status, lastErrorText);
+    // Use OpenAI directly for PDF processing (GPT-5-mini has excellent document understanding)
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIApiKey) {
+      throw new Error('OPENAI_API_KEY not configured');
     }
 
-    if (!aiResponse) {
-      throw new Error(`AI extraction failed: ${lastErrorText || 'Unknown error'}`);
+    console.log('Calling OpenAI GPT-5-mini for extraction...');
+    
+    const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-5-mini',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: extractionPrompt },
+              { 
+                type: 'image_url',
+                image_url: { 
+                  url: `data:application/pdf;base64,${base64Data}`
+                } 
+              }
+            ]
+          }
+        ],
+        max_completion_tokens: 4096
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error('OpenAI API error:', aiResponse.status, errorText);
+      throw new Error(`AI extraction failed: ${errorText}`);
     }
 
     if (!aiResponse.ok) {

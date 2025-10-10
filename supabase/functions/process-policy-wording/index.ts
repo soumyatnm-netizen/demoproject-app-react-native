@@ -239,90 +239,45 @@ IMPORTANT:
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    console.log('Calling AI for policy analysis...');
-
-    const dataUri = `data:application/pdf;base64,${base64Data}`;
-
-    const payloadVariants = [
-      // Prefer Gemini Pro with signed URL and explicit mime
-      {
-        model: 'google/gemini-2.5-pro',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: userPrompt },
-              { type: 'image_url', image_url: { url: fileUrl, mime_type: 'application/pdf' } }
-            ]
-          }
-        ]
-      },
-      // Gemini Pro with signed URL, no mime
-      {
-        model: 'google/gemini-2.5-pro',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: userPrompt },
-              { type: 'image_url', image_url: { url: fileUrl } }
-            ]
-          }
-        ]
-      },
-      // Gemini Pro with data URI
-      {
-        model: 'google/gemini-2.5-pro',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: userPrompt },
-              { type: 'image_url', image_url: { url: dataUri, mime_type: 'application/pdf' } }
-            ]
-          }
-        ]
-      },
-      // Gemini Flash fallback
-      {
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: userPrompt },
-              { type: 'image_url', image_url: { url: fileUrl } }
-            ]
-          }
-        ]
-      }
-    ];
-
-    let aiResponse: Response | null = null;
-    let lastError = '';
-
-    for (let i = 0; i < payloadVariants.length; i++) {
-      console.log(`AI policy analysis attempt ${i + 1}/${payloadVariants.length}...`);
-      const rsp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payloadVariants[i]),
-      });
-
-      if (rsp.ok) { aiResponse = rsp; break; }
-      lastError = await rsp.text();
-      console.error('AI attempt failed:', rsp.status, lastError);
+    // Use OpenAI directly for PDF processing (GPT-5-mini has excellent document understanding)
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIApiKey) {
+      throw new Error('OPENAI_API_KEY not configured');
     }
 
-    if (!aiResponse) {
-      throw new Error(`AI API error: ${lastError || 'Unknown error'}`);
+    console.log('Calling OpenAI GPT-5-mini for policy analysis...');
+    
+    const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-5-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: userPrompt },
+              { 
+                type: 'image_url',
+                image_url: { 
+                  url: `data:application/pdf;base64,${base64Data}`
+                } 
+              }
+            ]
+          }
+        ],
+        max_completion_tokens: 8192
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error('OpenAI API error:', aiResponse.status, errorText);
+      throw new Error(`AI API error: ${aiResponse.status} ${errorText}`);
     }
 
     const aiResult = await aiResponse.json();
