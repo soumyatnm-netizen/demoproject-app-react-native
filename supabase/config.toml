@@ -34,3 +34,6 @@ verify_jwt = true
 
 [functions.reprocess-quote]
 verify_jwt = true
+
+[functions.pdfjs-smoke]
+verify_jwt = false

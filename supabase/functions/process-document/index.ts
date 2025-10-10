@@ -1,9 +1,17 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/+esm';
+import {
+  getDocument,
+  GlobalWorkerOptions,
+} from "npm:pdfjs-dist@3.4.120/legacy/build/pdf.mjs";
 
-console.log("pdfjs CDN build loaded successfully");
+// Optional worker; if it fails, we'll fall back to no worker later.
+try {
+  GlobalWorkerOptions.workerSrc = "npm:pdfjs-dist@3.4.120/legacy/build/pdf.worker.mjs";
+} catch {}
+
+console.log("pdfjs legacy build loaded with npm specifier");
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -100,7 +108,13 @@ serve(async (req) => {
     console.log('Extracting text from PDF...');
     const arrayBuffer = await fileData.arrayBuffer();
     const pdfBytes = new Uint8Array(arrayBuffer);
-    const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
+    let loadingTask = getDocument({ data: pdfBytes, isEvalSupported: false, disableFontFace: true });
+    try {
+      await (await loadingTask).promise; // triggers worker errors early
+    } catch {
+      GlobalWorkerOptions.workerSrc = null as unknown as string; // run without worker
+      loadingTask = getDocument({ data: pdfBytes, isEvalSupported: false, disableFontFace: true });
+    }
     const pdf = await loadingTask.promise;
     
     const pdfMetadata = {
