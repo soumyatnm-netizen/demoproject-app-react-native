@@ -38,25 +38,13 @@ serve(async (req) => {
 
     console.log('Document found:', document.storage_path);
 
-    // Download the file from storage
-    const { data: fileData, error: downloadError } = await supabase.storage
+    // Generate a signed URL for AI to fetch the PDF directly (avoids large base64 payloads)
+    const { data: signed, error: signedErr } = await supabase.storage
       .from('documents')
-      .download(document.storage_path);
-
-    if (downloadError) throw downloadError;
-
-    // Convert to base64 for AI processing (chunk to avoid stack overflow)
-    const arrayBuffer = await fileData.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
-    let binary = '';
-    const chunkSize = 8192;
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-      const chunk = bytes.slice(i, i + chunkSize);
-      binary += String.fromCharCode.apply(null, Array.from(chunk));
-    }
-    const base64 = btoa(binary);
-
-    console.log('File downloaded, size:', fileData.size);
+      .createSignedUrl(document.storage_path, 600);
+    if (signedErr || !signed?.signedUrl) throw signedErr || new Error('Failed to create signed URL');
+    const fileUrl = signed.signedUrl;
+    console.log('Signed URL generated for document');
 
     // Create comprehensive prompt for AI analysis
     const systemPrompt = `You are an expert insurance policy analyst specializing in comparing and extracting structured data from insurance policy wording documents.
@@ -246,7 +234,7 @@ IMPORTANT:
               {
                 type: 'image_url',
                 image_url: {
-                  url: `data:application/pdf;base64,${base64}`
+                  url: fileUrl
                 }
               }
             ]
