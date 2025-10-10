@@ -100,7 +100,6 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
     industry: "",
     revenue_band: "",
     employee_count: "",
-    risk_profile: "",
     coverage_requirements: "",
     contact_email: "",
     contact_phone: "",
@@ -110,8 +109,6 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
     date_established: "",
     organisation_type: "",
     website: "",
-    years_experience: "",
-    total_employees: "",
     wage_roll: ""
   });
 
@@ -153,7 +150,6 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
         industry: newClient.industry,
         revenue_band: newClient.revenue_band,
         employee_count: parseInt(newClient.employee_count) || 0,
-        risk_profile: newClient.risk_profile,
         coverage_requirements: newClient.coverage_requirements.split(',').map(s => s.trim()),
         contact_info: {
           email: newClient.contact_email,
@@ -185,7 +181,6 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
         industry: "",
         revenue_band: "",
         employee_count: "",
-        risk_profile: "",
         coverage_requirements: "",
         contact_email: "",
         contact_phone: "",
@@ -195,8 +190,6 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
         date_established: "",
         organisation_type: "",
         website: "",
-        years_experience: "",
-        total_employees: "",
         wage_roll: ""
       });
       fetchClients();
@@ -218,7 +211,6 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
       industry: extractedData["Industry"] || extractedData.industry || "",
       revenue_band: extractedData["Revenue Band"] || extractedData.revenue_band || "",
       employee_count: extractedData["Employee Count"]?.toString() || extractedData["Total number of employees"]?.toString() || extractedData.employee_count?.toString() || "",
-      risk_profile: extractedData["Risk Profile"] || extractedData.risk_profile || "",
       coverage_requirements: Array.isArray(extractedData["Coverage Requirements"]) 
         ? extractedData["Coverage Requirements"].join(', ')
         : Array.isArray(extractedData.coverage_requirements)
@@ -232,8 +224,6 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
       date_established: extractedData["Date business established"] || extractedData.date_established || "",
       organisation_type: extractedData["Type of organisation"] || extractedData.organisation_type || "",
       website: extractedData["Website"] || extractedData.website || "",
-      years_experience: (extractedData["Relevant years of experience"] || extractedData.years_experience)?.toString() || "",
-      total_employees: (extractedData["Total number of employees"] || extractedData["Employee Count"] || extractedData.total_employees)?.toString() || "",
       wage_roll: (extractedData["Total wage roll"] || extractedData.wage_roll)?.toString() || ""
     };
 
@@ -254,7 +244,6 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
       industry: client.report_data?.industry || '',
       revenue_band: client.report_data?.revenue_band || '',
       employee_count: client.report_data?.employee_count?.toString() || '',
-      risk_profile: client.report_data?.risk_profile || '',
       contact_email: client.report_data?.contact_info?.email || '',
       contact_phone: client.report_data?.contact_info?.phone || '',
       coverage_requirements: Array.isArray(client.report_data?.coverage_requirements) 
@@ -266,8 +255,6 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
       date_established: client.report_data?.date_established || '',
       organisation_type: client.report_data?.organisation_type || '',
       website: client.report_data?.website || '',
-      years_experience: client.report_data?.years_experience?.toString() || '',
-      total_employees: client.report_data?.total_employees?.toString() || '',
       wage_roll: client.report_data?.wage_roll?.toString() || '',
       report_title: client.report_title,
       report_status: client.report_status || 'draft'
@@ -288,7 +275,6 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
         industry: selectedClient.report_data?.industry || '',
         revenue_band: selectedClient.report_data?.revenue_band || '',
         employee_count: selectedClient.report_data?.employee_count?.toString() || '',
-        risk_profile: selectedClient.report_data?.risk_profile || '',
         contact_email: selectedClient.report_data?.contact_info?.email || '',
         contact_phone: selectedClient.report_data?.contact_info?.phone || '',
         coverage_requirements: Array.isArray(selectedClient.report_data?.coverage_requirements) 
@@ -300,8 +286,6 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
         date_established: selectedClient.report_data?.date_established || '',
         organisation_type: selectedClient.report_data?.organisation_type || '',
         website: selectedClient.report_data?.website || '',
-        years_experience: selectedClient.report_data?.years_experience?.toString() || '',
-        total_employees: selectedClient.report_data?.total_employees?.toString() || '',
         wage_roll: selectedClient.report_data?.wage_roll?.toString() || '',
         report_title: selectedClient.report_title,
         report_status: selectedClient.report_status || 'draft'
@@ -320,7 +304,6 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
         industry: editingClientData.industry,
         revenue_band: editingClientData.revenue_band,
         employee_count: parseInt(editingClientData.employee_count) || 0,
-        risk_profile: editingClientData.risk_profile,
         coverage_requirements: editingClientData.coverage_requirements.split(',').map((s: string) => s.trim()).filter(Boolean),
         contact_info: {
           email: editingClientData.contact_email,
@@ -332,8 +315,6 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
         date_established: editingClientData.date_established,
         organisation_type: editingClientData.organisation_type,
         website: editingClientData.website,
-        years_experience: editingClientData.years_experience,
-        total_employees: editingClientData.total_employees,
         wage_roll: editingClientData.wage_roll
       };
 
@@ -468,31 +449,15 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="employee_count">Employee Count</Label>
-                  <Input
-                    id="employee_count"
-                    type="number"
-                    value={newClient.employee_count}
-                    onChange={(e) => setNewClient({ ...newClient, employee_count: e.target.value })}
-                    placeholder="50"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="risk_profile">Risk Profile</Label>
-                  <Select value={newClient.risk_profile} onValueChange={(value) => setNewClient({ ...newClient, risk_profile: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select risk profile" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low Risk</SelectItem>
-                      <SelectItem value="medium">Medium Risk</SelectItem>
-                      <SelectItem value="high">High Risk</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div>
+                <Label htmlFor="employee_count">Employee Count</Label>
+                <Input
+                  id="employee_count"
+                  type="number"
+                  value={newClient.employee_count}
+                  onChange={(e) => setNewClient({ ...newClient, employee_count: e.target.value })}
+                  placeholder="50"
+                />
               </div>
 
               <div>
@@ -583,39 +548,15 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="years_experience">Years Experience</Label>
-                  <Input
-                    id="years_experience"
-                    type="number"
-                    value={newClient.years_experience}
-                    onChange={(e) => setNewClient({ ...newClient, years_experience: e.target.value })}
-                    placeholder="10"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="total_employees">Total Employees</Label>
-                  <Input
-                    id="total_employees"
-                    type="number"
-                    value={newClient.total_employees}
-                    onChange={(e) => setNewClient({ ...newClient, total_employees: e.target.value })}
-                    placeholder="50"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="wage_roll">Total Wage Roll (£)</Label>
-                  <Input
-                    id="wage_roll"
-                    type="number"
-                    value={newClient.wage_roll}
-                    onChange={(e) => setNewClient({ ...newClient, wage_roll: e.target.value })}
-                    placeholder="2500000"
-                  />
-                </div>
+              <div>
+                <Label htmlFor="wage_roll">Total Wage Roll (£)</Label>
+                <Input
+                  id="wage_roll"
+                  type="number"
+                  value={newClient.wage_roll}
+                  onChange={(e) => setNewClient({ ...newClient, wage_roll: e.target.value })}
+                  placeholder="2500000"
+                />
               </div>
 
               <div>
@@ -866,25 +807,6 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                       )}
                     </div>
                     <div>
-                      <Label className="text-sm font-medium text-muted-foreground">Risk Profile</Label>
-                      {isEditingClient ? (
-                        <Select value={editingClientData.risk_profile} onValueChange={(value) => setEditingClientData({...editingClientData, risk_profile: value})}>
-                          <SelectTrigger className="mt-1">
-                            <SelectValue placeholder="Select risk profile" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="low">Low Risk</SelectItem>
-                            <SelectItem value="medium">Medium Risk</SelectItem>
-                            <SelectItem value="high">High Risk</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Badge variant="outline">
-                          {selectedClient.report_data?.risk_profile || 'N/A'}
-                        </Badge>
-                      )}
-                    </div>
-                    <div>
                       <Label className="text-sm font-medium text-muted-foreground">Status</Label>
                       {isEditingClient ? (
                         <Select value={editingClientData.report_status} onValueChange={(value) => setEditingClientData({...editingClientData, report_status: value})}>
@@ -1056,32 +978,6 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                             </a>
                           ) : 'N/A'}
                         </p>
-                      )}
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium text-muted-foreground">Years Experience</Label>
-                      {isEditingClient ? (
-                        <Input
-                          type="number"
-                          value={editingClientData.years_experience}
-                          onChange={(e) => setEditingClientData({...editingClientData, years_experience: e.target.value})}
-                          className="mt-1"
-                        />
-                      ) : (
-                        <p className="text-sm">{selectedClient.report_data?.years_experience || 'N/A'}</p>
-                      )}
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium text-muted-foreground">Total Employees</Label>
-                      {isEditingClient ? (
-                        <Input
-                          type="number"
-                          value={editingClientData.total_employees}
-                          onChange={(e) => setEditingClientData({...editingClientData, total_employees: e.target.value})}
-                          className="mt-1"
-                        />
-                      ) : (
-                        <p className="text-sm">{selectedClient.report_data?.total_employees || 'N/A'}</p>
                       )}
                     </div>
                     <div>
