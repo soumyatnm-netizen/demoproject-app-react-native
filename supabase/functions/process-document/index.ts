@@ -50,6 +50,11 @@ serve(async (req) => {
       throw new Error('Document ID is required');
     }
 
+    if (!clientName) {
+      console.error('No client name provided in request');
+      throw new Error('Client name is required - all quotes must be associated with a client');
+    }
+
     console.log('Processing document ID:', documentId);
 
     // Initialize Supabase client
@@ -186,7 +191,7 @@ serve(async (req) => {
         exclusions: structuredData.exclusions,
         policy_terms: structuredData.policy_terms,
         quote_status: structuredData.quote_status,
-        client_name: clientName || null
+        client_name: clientName  // Now guaranteed to exist from validation above
       })
       .select()
       .single();
