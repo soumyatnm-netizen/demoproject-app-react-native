@@ -132,110 +132,100 @@ serve(async (req) => {
     
     console.log('Text extracted, length:', extractedText.length, 'chars');
 
-    // Prepare AI prompt for insurance quote extraction
-    const extractionPrompt = `You are an expert assistant that extracts structured insurance quote data from PDF text. Return ONLY valid JSON with these fields:
-{
-  "insurer_name": string,
-  "product_type": string | null,
-  "industry": string | null,
-  "revenue_band": string | null,
-  "premium_amount": number | null,
-  "premium_currency": string | null,
-  "quote_date": string | null,
-  "expiry_date": string | null,
-  "deductible_amount": number | null,
-  "coverage_limits": object,
-  "inner_limits": object,
-  "inclusions": string[],
-  "exclusions": string[],
-  "policy_terms": object
-}
-- Use null when not found.
-- Normalize currency to ISO code and amounts to numbers when possible.
-- Do not include markdown or commentary.`;
+    // Import schemas and helper
+    const { QUOTE_COMPARISON_SCHEMA, callOpenAIResponses } = await import("../_shared/openai-schemas.ts");
 
-    const fullPrompt = `${extractionPrompt}\n\nDOCUMENT TEXT:\n${extractedText}`;
-
-    // Use OpenAI directly for text analysis (GPT-5-mini excels at structured extraction)
+    // Use OpenAI Responses API for structured extraction
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    console.log(`OPENAI key present: ${openAIApiKey ? "yes" : "no"}`);
+    console.log(`[openai] keyPresent: ${openAIApiKey ? "yes" : "no"}`);
     if (!openAIApiKey) {
       throw new Error('OPENAI_API_KEY not configured');
     }
 
-    console.log('Calling OpenAI GPT-5-mini for extraction...');
+    console.log('Calling OpenAI Responses API with strict JSON schema...');
     
-    let aiResponse;
-    try {
-      aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-5-mini',
-          messages: [
+    const requestBody = {
+      model: 'gpt-4o-mini',
+      input: [
+        {
+          role: 'system',
+          content: [
             {
-              role: 'user',
-              content: fullPrompt
+              type: 'input_text',
+              text: 'You are an expert insurance analyst for commercial lines. Extract and normalise quote details (limits, sublimits, deductibles/excess, exclusions, endorsements, conditions, premiums, taxes/fees, dates, jurisdiction/territory). Compare carriers conservatively and include citations. Only output valid JSON per the schema.'
             }
-          ],
-          max_completion_tokens: 4096
-        }),
-      });
-    } catch (fetchError) {
-      console.error('OpenAI fetch failed:', fetchError);
-      throw new Error(`Failed to connect to OpenAI: ${fetchError.message}`);
-    }
-
-    if (!aiResponse.ok) {
-      let errorDetails;
-      try {
-        errorDetails = await aiResponse.json();
-        console.error('OpenAI API error (JSON):', aiResponse.status, JSON.stringify(errorDetails));
-      } catch {
-        errorDetails = await aiResponse.text();
-        console.error('OpenAI API error (text):', aiResponse.status, errorDetails);
-      }
-      throw new Error(`OpenAI API failed (${aiResponse.status}): ${JSON.stringify(errorDetails)}`);
-    }
-
-    const aiResult = await aiResponse.json();
-    const tokenUsage = aiResult.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
-    console.log('OpenAI token usage:', JSON.stringify(tokenUsage));
-    const aiContent = aiResult.choices?.[0]?.message?.content || null;
-
-    if (!aiContent) {
-      throw new Error('No content extracted from AI response');
-    }
-
-    console.log('AI extraction successful, parsing JSON...');
-    console.log('Extracted text preview:', aiContent.substring(0, 200));
-
-    // Parse JSON from AI response (handle markdown code blocks if present)
-    let structuredData;
+          ]
+        },
+        {
+          role: 'user',
+          content: [
+            { type: 'input_text', text: 'Raw extracted policy text follows. Return JSON per schema.' },
+            { type: 'input_text', text: extractedText }
+          ]
+        }
+      ],
+      response_format: {
+        type: 'json_schema',
+        json_schema: QUOTE_COMPARISON_SCHEMA
+      },
+      temperature: 0,
+      max_output_tokens: 2000
+    };
+    
+    let aiResult;
     try {
-      // Try to extract JSON from markdown code blocks
-      const jsonMatch = aiContent.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/) || 
-                       aiContent.match(/(\{[\s\S]*\})/);
-      
-      if (!jsonMatch) {
-        throw new Error('No JSON found in AI response');
+      aiResult = await callOpenAIResponses(openAIApiKey, requestBody);
+    } catch (error) {
+      console.error('OpenAI Responses API error:', error);
+      // Retry once
+      console.log('Retrying OpenAI call...');
+      try {
+        aiResult = await callOpenAIResponses(openAIApiKey, requestBody);
+      } catch (retryError) {
+        throw new Error(`OpenAI failed after retry: ${retryError.message}`);
       }
-      
-      structuredData = JSON.parse(jsonMatch[1]);
-      console.log('Successfully parsed structured data:', structuredData);
-    } catch (parseError) {
-      console.error('JSON parse error:', parseError);
-      console.error('Raw AI response:', aiContent);
-      throw new Error(`Failed to parse AI response as JSON: ${parseError.message}`);
     }
 
-    // Validate required fields
-    if (!structuredData.insurer_name) {
-      throw new Error('Insurer name not found in extracted data');
+    const structuredData = aiResult.result;
+    console.log('OpenAI token usage:', JSON.stringify(tokenUsage));
+    console.log('AI extraction successful');
+
+    // Extract first quote from structured comparison data
+    const firstQuote = structuredData.quotes?.[0];
+    if (!firstQuote || !firstQuote.carrier) {
+      throw new Error('No valid quote data found in extracted comparison');
     }
+
+    // Map the structured schema to database format
+    const dbQuoteData = {
+      insurer_name: firstQuote.carrier,
+      product_type: firstQuote.product || 'Unknown',
+      industry: null, // Not in new schema
+      revenue_band: null, // Not in new schema
+      premium_amount: firstQuote.premium?.base || firstQuote.premium?.total || null,
+      premium_currency: 'GBP', // Could be inferred from amounts if needed
+      quote_date: firstQuote.effective_date || null,
+      expiry_date: firstQuote.expiry_date || null,
+      deductible_amount: firstQuote.deductibles?.[0]?.amount ? parseFloat(firstQuote.deductibles[0].amount.replace(/[^0-9.]/g, '')) : null,
+      coverage_limits: firstQuote.limits?.reduce((acc: any, limit: any) => {
+        acc[limit.name] = limit.amount;
+        return acc;
+      }, {}) || {},
+      inner_limits: firstQuote.sublimits?.reduce((acc: any, sublimit: any) => {
+        acc[sublimit.name] = sublimit.amount;
+        return acc;
+      }, {}) || {},
+      inclusions: firstQuote.endorsements || [],
+      exclusions: firstQuote.exclusions || [],
+      policy_terms: {
+        warranties: firstQuote.warranties || [],
+        conditions: firstQuote.conditions || [],
+        notable_terms: firstQuote.notable_terms || [],
+        territory: firstQuote.territory,
+        jurisdiction: firstQuote.jurisdiction,
+        retro_date: firstQuote.retro_date
+      }
+    };
 
     // Save to database
     console.log('Saving extracted quote to database...');
@@ -244,20 +234,20 @@ serve(async (req) => {
       .insert({
         document_id: documentId,
         user_id: document.user_id,
-        insurer_name: structuredData.insurer_name,
-        product_type: structuredData.product_type || 'Unknown',
-        industry: structuredData.industry || 'Not Specified',
-        revenue_band: structuredData.revenue_band || null,
-        premium_amount: structuredData.premium_amount || null,
-        premium_currency: structuredData.premium_currency || 'GBP',
-        quote_date: structuredData.quote_date || null,
-        expiry_date: structuredData.expiry_date || null,
-        deductible_amount: structuredData.deductible_amount || null,
-        coverage_limits: structuredData.coverage_limits || {},
-        inner_limits: structuredData.inner_limits || {},
-        inclusions: structuredData.inclusions || [],
-        exclusions: structuredData.exclusions || [],
-        policy_terms: structuredData.policy_terms || {},
+        insurer_name: dbQuoteData.insurer_name,
+        product_type: dbQuoteData.product_type,
+        industry: dbQuoteData.industry,
+        revenue_band: dbQuoteData.revenue_band,
+        premium_amount: dbQuoteData.premium_amount,
+        premium_currency: dbQuoteData.premium_currency,
+        quote_date: dbQuoteData.quote_date,
+        expiry_date: dbQuoteData.expiry_date,
+        deductible_amount: dbQuoteData.deductible_amount,
+        coverage_limits: dbQuoteData.coverage_limits,
+        inner_limits: dbQuoteData.inner_limits,
+        inclusions: dbQuoteData.inclusions,
+        exclusions: dbQuoteData.exclusions,
+        policy_terms: dbQuoteData.policy_terms,
         quote_status: 'quoted',
         client_name: clientName
       })
@@ -288,7 +278,7 @@ serve(async (req) => {
         documentId,
         quoteId: insertData.id,
         clientName,
-        insurerName: structuredData.insurer_name,
+        insurerName: dbQuoteData.insurer_name,
         processedAt: new Date().toISOString()
       }
     }), {

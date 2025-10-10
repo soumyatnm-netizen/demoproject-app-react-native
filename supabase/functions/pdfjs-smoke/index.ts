@@ -1,12 +1,15 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import * as pdfjs from "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.mjs";
 
-try { 
-  pdfjs.GlobalWorkerOptions.workerSrc = "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.worker.mjs"; 
-} catch {}
+// ✅ Force server-safe legacy pdf.js via URL import (bypasses bundler/import-map):
+const { getDocument, GlobalWorkerOptions } = await import(
+  "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.mjs"
+);
+
+// ✅ Run without a worker in Edge (safest, no DOM or cross-thread needed):
+GlobalWorkerOptions.workerSrc = null as unknown as string;
 
 console.log("pdfjs-smoke: loaded esm.sh/pdfjs-dist@3.4.120/legacy");
-console.log("workerSrc:", String(pdfjs.GlobalWorkerOptions.workerSrc));
+console.log("workerSrc:", String(GlobalWorkerOptions.workerSrc));
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,19 +44,12 @@ serve(async (req) => {
       0x78,0x72,0x65,0x66,0x0a,0x31,0x30,0x30,0x0a,0x25,0x25,0x45,0x4f,0x46,0x0a
     ]);
     
-    let task = pdfjs.getDocument({ data: minimal, isEvalSupported: false, disableFontFace: true });
-    try { 
-      await (await task).promise; 
-    } catch { 
-      pdfjs.GlobalWorkerOptions.workerSrc = null as unknown as string; 
-      task = pdfjs.getDocument({ data: minimal, isEvalSupported: false, disableFontFace: true }); 
-    }
-    
+    let task = getDocument({ data: minimal, isEvalSupported: false, disableFontFace: true });
     const pdf = await task.promise;
-    console.log("Smoke test success - Pages:", pdf.numPages, "| Worker:", String(pdfjs.GlobalWorkerOptions.workerSrc));
+    console.log("Smoke test success - Pages:", pdf.numPages, "| Worker:", String(GlobalWorkerOptions.workerSrc));
     
     return new Response(
-      JSON.stringify({ ok: true, pages: pdf.numPages, message: "PDF.js is working correctly", workerSrc: String(pdfjs.GlobalWorkerOptions.workerSrc) }),
+      JSON.stringify({ ok: true, pages: pdf.numPages, message: "PDF.js is working correctly", workerSrc: String(GlobalWorkerOptions.workerSrc) }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {

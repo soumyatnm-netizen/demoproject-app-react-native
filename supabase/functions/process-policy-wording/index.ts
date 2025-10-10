@@ -75,7 +75,7 @@ serve(async (req) => {
       pages: pdf.numPages,
       size: pdfBytes.byteLength
     };
-    console.log("PDF loaded successfully - Pages:", pdfMetadata.pages, "| Size:", pdfMetadata.size, "bytes | Worker:", String(pdfjs.GlobalWorkerOptions.workerSrc));
+    console.log("PDF loaded successfully - Pages:", pdfMetadata.pages, "| Size:", pdfMetadata.size, "bytes | Worker:", String(GlobalWorkerOptions.workerSrc));
 
     let extractedText = '';
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
@@ -87,234 +87,64 @@ serve(async (req) => {
     
     console.log('Text extracted, length:', extractedText.length, 'chars');
 
-    // Create comprehensive prompt for AI analysis
-    const systemPrompt = `You are an expert insurance policy analyst specializing in comparing and extracting structured data from insurance policy wording documents.
+    // Import schemas and helper
+    const { POLICY_WORDING_SCHEMA, callOpenAIResponses } = await import("../_shared/openai-schemas.ts");
 
-Your task is to analyze the policy wording document and extract all relevant information in a structured format.
-
-Return your analysis as valid JSON with the following structure:
-
-{
-  "insurer_name": "string",
-  "policy_version": "string",
-  "policy_date": "YYYY-MM-DD",
-  "insured_name": "string",
-  "policy_period": "string",
-  "jurisdiction": "string",
-  "coverage_sections": {
-    "professional_indemnity": {
-      "covered": boolean,
-      "scope": "string",
-      "exclusions": ["string"],
-      "limit": "string"
-    },
-    "cyber_data_liability": {
-      "covered": boolean,
-      "data_breaches": boolean,
-      "privacy_liability": boolean,
-      "regulatory_fines": boolean,
-      "pci_penalties": boolean,
-      "limit": "string"
-    },
-    "technology_media_ip": {
-      "covered": boolean,
-      "infringement": boolean,
-      "defamation": boolean,
-      "confidentiality_breaches": boolean,
-      "limit": "string"
-    },
-    "crime_fraud": {
-      "covered": boolean,
-      "employee_dishonesty": boolean,
-      "cyber_crime": boolean,
-      "social_engineering": boolean,
-      "funds_transfer_fraud": boolean,
-      "limit": "string"
-    },
-    "property_cover": {
-      "covered": boolean,
-      "buildings": boolean,
-      "contents": boolean,
-      "business_interruption": boolean,
-      "limit": "string"
-    },
-    "employers_liability": {
-      "covered": boolean,
-      "limit": "string"
-    },
-    "public_liability": {
-      "covered": boolean,
-      "limit": "string"
-    },
-    "first_party_cover": {
-      "covered": boolean,
-      "extortion": boolean,
-      "incident_response_costs": boolean,
-      "rectification_costs": boolean,
-      "reputational_harm": boolean,
-      "limit": "string"
-    }
-  },
-  "key_variables": {
-    "coverage_trigger": "string (claims made / occurrence)",
-    "notification_requirements": "string",
-    "limit_of_indemnity_overall": "string",
-    "limit_type": "string (aggregate / any one claim)",
-    "sublimits": {
-      "ransomware": "string",
-      "social_engineering": "string",
-      "regulatory_fines": "string",
-      "pci_penalties": "string"
-    },
-    "excess_deductible": {
-      "professional_indemnity": "string",
-      "cyber": "string",
-      "crime": "string"
-    },
-    "extensions": {
-      "crisis_communications": boolean,
-      "reputational_harm": boolean,
-      "ai_liability": boolean,
-      "gdpr_compliance": boolean
-    },
-    "exclusions": {
-      "war_terrorism": boolean,
-      "infrastructure": boolean,
-      "criminal_acts": boolean,
-      "dishonesty": boolean,
-      "contractual_liability": boolean
-    },
-    "conditions_precedent": ["string"],
-    "retroactive_date": "string"
-  },
-  "emerging_risks": {
-    "ai_ml_liability": {
-      "covered": boolean,
-      "details": "string"
-    },
-    "cloud_services_failures": {
-      "covered": boolean,
-      "details": "string"
-    },
-    "cryptocurrency_blockchain": {
-      "covered": boolean,
-      "details": "string"
-    },
-    "system_failure_vs_cyber": {
-      "human_error_covered": boolean,
-      "malicious_event_only": boolean,
-      "details": "string"
-    }
-  },
-  "services": {
-    "incident_response_hotline": {
-      "available": boolean,
-      "details": "string"
-    },
-    "proactive_services": {
-      "available": boolean,
-      "details": "string"
-    },
-    "crisis_management": {
-      "available": boolean,
-      "details": "string"
-    }
-  },
-  "plain_language_summary": {
-    "gdpr_fines_covered": {
-      "answer": "Yes/No/Partial",
-      "citation": "string",
-      "details": "string"
-    },
-    "ransomware_payments": {
-      "answer": "Yes/No/Partial",
-      "sublimit": "string",
-      "citation": "string"
-    },
-    "ai_claims": {
-      "answer": "Yes/No/Partial",
-      "details": "string",
-      "citation": "string"
-    },
-    "key_strengths": ["string"],
-    "key_weaknesses": ["string"],
-    "notable_exclusions": ["string"]
-  }
-}
-
-IMPORTANT: 
-- Return ONLY valid JSON, no markdown formatting or code blocks
-- If information is not found, use null for strings, false for booleans
-- Extract exact wording and page/section references where possible
-- Normalize monetary amounts to consistent format (e.g., £1M, £500K)`;
-
-    const userPrompt = `Please analyze this insurance policy wording document and extract all the structured information as specified.
-
-DOCUMENT TEXT:
-${extractedText}`;
-
-    // Use OpenAI directly for text analysis (GPT-5-mini excels at structured extraction)
+    // Use OpenAI Responses API for structured policy analysis
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    console.log(`OPENAI key present: ${openAIApiKey ? "yes" : "no"}`);
+    console.log(`[openai] keyPresent: ${openAIApiKey ? "yes" : "no"}`);
     if (!openAIApiKey) {
       throw new Error('OPENAI_API_KEY not configured');
     }
 
-    console.log('Calling OpenAI GPT-5-mini for policy analysis...');
+    console.log('Calling OpenAI Responses API with strict JSON schema...');
     
-    let aiResponse;
-    try {
-      aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
-          'Content-Type': 'application/json',
+    const requestBody = {
+      model: 'gpt-4o-mini',
+      input: [
+        {
+          role: 'system',
+          content: [
+            {
+              type: 'input_text',
+              text: 'You analyse insurance policy wordings for brokers. Extract structure (insuring clause, definitions, conditions, warranties, limits/sublimits/deductibles, territory, jurisdiction, claims basis) plus exclusions and endorsements. Flag ambiguities and broker actions. Include citations. Only output valid JSON per the schema.'
+            }
+          ]
         },
-        body: JSON.stringify({
-          model: 'gpt-5-mini',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ],
-          max_completion_tokens: 8192
-        }),
-      });
-    } catch (fetchError) {
-      console.error('OpenAI fetch failed:', fetchError);
-      throw new Error(`Failed to connect to OpenAI: ${fetchError.message}`);
-    }
-
-    if (!aiResponse.ok) {
-      let errorDetails;
+        {
+          role: 'user',
+          content: [
+            { type: 'input_text', text: 'Raw extracted policy text follows. Return JSON per schema.' },
+            { type: 'input_text', text: extractedText }
+          ]
+        }
+      ],
+      response_format: {
+        type: 'json_schema',
+        json_schema: POLICY_WORDING_SCHEMA
+      },
+      temperature: 0,
+      max_output_tokens: 3000
+    };
+    
+    let aiResult;
+    try {
+      aiResult = await callOpenAIResponses(openAIApiKey, requestBody);
+    } catch (error) {
+      console.error('OpenAI Responses API error:', error);
+      // Retry once
+      console.log('Retrying OpenAI call...');
       try {
-        errorDetails = await aiResponse.json();
-        console.error('OpenAI API error (JSON):', aiResponse.status, JSON.stringify(errorDetails));
-      } catch {
-        errorDetails = await aiResponse.text();
-        console.error('OpenAI API error (text):', aiResponse.status, errorDetails);
+        aiResult = await callOpenAIResponses(openAIApiKey, requestBody);
+      } catch (retryError) {
+        throw new Error(`OpenAI failed after retry: ${retryError.message}`);
       }
-      throw new Error(`OpenAI API failed (${aiResponse.status}): ${JSON.stringify(errorDetails)}`);
     }
 
-    const aiResult = await aiResponse.json();
+    const analysisData = aiResult.result;
     const tokenUsage = aiResult.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
     console.log('OpenAI token usage:', JSON.stringify(tokenUsage));
     console.log('AI analysis complete');
-
-    const content = aiResult.choices[0].message.content;
-    
-    // Parse the JSON response
-    let analysisData;
-    try {
-      // Remove markdown code blocks if present
-      const jsonContent = content.replace(/```json\n?|\n?```/g, '').trim();
-      analysisData = JSON.parse(jsonContent);
-    } catch (parseError) {
-      console.error('Failed to parse AI response:', content);
-      throw new Error('Failed to parse AI analysis result');
-    }
-
-    console.log('Parsed analysis data:', analysisData.insurer_name);
 
     // Store the analysis in the database
     const { data: policyWording, error: insertError } = await supabase
@@ -322,17 +152,31 @@ ${extractedText}`;
       .insert({
         document_id: documentId,
         user_id: document.user_id,
-        insurer_name: analysisData.insurer_name || 'Unknown',
-        policy_version: analysisData.policy_version,
-        policy_date: analysisData.policy_date,
-        insured_name: analysisData.insured_name,
-        policy_period: analysisData.policy_period,
-        jurisdiction: analysisData.jurisdiction,
-        coverage_sections: analysisData.coverage_sections || {},
-        key_variables: analysisData.key_variables || {},
-        emerging_risks: analysisData.emerging_risks || {},
-        services: analysisData.services || {},
-        plain_language_summary: analysisData.plain_language_summary || {},
+        insurer_name: 'Extracted', // Will need to be extracted separately or from filename
+        policy_version: null,
+        policy_date: null,
+        insured_name: null,
+        policy_period: null,
+        jurisdiction: analysisData.structure?.jurisdiction || null,
+        coverage_sections: analysisData.structure || {},
+        key_variables: {
+          claims_basis: analysisData.structure?.claims_basis || {},
+          limits: analysisData.structure?.limits || [],
+          sublimits: analysisData.structure?.sublimits || [],
+          deductibles: analysisData.structure?.deductibles || [],
+          territory: analysisData.structure?.territory || null,
+          conditions: analysisData.structure?.conditions || [],
+          warranties: analysisData.structure?.warranties || []
+        },
+        emerging_risks: {}, // Not in new schema
+        services: {}, // Not in new schema
+        plain_language_summary: {
+          key_terms: analysisData.key_terms || [],
+          exclusions: analysisData.exclusions || [],
+          endorsements: analysisData.endorsements || [],
+          notable_issues: analysisData.notable_issues || {},
+          citations: analysisData.citations || []
+        },
         status: 'completed'
       })
       .select()
