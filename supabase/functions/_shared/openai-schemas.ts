@@ -126,81 +126,117 @@ export const QUOTE_COMPARISON_SCHEMA = {
 } as const;
 
 export const POLICY_WORDING_SCHEMA = {
-  name: "policy_wording_analysis",
-  schema: {
-    $schema: "https://json-schema.org/draft/2020-12/schema",
-    title: "PolicyWordingAnalysis",
-    type: "object",
-    additionalProperties: false,
-    required: ["structure", "key_terms", "exclusions", "endorsements", "notable_issues", "citations"],
-    properties: {
-      structure: {
-        type: "object",
-        additionalProperties: false,
-        required: ["insuring_clause", "definitions", "conditions", "warranties", "limits", "sublimits", "deductibles", "territory", "jurisdiction", "claims_basis"],
-        properties: {
-          insuring_clause: { type: "string" },
-          definitions: {
-            type: "array",
-            items: {
-              type: "object",
-              additionalProperties: false,
-              required: ["term", "definition"],
-              properties: {
-                term: { type: "string" },
-                definition: { type: "string" }
-              }
-            }
-          },
-          conditions: { type: "array", items: { type: "string" } },
-          warranties: { type: "array", items: { type: "string" } },
-          limits: { type: "array", items: { type: "string" } },
-          sublimits: { type: "array", items: { type: "string" } },
-          deductibles: { type: "array", items: { type: "string" } },
-          territory: { type: "string" },
-          jurisdiction: { type: "string" },
-          claims_basis: {
-            type: "object",
-            additionalProperties: false,
-            required: ["type", "retro_date", "notice_requirements"],
-            properties: {
-              type: { type: ["string", "null"], enum: ["claims-made", "occurrence", "unknown"] },
-              retro_date: { type: ["string", "null"] },
-              notice_requirements: { type: ["string", "null"] }
-            }
-          }
-        }
-      },
-      key_terms: { type: "array", items: { type: "string" } },
-      exclusions: { type: "array", items: { type: "string" } },
-      endorsements: { type: "array", items: { type: "string" } },
-      notable_issues: {
-        type: "object",
-        additionalProperties: false,
-        required: ["ambiguous_language", "coverage_gaps", "broker_actions"],
-        properties: {
-          ambiguous_language: { type: "array", items: { type: "string" } },
-          coverage_gaps: { type: "array", items: { type: "string" } },
-          broker_actions: { type: "array", items: { type: "string" } }
-        }
-      },
-      citations: {
-        type: "array",
-        items: {
+  $schema: "http://json-schema.org/draft-07/schema#",
+  title: "PolicyWording",
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    policy: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        carrier:       { type: ["string","null"] },
+        product:       { type: ["string","null"] },
+        form_number:   { type: ["string","null"] },
+        version:       { type: ["string","null"] },
+        edition_date:  { type: ["string","null"] },
+        effective_date:{ type: ["string","null"] },
+        expiry_date:   { type: ["string","null"] },
+        territory:     { type: ["string","null"] },
+        jurisdiction:  { type: ["string","null"] }
+      }
+    },
+
+    structure: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        claims_basis: {
           type: "object",
           additionalProperties: false,
-          required: ["section", "page", "snippet"],
           properties: {
-            section: { type: "string" },
-            page: { type: "integer", minimum: 1 },
-            snippet: { type: "string" }
+            occurrence:  { type: ["boolean","null"] },
+            claims_made: { type: ["boolean","null"] },
+            retro_date:  { type: ["string","null"] }
           }
+        },
+        limits: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              name:     { type: ["string","null"] },
+              amount:   { type: ["string","number","null"] },
+              per:      { type: ["string","null"] },
+              aggregate:{ type: ["string","null"] }
+            }
+          }
+        },
+        sublimits: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              name:   { type: ["string","null"] },
+              amount: { type: ["string","number","null"] }
+            }
+          }
+        },
+        deductibles: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              name:   { type: ["string","null"] },
+              amount: { type: ["string","number","null"] }
+            }
+          }
+        },
+        coverage_triggers: { type: "array", items: { type: "string" } }
+      }
+    },
+
+    terms: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        exclusions:     { type: "array", items: { type: "string" } },
+        endorsements:   { type: "array", items: { type: "string" } },
+        conditions:     { type: "array", items: { type: "string" } },
+        warranties:     { type: "array", items: { type: "string" } },
+        notable_terms:  { type: "array", items: { type: "string" } }
+      }
+    },
+
+    definitions: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          term:       { type: ["string","null"] },
+          definition: { type: ["string","null"] }
+        }
+      }
+    },
+
+    citations: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          section: { type: ["string","null"] },
+          page:    { type: ["integer","string","null"] },
+          quote:   { type: ["string","null"] }
         }
       }
     }
-  },
-  strict: true
-} as const;
+  }
+};
 
 export async function callOpenAIResponses(key: string, body: unknown): Promise<{ result: any; raw: any; usage?: any }> {
   const r = await fetch("https://api.openai.com/v1/chat/completions", {

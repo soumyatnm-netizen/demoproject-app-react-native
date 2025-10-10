@@ -125,13 +125,15 @@ serve(async (req) => {
     const { POLICY_WORDING_SCHEMA } = await import("../_shared/openai-schemas.ts");
     const { normalizeStrictJsonSchema, assertObjectSchema } = await import("../_shared/schema-utils.ts");
     
-    console.log('[schema] PW root.type:', POLICY_WORDING_SCHEMA.schema?.type);
+    console.log('[schema PW] typeof:', typeof POLICY_WORDING_SCHEMA, 'root.type:', POLICY_WORDING_SCHEMA?.type);
     
     // Normalize schema for strict mode
-    const POLICY_WORDING_STRICT = normalizeStrictJsonSchema(
-      structuredClone(POLICY_WORDING_SCHEMA.schema)
+    const PW_STRICT = normalizeStrictJsonSchema(
+      structuredClone(POLICY_WORDING_SCHEMA)
     );
-    assertObjectSchema("POLICY_WORDING_STRICT", POLICY_WORDING_STRICT);
+    assertObjectSchema("POLICY_WORDING_SCHEMA", PW_STRICT);
+    
+    console.log('[schema PW] first keys:', Object.keys(PW_STRICT.properties || {}).slice(0,5));
 
     // Call OpenAI Responses API with native PDF
     console.log('Calling OpenAI Responses API...');
@@ -158,7 +160,7 @@ serve(async (req) => {
           type: "json_schema",
           strict: true,
           name: "PolicyWording",
-          schema: POLICY_WORDING_STRICT
+          schema: PW_STRICT
         }
       },
       temperature: 0,
