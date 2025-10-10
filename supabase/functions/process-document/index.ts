@@ -46,7 +46,13 @@ serve(async (req) => {
       return json(req, 500, { ok: false, error: 'OPENAI_API_KEY not configured' });
     }
 
-    const { documentId, clientName } = await req.json();
+    let bodyIn: any;
+    try {
+      bodyIn = await req.json();
+    } catch {
+      return json(req, 400, { ok: false, error: 'Invalid JSON body' });
+    }
+    const { documentId, clientName } = bodyIn;
     requestDocumentId = documentId;
 
     if (!documentId) {
@@ -96,13 +102,17 @@ serve(async (req) => {
     }
 
     const ct = pdfResponse.headers.get('content-type') || '';
-    if (!ct.includes('pdf')) {
-      console.warn('[pdf] unexpected content-type:', ct);
+    if (ct && !ct.includes('pdf')) {
+      return json(req, 415, { ok: false, error: `Unsupported content-type: ${ct}` });
     }
 
     const pdfBytes = new Uint8Array(await pdfResponse.arrayBuffer());
     const sizeMB = (pdfBytes.byteLength / (1024 * 1024)).toFixed(2);
     console.log('[pdf] fetched bytes:', pdfBytes.byteLength, '(', sizeMB, 'MB)', 'host:', new URL(urlData.signedUrl).host);
+
+    if (pdfBytes.byteLength > 30 * 1024 * 1024) {
+      return json(req, 413, { ok: false, error: 'PDF too large (max 30MB)' });
+    }
 
     // Upload PDF to OpenAI Files API
     const pdfFile = new File([pdfBytes], document.filename || 'document.pdf', { type: 'application/pdf' });
@@ -182,6 +192,8 @@ serve(async (req) => {
       ?? responsesData?.content?.[0]?.text 
       ?? responsesData?.output_text
       ?? responsesData?.choices?.[0]?.message?.content;
+    
+    console.log('[openai] output preview:', String(outputText).slice(0, 400));
     
     let structuredData: any;
     try {
