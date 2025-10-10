@@ -816,9 +816,6 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                         <Eye className="h-4 w-4" />
                       </Button>
                       <Button size="sm" variant="outline">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" variant="outline">
                         <Mail className="h-4 w-4" />
                       </Button>
                       <Button 
