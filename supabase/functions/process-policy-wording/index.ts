@@ -1,6 +1,10 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { getDocument, GlobalWorkerOptions } from "npm:pdfjs-dist@3.4.120/legacy/build/pdf.mjs";
+
+// Configure pdf.js worker for Edge Runtime (legacy server build)
+GlobalWorkerOptions.workerSrc = "npm:pdfjs-dist@3.4.120/legacy/build/pdf.worker.mjs";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -48,25 +52,16 @@ serve(async (req) => {
       throw new Error('Failed to download document from storage');
     }
 
-    // Import PDF.js for text extraction (Deno-compatible)
-    // Polyfill navigator for pdf.js in Deno edge
-    const nav: any = (globalThis as any).navigator ?? {};
-    if (!nav.platform) nav.platform = 'Linux x86_64';
-    (globalThis as any).navigator = nav;
-
-    const pdfjsModule = await import('https://esm.sh/pdfjs-dist@3.4.120/es2022/build/pdf.min.mjs');
-    const pdfjsLib = (pdfjsModule as any).default || pdfjsModule;
-    
+    // pdf.js configured via npm legacy build at top-level (no DOM/polyfills needed)
     console.log('Extracting text from PDF...');
     const arrayBuffer = await fileData.arrayBuffer();
-    const loadingTask = pdfjsLib.getDocument({ 
-      data: new Uint8Array(arrayBuffer), 
-      disableWorker: true,
+    const loadingTask = getDocument({
+      data: new Uint8Array(arrayBuffer),
       isEvalSupported: false,
-      disableFontFace: true
+      disableFontFace: true,
     });
     const pdf = await loadingTask.promise;
-    
+
     let extractedText = '';
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
       const page = await pdf.getPage(pageNum);
