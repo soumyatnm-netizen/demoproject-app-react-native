@@ -1,13 +1,13 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import { getDocument, GlobalWorkerOptions } from "npm:pdfjs-dist@3.4.120/legacy/build/pdf.mjs";
+import { getDocument, GlobalWorkerOptions } from "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.mjs";
 
 try { 
-  GlobalWorkerOptions.workerSrc = "npm:pdfjs-dist@3.4.120/legacy/build/pdf.worker.mjs"; 
+  GlobalWorkerOptions.workerSrc = "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.worker.mjs"; 
 } catch {}
 
-console.log("pdfjs legacy build active via npm: specifier");
+console.log("pdfjs legacy build active via esm.sh CDN");
 console.log("workerSrc:", String(GlobalWorkerOptions.workerSrc));
 
 const corsHeaders = {

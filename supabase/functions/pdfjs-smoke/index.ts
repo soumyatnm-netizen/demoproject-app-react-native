@@ -1,11 +1,11 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { getDocument, GlobalWorkerOptions } from "npm:pdfjs-dist@3.4.120/legacy/build/pdf.mjs";
+import { getDocument, GlobalWorkerOptions } from "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.mjs";
 
 try { 
-  GlobalWorkerOptions.workerSrc = "npm:pdfjs-dist@3.4.120/legacy/build/pdf.worker.mjs"; 
+  GlobalWorkerOptions.workerSrc = "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.worker.mjs"; 
 } catch {}
 
-console.log("pdfjs-smoke: loaded npm:pdfjs-dist@3.4.120/legacy");
+console.log("pdfjs-smoke: loaded esm.sh/pdfjs-dist@3.4.120/legacy");
 console.log("workerSrc:", String(GlobalWorkerOptions.workerSrc));
 
 const corsHeaders = {
