@@ -141,7 +141,7 @@ serve(async (req) => {
           role: "user", 
           content: [
             { type: "input_text", text: `Client: ${clientName}\n\nAnalyze the attached insurance quote PDF and return structured JSON per schema.` },
-            { type: "input_file", mime_type: "application/pdf", transfer_method: "auto", file_id: fileId }
+            { type: "input_file", file_id: fileId }
           ]
         }
       ],
