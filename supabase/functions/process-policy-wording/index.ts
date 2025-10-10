@@ -217,39 +217,69 @@ IMPORTANT:
 
     console.log('Calling AI for policy analysis...');
     
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    const payloadVariants = [
+      {
         model: 'google/gemini-2.5-pro',
         messages: [
           { role: 'system', content: systemPrompt },
-          { 
-            role: 'user', 
+          {
+            role: 'user',
             content: [
               { type: 'text', text: userPrompt },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: fileUrl,
-                  mime_type: 'application/pdf'
-                }
-              }
+              { type: 'image_url', image_url: { url: fileUrl } }
             ]
           }
-        ],
-        temperature: 0.1,
-        max_tokens: 4000
-      }),
-    });
+        ]
+      },
+      {
+        model: 'google/gemini-2.5-pro',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: userPrompt },
+              { type: 'image_url', image_url: { url: fileUrl, detail: 'high' } }
+            ]
+          }
+        ]
+      },
+      {
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: userPrompt },
+              { type: 'image_url', image_url: { url: fileUrl } }
+            ]
+          }
+        ]
+      }
+    ];
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error('AI API error:', aiResponse.status, errorText);
-      throw new Error(`AI API error: ${aiResponse.status} ${errorText}`);
+    let aiResponse: Response | null = null;
+    let lastError = '';
+
+    for (let i = 0; i < payloadVariants.length; i++) {
+      console.log(`Calling AI for policy analysis (attempt ${i + 1}/${payloadVariants.length})...`);
+      const rsp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payloadVariants[i]),
+      });
+
+      if (rsp.ok) { aiResponse = rsp; break; }
+      lastError = await rsp.text();
+      console.error('AI attempt failed:', rsp.status, lastError);
+    }
+
+    if (!aiResponse) {
+      throw new Error(`AI API error: ${lastError || 'Unknown error'}`);
     }
 
     const aiResult = await aiResponse.json();

@@ -150,31 +150,68 @@ CRITICAL INSTRUCTIONS:
     // Gemini natively supports PDF documents through data URI
     const dataUri = `data:application/pdf;base64,${base64Data}`;
     
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${lovableApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    // Build robust payload variants to handle provider quirks with PDFs
+    const payloadVariants = [
+      {
         model: 'google/gemini-2.5-pro',
         messages: [
           {
             role: 'user',
             content: [
               { type: 'text', text: extractionPrompt },
-              { 
-                type: 'image_url',  // Gemini processes PDFs through this endpoint
-                image_url: { 
-                  url: dataUri,
-                  mime_type: 'application/pdf'
-                } 
-              }
+              { type: 'image_url', image_url: { url: dataUri } }
             ]
           }
         ]
-      }),
-    });
+      },
+      {
+        model: 'google/gemini-2.5-pro',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: extractionPrompt },
+              { type: 'image_url', image_url: { url: dataUri, detail: 'high' } }
+            ]
+          }
+        ]
+      },
+      {
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: extractionPrompt },
+              { type: 'image_url', image_url: { url: dataUri } }
+            ]
+          }
+        ]
+      }
+    ];
+
+    let aiResponse: Response | null = null;
+    let lastErrorText = '';
+
+    for (let i = 0; i < payloadVariants.length; i++) {
+      console.log(`Calling AI for extraction attempt ${i + 1}/${payloadVariants.length}...`);
+      const rsp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${lovableApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payloadVariants[i]),
+      });
+
+      if (rsp.ok) { aiResponse = rsp; break; }
+      lastErrorText = await rsp.text();
+      console.error('AI attempt failed:', rsp.status, lastErrorText);
+    }
+
+    if (!aiResponse) {
+      throw new Error(`AI extraction failed: ${lastErrorText || 'Unknown error'}`);
+    }
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
