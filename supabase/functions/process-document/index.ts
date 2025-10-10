@@ -13,6 +13,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let requestDocumentId: string | null = null;
   try {
     console.log('=== Process Document Function Started ===');
     
@@ -39,6 +40,7 @@ serve(async (req) => {
     // Parse request body
     console.log('Parsing request body...');
     const { documentId, clientName } = await req.json();
+    requestDocumentId = documentId;
 
     if (!documentId) {
       throw new Error('Document ID is required');
@@ -155,7 +157,7 @@ CRITICAL INSTRUCTIONS:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',  // Default model with native PDF document support
+        model: 'google/gemini-2.5-pro',
         messages: [
           {
             role: 'user',
@@ -164,7 +166,8 @@ CRITICAL INSTRUCTIONS:
               { 
                 type: 'image_url',  // Gemini processes PDFs through this endpoint
                 image_url: { 
-                  url: dataUri
+                  url: dataUri,
+                  mime_type: 'application/pdf'
                 } 
               }
             ]
@@ -272,13 +275,9 @@ CRITICAL INSTRUCTIONS:
     
     // Try to update document status to error
     try {
-      const body = await req.clone().json();
-      const documentId = body?.documentId;
-      
-      if (documentId) {
+      if (requestDocumentId) {
         const supabaseUrl = Deno.env.get('SUPABASE_URL');
         const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-        
         if (supabaseUrl && supabaseKey) {
           const supabase = createClient(supabaseUrl, supabaseKey);
           await supabase
@@ -287,7 +286,7 @@ CRITICAL INSTRUCTIONS:
               status: 'error',
               processing_error: (error as any).message 
             })
-            .eq('id', documentId);
+            .eq('id', requestDocumentId);
         }
       }
     } catch (updateError) {
