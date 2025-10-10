@@ -77,40 +77,61 @@ Deno.serve(async (req) => {
 
     console.log(`Found ${quotes.length} quotes for comparison`)
 
-    // Generate basic comparison analysis
-    const premiums = quotes.map(q => q.premium_amount).filter(p => p != null)
-    const averagePremium = premiums.reduce((a, b) => a + b, 0) / premiums.length
-    const lowestPremium = Math.min(...premiums)
-    const highestPremium = Math.max(...premiums)
+    // Generate robust comparison analysis with numeric safety
+    const premiumsRaw = quotes.map((q: any) => q.premium_amount).filter((p: any) => p !== null && p !== undefined)
+    const premiums = premiumsRaw
+      .map((p: any) => (typeof p === 'string' ? parseFloat(p) : Number(p)))
+      .filter((n: number) => Number.isFinite(n))
+
+    console.log('Premiums parsed:', premiums)
+
+    const premiumStats = premiums.length > 0
+      ? {
+          average: premiums.reduce((a: number, b: number) => a + b, 0) / premiums.length,
+          lowest: Math.min(...premiums),
+          highest: Math.max(...premiums),
+        }
+      : { average: null as number | null, lowest: null as number | null, highest: null as number | null }
+
+    const range = premiumStats.lowest != null && premiumStats.highest != null
+      ? premiumStats.highest - premiumStats.lowest
+      : null
 
     // Find common inclusions across all quotes
-    const allInclusions = quotes.map(q => q.inclusions || [])
+    const allInclusions = quotes.map((q: any) => q.inclusions || [])
     const commonInclusions = allInclusions.length > 0 
-      ? allInclusions.reduce((common, current) => 
+      ? allInclusions.reduce((common: string[], current: string[]) => 
           common.filter((inclusion: string) => current.includes(inclusion))
         )
       : []
+
+    const recommendedQuoteId = premiumStats.lowest != null
+      ? quotes.find((q: any) => {
+          const v = typeof q.premium_amount === 'string' ? parseFloat(q.premium_amount) : Number(q.premium_amount)
+          return Number.isFinite(v) && v === premiumStats.lowest
+        })?.id
+      : undefined
 
     // Generate comparison results
     const comparisonResults = {
       quoteCount: quotes.length,
       premiumAnalysis: {
-        average: averagePremium,
-        lowest: lowestPremium,
-        highest: highestPremium,
-        range: highestPremium - lowestPremium
+        average: premiumStats.average,
+        lowest: premiumStats.lowest,
+        highest: premiumStats.highest,
+        range,
       },
       coverageAnalysis: {
         commonInclusions,
-        recommendedQuote: quotes.find(q => q.premium_amount === lowestPremium)?.id
+        recommendedQuote: recommendedQuoteId,
       },
       recommendations: [
-        `Best Value: ${quotes.find(q => q.premium_amount === lowestPremium)?.insurer_name || 'Unknown'} with £${lowestPremium?.toLocaleString()}`,
-        `Premium range: £${lowestPremium?.toLocaleString()} - £${highestPremium?.toLocaleString()}`,
-        `Average market premium: £${Math.round(averagePremium).toLocaleString()}`,
-        'Consider coverage limits and exclusions when making final decision'
+        `Best Value: ${quotes.find((q: any) => q.id === recommendedQuoteId)?.insurer_name || 'Unknown'}${premiumStats.lowest != null ? ` with £${premiumStats.lowest.toLocaleString()}` : ''}`,
+        `Premium range: ${premiumStats.lowest != null ? `£${premiumStats.lowest.toLocaleString()}` : 'n/a'} - ${premiumStats.highest != null ? `£${premiumStats.highest.toLocaleString()}` : 'n/a'}`,
+        `Average market premium: ${premiumStats.average != null ? `£${Math.round(premiumStats.average).toLocaleString()}` : 'n/a'}`,
+        'Consider coverage limits and exclusions when making final decision',
       ],
-      generatedAt: new Date().toISOString()
+      generatedAt: new Date().toISOString(),
     }
 
     console.log('Comparison analysis completed successfully')
