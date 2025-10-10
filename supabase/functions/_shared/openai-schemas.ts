@@ -202,39 +202,26 @@ export const POLICY_WORDING_SCHEMA = {
   strict: true
 } as const;
 
-export async function callOpenAIResponses(apiKey: string, body: unknown) {
-  const res = await fetch("https://api.openai.com/v1/responses", {
+export async function callOpenAIResponses(key: string, body: unknown): Promise<{ result: any; raw: any; usage?: any }> {
+  const r = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
+    headers: { 
+      Authorization: `Bearer ${key}`, 
+      "Content-Type": "application/json" 
     },
     body: JSON.stringify(body),
   });
-
-  const txt = await res.text();
-  if (!res.ok) {
-    console.error(`OpenAI ${res.status}: ${txt.slice(0, 200)}`);
-    throw new Error(`OpenAI ${res.status}: ${txt}`);
+  
+  const txt = await r.text();
+  if (!r.ok) {
+    console.error('[OpenAI] Error response:', txt.slice(0, 400));
+    throw new Error(`OpenAI ${r.status}: ${txt.slice(0, 400)}`);
   }
   
-  const json = JSON.parse(txt);
-
-  // Responses API returns content blocks; normalize defensively
-  const parsed =
-    json?.output?.[0]?.content?.[0]?.text
-    ?? json?.content?.[0]?.text
-    ?? json?.output_text
-    ?? json?.choices?.[0]?.message?.content;
-
-  let result;
-  try {
-    result = typeof parsed === "string" ? JSON.parse(parsed) : parsed;
-  } catch (parseError) {
-    console.error("Failed to parse OpenAI response:", parseError);
-    console.error("Raw response:", txt.slice(0, 500));
-    throw new Error("Failed to parse AI response as JSON");
-  }
-
-  return { result, raw: json, usage: json.usage, model: json.model };
+  // Parse Chat Completions API response
+  const j = JSON.parse(txt);
+  const jsonText = j?.choices?.[0]?.message?.content;
+  
+  const result = typeof jsonText === "string" ? JSON.parse(jsonText) : jsonText;
+  return { result, raw: j, usage: j?.usage };
 }

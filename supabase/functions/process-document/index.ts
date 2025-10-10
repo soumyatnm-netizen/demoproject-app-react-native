@@ -1,15 +1,19 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import { fetchPdfAsFile, uploadFileToOpenAI, callResponsesJSON } from "../_shared/helpers.ts";
+
+// ✅ 100% server-safe import (no esm.sh rewriting, no es2022 path)
+const { getDocument, GlobalWorkerOptions } = await import(
+  "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.4.120/legacy/build/pdf.min.mjs"
+);
+
+// ✅ Run pdf.js without a worker (Edge-friendly, no DOM/canvas)
+GlobalWorkerOptions.workerSrc = null as unknown as string;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-// Import schema from shared
-const { QUOTE_COMPARISON_SCHEMA } = await import("../_shared/openai-schemas.ts");
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -18,12 +22,13 @@ serve(async (req) => {
 
   let requestDocumentId: string | null = null;
   try {
-    console.log('=== Process Document Function Started (OpenAI Native PDF) ===');
+    console.log('=== Process Document Function Started ===');
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
+    console.log('[pdfjs] entry=legacy(jsDelivr); workerSrc=', String(GlobalWorkerOptions.workerSrc));
     console.log('[openai] keyPresent:', openAIApiKey ? 'yes' : 'no');
 
     if (!supabaseUrl || !supabaseKey) {
@@ -68,51 +73,72 @@ serve(async (req) => {
       .update({ status: 'processing' })
       .eq('id', documentId);
 
-    // Get signed URL for the document
-    const { data: signedUrlData, error: urlError } = await supabase.storage
+    // Download file from storage
+    console.log('Downloading file from storage...');
+    const { data: fileData, error: downloadError } = await supabase.storage
       .from('documents')
-      .createSignedUrl(document.storage_path, 3600);
+      .download(document.storage_path);
 
-    if (urlError || !signedUrlData) {
-      throw new Error('Failed to create signed URL');
+    if (downloadError || !fileData) {
+      throw new Error('Failed to download document from storage');
     }
 
-    // 1) Fetch PDF from storage as a File (safer in Edge)
-    const file = await fetchPdfAsFile(signedUrlData.signedUrl, document.filename);
+    console.log('File downloaded, size:', fileData.size);
 
-    // 2) Upload to OpenAI Files
-    const fileId = await uploadFileToOpenAI(file, openAIApiKey);
-    console.log('[openai] uploaded fileId:', fileId);
+    // Extract text from PDF using pdfjs-dist
+    console.log('Extracting text from PDF...');
+    const arrayBuffer = await fileData.arrayBuffer();
+    const pdfBytes = new Uint8Array(arrayBuffer);
+    
+    console.log('[pdf] fetched bytes:', pdfBytes.byteLength, '(', (pdfBytes.byteLength / (1024 * 1024)).toFixed(2), 'MB)');
+    
+    const loadingTask = getDocument({ 
+      data: pdfBytes, 
+      isEvalSupported: false, 
+      disableFontFace: true 
+    });
+    const pdf = await loadingTask.promise;
+    
+    console.log('PDF loaded - Pages:', pdf.numPages);
 
-    // 3) Build Responses body
-    const systemText =
-      'You are an expert insurance analyst for commercial lines. ' +
-      'Extract and normalise quote details (limits, sublimits, deductibles/excess, exclusions, endorsements, conditions, premiums, taxes/fees, dates, jurisdiction/territory). ' +
-      'Compare carriers conservatively and include citations. Only output valid JSON per the schema.';
+    let extractedText = '';
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map((item: any) => item.str).join(' ');
+      extractedText += `\n--- Page ${pageNum} ---\n${pageText}`;
+    }
+    
+    console.log('Text extracted, length:', extractedText.length, 'chars');
 
-    const userText = `Client: ${clientName}\n\nAnalyse the attached PDF and produce JSON that strictly matches the schema.`;
+    // Import schemas and helper
+    const { QUOTE_COMPARISON_SCHEMA, callOpenAIResponses } = await import("../_shared/openai-schemas.ts");
 
+    console.log('Calling OpenAI Chat Completions API with JSON schema...');
+    
     const requestBody = {
       model: 'gpt-4o-mini',
-      input: [
-        { role: 'system', content: [{ type: 'input_text', text: systemText }] },
-        {
-          role: 'user',
-          content: [
-            { type: 'input_text', text: userText },
-            { type: 'input_file', mime_type: 'application/pdf', transfer_method: 'auto', file_id: fileId }
-          ]
+      messages: [
+        { 
+          role: 'system', 
+          content: 'You are an expert insurance analyst for commercial lines. Extract and normalise quote details (limits, sublimits, deductibles/excess, exclusions, endorsements, conditions, premiums, taxes/fees, dates, jurisdiction/territory). Compare carriers conservatively and include citations. Only output valid JSON per the schema.'
+        },
+        { 
+          role: 'user', 
+          content: `Client: ${clientName}\n\nRaw extracted policy text follows. Return JSON per schema.\n\n${extractedText}` 
         }
       ],
-      response_format: { type: 'json_schema', json_schema: QUOTE_COMPARISON_SCHEMA },
+      response_format: { 
+        type: 'json_schema', 
+        json_schema: QUOTE_COMPARISON_SCHEMA 
+      },
       temperature: 0,
-      max_output_tokens: 2000
+      max_tokens: 2000
     };
-
-    // 4) Call Responses
-    console.log('Calling OpenAI Responses API...');
-    const { result: structuredData, raw } = await callResponsesJSON(openAIApiKey, requestBody);
-    console.log('[openai] model:', raw?.model, 'usage:', JSON.stringify(raw?.usage ?? null));
+    
+    const { result: structuredData, raw, usage } = await callOpenAIResponses(openAIApiKey, requestBody);
+    
+    console.log('[openai] model:', raw?.model, 'usage:', JSON.stringify(usage ?? null));
 
     // Extract first quote from structured comparison data
     const firstQuote = structuredData.quotes?.[0];
@@ -196,7 +222,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       ok: true,
       result: structuredData,
-      tokens: raw?.usage ?? null,
+      tokens: usage,
       metadata: {
         documentId,
         quoteId: insertData.id,
