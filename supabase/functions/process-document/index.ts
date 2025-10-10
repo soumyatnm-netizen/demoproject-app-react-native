@@ -91,7 +91,7 @@ serve(async (req) => {
 
     console.log('File downloaded, size:', fileData.size);
 
-    // Convert file to base64 for AI processing
+    // Convert to base64 for AI processing
     const arrayBuffer = await fileData.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
     let binaryString = '';
@@ -104,7 +104,7 @@ serve(async (req) => {
     }
     const base64Data = btoa(binaryString);
 
-    console.log('File converted to base64, calling AI for extraction...');
+    console.log('File converted to base64, size:', base64Data.length, 'chars, calling AI for extraction...');
 
     // Prepare AI prompt for insurance quote extraction
     const extractionPrompt = `Extract structured insurance quote data from this document. You MUST return ONLY valid JSON with these exact fields (no markdown, no explanations):
@@ -144,11 +144,10 @@ CRITICAL INSTRUCTIONS:
 4. If a field cannot be found, use null for numbers or empty arrays for lists
 5. Return ONLY the JSON object, no additional text`;
 
-    // Determine MIME type for AI request
-    const mimeType = document.file_type || 'application/pdf';
-    const dataUrl = `data:${mimeType};base64,${base64Data}`;
-
-    // Call Lovable AI with document
+    // Call Lovable AI with document using OpenAI GPT-5 mini which has better PDF support
+    // Using data URI format for base64 PDF as per OpenAI vision API spec
+    const dataUri = `data:application/pdf;base64,${base64Data}`;
+    
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -156,18 +155,23 @@ CRITICAL INSTRUCTIONS:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'openai/gpt-5-mini',  // GPT-5 mini has excellent PDF support
         messages: [
           {
             role: 'user',
             content: [
               { type: 'text', text: extractionPrompt },
-              { type: 'image_url', image_url: { url: dataUrl } }
+              { 
+                type: 'image_url', 
+                image_url: { 
+                  url: dataUri,
+                  detail: 'high'  // Request high detail for better extraction
+                } 
+              }
             ]
           }
         ],
-        max_tokens: 2000,
-        temperature: 0.1
+        max_completion_tokens: 2000  // GPT-5 uses max_completion_tokens not max_tokens
       }),
     });
 
