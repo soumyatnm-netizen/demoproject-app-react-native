@@ -156,21 +156,21 @@ ${extractedText}`;
     }
 
     const aiResult = await aiResponse.json();
-    const extractedText = aiResult.choices?.[0]?.message?.content || null;
+    const aiContent = aiResult.choices?.[0]?.message?.content || null;
 
-    if (!extractedText) {
+    if (!aiContent) {
       throw new Error('No content extracted from AI response');
     }
 
     console.log('AI extraction successful, parsing JSON...');
-    console.log('Extracted text preview:', extractedText.substring(0, 200));
+    console.log('Extracted text preview:', aiContent.substring(0, 200));
 
     // Parse JSON from AI response (handle markdown code blocks if present)
     let structuredData;
     try {
       // Try to extract JSON from markdown code blocks
-      const jsonMatch = extractedText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/) || 
-                       extractedText.match(/(\{[\s\S]*\})/);
+      const jsonMatch = aiContent.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/) || 
+                       aiContent.match(/(\{[\s\S]*\})/);
       
       if (!jsonMatch) {
         throw new Error('No JSON found in AI response');
@@ -180,7 +180,7 @@ ${extractedText}`;
       console.log('Successfully parsed structured data:', structuredData);
     } catch (parseError) {
       console.error('JSON parse error:', parseError);
-      console.error('Raw AI response:', extractedText);
+      console.error('Raw AI response:', aiContent);
       throw new Error(`Failed to parse AI response as JSON: ${parseError.message}`);
     }
 
