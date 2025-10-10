@@ -123,7 +123,7 @@ serve(async (req) => {
 
     // Import schemas and normalizer
     const { POLICY_WORDING_SCHEMA } = await import("../_shared/openai-schemas.ts");
-    const { normalizeStrictJsonSchema, assertObjectSchema } = await import("../_shared/schema-utils.ts");
+    const { normalizeStrictJsonSchema, findFirstRequiredMismatch, assertObjectSchema } = await import("../_shared/schema-utils.ts");
     
     console.log('[schema PW] typeof:', typeof POLICY_WORDING_SCHEMA, 'root.type:', POLICY_WORDING_SCHEMA?.type);
     
@@ -134,6 +134,11 @@ serve(async (req) => {
     assertObjectSchema("POLICY_WORDING_SCHEMA", PW_STRICT);
     
     console.log('[schema PW] first keys:', Object.keys(PW_STRICT.properties || {}).slice(0,5));
+    const mismatchPW = findFirstRequiredMismatch(PW_STRICT);
+    if (mismatchPW) {
+      console.error('[schema PW] required mismatch at:', mismatchPW);
+      return json(req, 500, { ok: false, error: `Schema 'PolicyWording' not strict: ${mismatchPW}` });
+    }
 
     // Call OpenAI Responses API with native PDF
     console.log('Calling OpenAI Responses API...');

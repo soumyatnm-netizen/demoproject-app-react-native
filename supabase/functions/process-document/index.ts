@@ -139,15 +139,22 @@ serve(async (req) => {
 
     // Import schemas and normalizer
     const { QUOTE_COMPARISON_SCHEMA } = await import("../_shared/openai-schemas.ts");
-    const { normalizeStrictJsonSchema, assertObjectSchema } = await import("../_shared/schema-utils.ts");
+    const { normalizeStrictJsonSchema, findFirstRequiredMismatch, assertObjectSchema } = await import("../_shared/schema-utils.ts");
     
-    console.log('[schema] QC root.type:', QUOTE_COMPARISON_SCHEMA.schema?.type);
+    console.log('[schema QC] root.type:', QUOTE_COMPARISON_SCHEMA.schema?.type);
     
     // Normalize schema for strict mode
-    const QUOTE_COMPARISON_STRICT = normalizeStrictJsonSchema(
+    const QC_STRICT = normalizeStrictJsonSchema(
       structuredClone(QUOTE_COMPARISON_SCHEMA.schema)
     );
-    assertObjectSchema("QUOTE_COMPARISON_STRICT", QUOTE_COMPARISON_STRICT);
+    assertObjectSchema("QUOTE_COMPARISON_SCHEMA", QC_STRICT);
+    
+    console.log('[schema QC] first keys:', Object.keys(QC_STRICT.properties || {}).slice(0,5));
+    const mismatchQC = findFirstRequiredMismatch(QC_STRICT);
+    if (mismatchQC) {
+      console.error('[schema QC] required mismatch at:', mismatchQC);
+      return json(req, 500, { ok: false, error: `Schema 'QuoteComparison' not strict: ${mismatchQC}` });
+    }
 
     // Call OpenAI Responses API with native PDF
     console.log('Calling OpenAI Responses API...');
@@ -174,7 +181,7 @@ serve(async (req) => {
           type: "json_schema",
           strict: true,
           name: "QuoteComparison",
-          schema: QUOTE_COMPARISON_STRICT
+          schema: QC_STRICT
         }
       },
       temperature: 0,
