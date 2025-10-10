@@ -34,7 +34,7 @@ export const QUOTE_COMPARISON_SCHEMA = {
             premium: {
               type: "object",
               additionalProperties: false,
-              required: ["base"],
+              required: ["base", "taxes_fees", "total"],
               properties: {
                 base: { type: "number" },
                 taxes_fees: { type: "number", default: 0 },
@@ -162,7 +162,7 @@ export const POLICY_WORDING_SCHEMA = {
           claims_basis: {
             type: "object",
             additionalProperties: false,
-            required: ["type"],
+            required: ["type", "retro_date", "notice_requirements"],
             properties: {
               type: { type: "string", enum: ["claims-made", "occurrence", "unknown"] },
               retro_date: { type: "string" },
