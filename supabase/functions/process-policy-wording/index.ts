@@ -45,9 +45,16 @@ serve(async (req) => {
 
     if (downloadError) throw downloadError;
 
-    // Convert to base64 for AI processing
+    // Convert to base64 for AI processing (chunk to avoid stack overflow)
     const arrayBuffer = await fileData.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const bytes = new Uint8Array(arrayBuffer);
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.slice(i, i + chunkSize);
+      binary += String.fromCharCode.apply(null, Array.from(chunk));
+    }
+    const base64 = btoa(binary);
 
     console.log('File downloaded, size:', fileData.size);
 
