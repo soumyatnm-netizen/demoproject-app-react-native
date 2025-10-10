@@ -54,7 +54,7 @@ serve(async (req) => {
     if (!nav.platform) nav.platform = 'Linux x86_64';
     (globalThis as any).navigator = nav;
 
-    const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@3.4.120/build/pdf.min.mjs');
+    const pdfjsLib = await import('https://esm.sh/pdfjs-dist@3.4.120/es2022/build/pdf.min.mjs');
     
     console.log('Extracting text from PDF...');
     const arrayBuffer = await fileData.arrayBuffer();
