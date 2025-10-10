@@ -37,3 +37,6 @@ verify_jwt = true
 
 [functions.pdfjs-smoke]
 verify_jwt = false
+
+[functions.ai-health]
+verify_jwt = false
