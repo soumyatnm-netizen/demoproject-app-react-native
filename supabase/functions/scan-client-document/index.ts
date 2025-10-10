@@ -307,16 +307,51 @@ serve(async (req) => {
       }
 
     } else if (filename.endsWith('.pdf') || mime === 'application/pdf') {
-      // PDF FLOW: Not yet supported – respond gracefully
-      await supabase
-        .from('documents')
-        .update({ status: 'error', processing_error: 'PDF parsing not supported yet' })
-        .eq('id', documentId);
+      // PDF FLOW: Convert to base64 and send to OpenAI (GPT-4o supports PDFs)
+      console.log('Starting PDF processing for file:', document.filename);
+      const arrayBuffer = await fileData.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binaryString = '';
+      const chunkSize = 8192;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        const sub = bytes.subarray(i, i + chunkSize);
+        for (let j = 0; j < sub.length; j++) binaryString += String.fromCharCode(sub[j]);
+      }
+      const base64Data = btoa(binaryString);
 
-      return new Response(
-        JSON.stringify({ success: false, error: 'PDF scanning is not yet supported. Please upload a DOCX or a clear image (PNG/JPG).'}),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
+      console.log('Calling OpenAI with PDF, size:', base64Data.length);
+
+      const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: buildPrompt() },
+                { type: 'image_url', image_url: { url: `data:${document.file_type};base64,${base64Data}` } }
+              ]
+            }
+          ],
+          max_tokens: 2000,
+          temperature: 0.1
+        }),
+      });
+
+      if (!openAIResponse.ok) {
+        const err = await openAIResponse.text();
+        console.error('OpenAI (PDF) error:', err);
+        await supabase.from('documents').update({ status: 'error', processing_error: 'AI failed to analyze PDF' }).eq('id', documentId);
+        return new Response(JSON.stringify({ success: false, error: 'AI failed to analyze PDF document.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      }
+
+      const openAIResult = await openAIResponse.json();
+      extractedText = openAIResult.choices?.[0]?.message?.content || null;
 
     } else {
       await supabase.from('documents').update({ status: 'error', processing_error: 'Unsupported file type' }).eq('id', documentId);
