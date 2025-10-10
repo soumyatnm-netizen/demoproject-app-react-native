@@ -27,6 +27,9 @@ serve(async (req) => {
     }
 
     console.log('Processing policy wording document:', documentId);
+    
+    console.log("[pdfjs] entry=legacy(jsDelivr); workerSrc=", String(GlobalWorkerOptions.workerSrc));
+    console.log("[openai] keyPresent=", Deno.env.get("OPENAI_API_KEY") ? "yes" : "no");
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;

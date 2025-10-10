@@ -39,6 +39,9 @@ serve(async (req) => {
     console.log("[pdfjs] entry=legacy; workerSrc=", String(GlobalWorkerOptions.workerSrc));
     console.log("[openai] keyPresent=", Deno.env.get("OPENAI_API_KEY") ? "yes" : "no");
 
+    console.log("[pdfjs] entry=legacy(jsDelivr); workerSrc=", String(GlobalWorkerOptions.workerSrc));
+    console.log("[openai] keyPresent=", Deno.env.get("OPENAI_API_KEY") ? "yes" : "no");
+
     if (!supabaseUrl || !supabaseKey) {
       throw new Error('Missing Supabase environment variables');
     }
