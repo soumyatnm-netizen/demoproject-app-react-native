@@ -1,14 +1,9 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import { getDocument, GlobalWorkerOptions } from "npm:pdfjs-dist@3.4.120/legacy/build/pdf.mjs";
+import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/+esm';
 
-// Optional worker (some regions disallow it; fallback available)
-GlobalWorkerOptions.workerSrc = "npm:pdfjs-dist@3.4.120/legacy/build/pdf.worker.mjs";
-// If worker fetching fails in your region, comment the line above and use this fallback:
-// GlobalWorkerOptions.workerSrc = null as unknown as string;
-
-console.log("pdfjs legacy build active; workerSrc:", String(GlobalWorkerOptions.workerSrc));
+console.log("pdfjs CDN build loaded successfully");
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -101,15 +96,11 @@ serve(async (req) => {
 
     console.log('File downloaded, size:', fileData.size);
 
-    // pdf.js configured via npm legacy build at top-level (no DOM/polyfills needed)
+    // Extract text from PDF using pdfjs-dist
     console.log('Extracting text from PDF...');
     const arrayBuffer = await fileData.arrayBuffer();
     const pdfBytes = new Uint8Array(arrayBuffer);
-    const loadingTask = getDocument({
-      data: pdfBytes,
-      isEvalSupported: false,
-      disableFontFace: true,
-    });
+    const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
     const pdf = await loadingTask.promise;
     
     const pdfMetadata = {
