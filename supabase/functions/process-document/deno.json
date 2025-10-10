@@ -1,5 +1,0 @@
-{
-  "imports": {
-    "pdfjs-legacy": "npm:pdfjs-dist@3.4.120/legacy/build/pdf.mjs"
-  }
-}

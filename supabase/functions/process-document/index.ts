@@ -1,15 +1,12 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import { getDocument, GlobalWorkerOptions } from "pdfjs-legacy";
+import { getDocument, GlobalWorkerOptions } from "npm:pdfjs-dist@3.4.120/legacy/build/pdf.mjs";
 
-// Configure pdf.js worker for Edge Runtime (legacy server build)
+// Optional worker (some regions disallow it; fallback available)
 GlobalWorkerOptions.workerSrc = "npm:pdfjs-dist@3.4.120/legacy/build/pdf.worker.mjs";
-// Fallback to run pdf.js on the main thread (fake worker) if workers are blocked
-try {
-  // If worker import blows up or workers are disallowed, run without a worker.
-  GlobalWorkerOptions.workerSrc = null as unknown as string;
-} catch {}
+// If worker fetching fails in your region, comment the line above and use this fallback:
+// GlobalWorkerOptions.workerSrc = null as unknown as string;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
