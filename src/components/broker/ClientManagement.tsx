@@ -981,33 +981,59 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-muted-foreground">Policy Renewal Date</Label>
-                      {isEditingClient ? (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full justify-start text-left font-normal mt-1",
-                                !editingClientData.renewal_date && "text-muted-foreground"
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {editingClientData.renewal_date ? format(new Date(editingClientData.renewal_date), "PPP") : "Set renewal date"}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={editingClientData.renewal_date ? new Date(editingClientData.renewal_date) : undefined}
-                              onSelect={(date) => setEditingClientData({...editingClientData, renewal_date: date ? format(date, "yyyy-MM-dd") : ""})}
-                              initialFocus
-                              className="pointer-events-auto"
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      ) : (
-                        <p className="text-sm">{selectedClient.renewal_date ? format(new Date(selectedClient.renewal_date), "PPP") : 'Not set'}</p>
-                      )}
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal mt-1",
+                              !((isEditingClient ? editingClientData.renewal_date : selectedClient.renewal_date)) && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {(isEditingClient ? editingClientData.renewal_date : selectedClient.renewal_date) 
+                              ? format(new Date(isEditingClient ? editingClientData.renewal_date! : selectedClient.renewal_date!), "PPP") 
+                              : "Set renewal date"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={(isEditingClient ? editingClientData.renewal_date : selectedClient.renewal_date) 
+                              ? new Date(isEditingClient ? editingClientData.renewal_date! : selectedClient.renewal_date!) 
+                              : undefined}
+                            onSelect={async (date) => {
+                              const newDate = date ? format(date, "yyyy-MM-dd") : "";
+                              if (isEditingClient) {
+                                setEditingClientData({...editingClientData, renewal_date: newDate});
+                              } else {
+                                // Update directly when viewing
+                                const { error } = await supabase
+                                  .from("client_reports")
+                                  .update({ renewal_date: newDate || null })
+                                  .eq("id", selectedClient.id);
+                                
+                                if (error) {
+                                  toast({
+                                    title: "Error updating renewal date",
+                                    description: error.message,
+                                    variant: "destructive"
+                                  });
+                                } else {
+                                  setSelectedClient({...selectedClient, renewal_date: newDate});
+                                  fetchClients();
+                                  toast({
+                                    title: "Renewal date updated",
+                                    description: "The policy renewal date has been updated successfully"
+                                  });
+                                }
+                              }
+                            }}
+                            initialFocus
+                            className="pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-muted-foreground">Days to Renewal</Label>
