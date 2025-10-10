@@ -58,6 +58,7 @@ const InstantQuoteComparison = () => {
   const [clients, setClients] = useState<ClientProfile[]>([]);
   const [selectedClient, setSelectedClient] = useState<string>("");
   const [uploadedQuotes, setUploadedQuotes] = useState<File[]>([]);
+  const [policyWordingDocs, setPolicyWordingDocs] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState("");
   const [rankings, setRankings] = useState<QuoteRanking[]>([]);
@@ -150,6 +151,30 @@ const InstantQuoteComparison = () => {
     toast({
       title: "Quote Removed",
       description: `${updatedQuotes.length} quote${updatedQuotes.length !== 1 ? 's' : ''} remaining`,
+    });
+  };
+
+  const handlePolicyWordingUpload = (files: FileList | null) => {
+    if (!files) return;
+    
+    const newFiles = Array.from(files);
+    const updatedDocs = [...policyWordingDocs, ...newFiles];
+    
+    setPolicyWordingDocs(updatedDocs);
+    
+    toast({
+      title: `${newFiles.length} Policy Wording Document${newFiles.length !== 1 ? 's' : ''} Added`,
+      description: `Total: ${updatedDocs.length} document${updatedDocs.length !== 1 ? 's' : ''} uploaded`,
+    });
+  };
+
+  const removePolicyWordingDoc = (indexToRemove: number) => {
+    const updatedDocs = policyWordingDocs.filter((_, index) => index !== indexToRemove);
+    setPolicyWordingDocs(updatedDocs);
+    
+    toast({
+      title: "Document Removed",
+      description: `${updatedDocs.length} policy wording document${updatedDocs.length !== 1 ? 's' : ''} remaining`,
     });
   };
 
@@ -1121,6 +1146,109 @@ const InstantQuoteComparison = () => {
                       ? "CoverCompassAI will analyze your quote for coverage details and recommendations."
                       : `Click "Compare Quotes Instantly" below to analyze coverage, limits, exclusions, and competitiveness across all ${uploadedQuotes.length} quotes.`
                     }
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Step 2b: Policy Wording Documents */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <FileText className="h-5 w-5" />
+            <span>Step 2b: Upload Policy Wording Documents (Optional)</span>
+          </CardTitle>
+          <CardDescription>Upload policy wording documents for detailed coverage comparison</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div 
+              className="border-2 border-dashed rounded-lg p-8 text-center border-muted-foreground/25 cursor-pointer hover:border-primary/50"
+              onDrop={(e) => {
+                e.preventDefault();
+                const files = e.dataTransfer.files;
+                handlePolicyWordingUpload(files);
+              }}
+              onDragOver={(e) => e.preventDefault()}
+              onDragEnter={(e) => e.preventDefault()}
+            >
+              <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <Label htmlFor="policy-wording-upload" className="cursor-pointer">
+                <span className="text-sm font-medium">
+                  {policyWordingDocs.length === 0 ? 'Click to upload policy wording documents' : 'Click to add more documents'}
+                </span>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Upload PDF policy wording documents ({policyWordingDocs.length} uploaded)
+                </p>
+              </Label>
+              <Input
+                id="policy-wording-upload"
+                type="file"
+                accept=".pdf"
+                multiple
+                onChange={(e) => handlePolicyWordingUpload(e.target.files)}
+                className="hidden"
+              />
+            </div>
+            
+            {policyWordingDocs.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium flex items-center">
+                    <CheckCircle className="h-4 w-4 text-blue-600 mr-2" />
+                    Policy Wording Documents
+                  </h4>
+                  <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
+                    {policyWordingDocs.length} Document{policyWordingDocs.length !== 1 ? 's' : ''} Uploaded
+                  </Badge>
+                </div>
+                
+                <div className="grid gap-2">
+                  {policyWordingDocs.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-blue-25 border border-blue-200 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
+                          <FileText className="h-4 w-4 text-blue-700" />
+                        </div>
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm font-medium">{file.name}</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {(file.size / 1024 / 1024).toFixed(2)} MB • Policy wording document
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removePolicyWordingDoc(index)}
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                        <CheckCircle className="h-5 w-5 text-blue-600" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <FileText className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-900">
+                      {policyWordingDocs.length === 1 
+                        ? "Policy wording document added" 
+                        : `${policyWordingDocs.length} policy wording documents added`
+                      }
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    These documents will be analyzed alongside quotes for comprehensive coverage comparison.
                   </p>
                 </div>
               </div>
