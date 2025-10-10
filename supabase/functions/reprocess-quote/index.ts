@@ -126,7 +126,9 @@ CRITICAL: Extract the ACTUAL insurer name from the document. Look for company lo
               { type: 'image_url', image_url: { url: dataUrl } }
             ]
           }
-        ]
+        ],
+        max_tokens: 2000,
+        temperature: 0.1
       }),
     });
 
