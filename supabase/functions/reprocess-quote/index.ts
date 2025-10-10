@@ -110,11 +110,20 @@ serve(async (req) => {
     "territory": "Coverage territory",
     "period": "Duration",
     "renewal_date": "YYYY-MM-DD"
-  }
+  },
+  "current_broker": "Current broker name or null",
+  "current_carrier": "Current carrier/underwriter or null",
+  "current_premium_total": <number or null - total current premium>,
+  "claims_free": <true/false/null - whether claims-free>,
+  "recent_claims_details": "Details of recent claims or null",
+  "revenue_split_geography": {"UK": <number>, "EU": <number>, "US": <number>, "APAC": <number>, "Other": <number>} or null,
+  "activity_split": {"e-commerce": <number>, "retail": <number>, "wholesale": <number>, "B2B": <number>, "other": <number>} or null,
+  "sells_in_us": <true/false/null - whether they sell in US>
 }
 
 CRITICAL: Extract the ACTUAL insurer name from the document. Look for company logos, letterheads, policy issuer details.
-IMPORTANT: Look for policy renewal date, expiry date, or renewal date - these might be labeled as "Renewal Date", "Policy Expires", "Expiry Date", or "Valid Until".`;
+IMPORTANT: Look for policy renewal date, expiry date, or renewal date - these might be labeled as "Renewal Date", "Policy Expires", "Expiry Date", or "Valid Until".
+IMPORTANT: For geography and activity splits, extract percentages (must add up to 100). For claims free, look for "no claims", "claims free", etc.`;
 
     const mimeType = document.file_type || 'application/pdf';
     const dataUrl = `data:${mimeType};base64,${base64Data}`;

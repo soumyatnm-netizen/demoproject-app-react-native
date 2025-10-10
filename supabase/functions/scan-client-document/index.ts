@@ -148,12 +148,22 @@ serve(async (req) => {
     - Customer location & jurisdiction breakdown (UK, EU, USA/Canada, Rest of world percentages)
     - USA/Canada specific: subsidiaries, income, largest contracts (customer name, work, length, value)
     - Policy renewal date (look for "Renewal Date", "Policy Expires", "Expiry Date", "Valid Until" - format as YYYY-MM-DD)
+    - Current Broker (name of current insurance broker if mentioned)
+    - Current Carrier/Underwriter (current insurance company/carrier)
+    - Current Premium Total (total premium across all policies - extract number only)
+    - Claims Free (Yes/No - whether client is claims-free or has no recent claims)
+    - Recent Claims Details (details of any recent claims mentioned)
+    - Revenue/Turnover Split by Geography (percentages for UK, EU, US, APAC, Other regions)
+    - Activity Split (percentages for sales channels: e-commerce, retail, wholesale, B2B, other)
+    - Sells in US (Yes/No - whether they sell products/services in US market)
 
     **IMPORTANT**: 
     - For handwritten text, be extra careful with letter recognition (e.g., distinguish between 'a' and 'o', '1' and 'l', '5' and 'S')
     - If handwriting is unclear, make your best interpretation but note uncertainty in the field name with a "?" 
     - Extract information from any format: forms, notes, business cards, letters, etc.
     - Look for policy renewal dates, expiry dates - these might be labeled as "Renewal Date", "Policy Expires", "Expiry Date", "Valid Until", or similar
+    - For geography and activity splits, extract percentages if available. If only mentioned without percentages, estimate based on context or leave null
+    - For claims free status, look for phrases like "no claims", "claims free", "clean record", etc.
 
     Return ONLY a valid JSON object with the extracted data. Use null for fields that cannot be found. 
     For arrays, return empty arrays if no data found.
@@ -161,6 +171,8 @@ serve(async (req) => {
     For risk_profile, return one of: "low", "medium", "high".
     For coverage_requirements, return as array of strings.
     For dates including renewal_date, use format: "YYYY-MM-DD"
+    For boolean fields (claims_free, sells_in_us), return true, false, or null
+    For split percentages, use format: {"UK": 50, "EU": 30, "US": 20} (must add up to 100 or leave null)
     `;
 
     const mime = (document.file_type || '').toLowerCase();

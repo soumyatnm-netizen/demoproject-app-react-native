@@ -70,53 +70,77 @@ export type Database = {
       }
       client_reports: {
         Row: {
+          activity_split: Json | null
           broker_company_name: string | null
           broker_logo_url: string | null
+          claims_free: boolean | null
           client_name: string
           comparison_id: string | null
           created_at: string
+          current_broker: string | null
+          current_carrier: string | null
+          current_premium_total: number | null
           id: string
           key_changes: Json | null
           pdf_storage_path: string | null
+          recent_claims_details: string | null
           recommendations: string[] | null
           renewal_date: string | null
           report_data: Json
           report_status: string | null
           report_title: string
+          revenue_split_geography: Json | null
+          sells_in_us: boolean | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          activity_split?: Json | null
           broker_company_name?: string | null
           broker_logo_url?: string | null
+          claims_free?: boolean | null
           client_name: string
           comparison_id?: string | null
           created_at?: string
+          current_broker?: string | null
+          current_carrier?: string | null
+          current_premium_total?: number | null
           id?: string
           key_changes?: Json | null
           pdf_storage_path?: string | null
+          recent_claims_details?: string | null
           recommendations?: string[] | null
           renewal_date?: string | null
           report_data: Json
           report_status?: string | null
           report_title: string
+          revenue_split_geography?: Json | null
+          sells_in_us?: boolean | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          activity_split?: Json | null
           broker_company_name?: string | null
           broker_logo_url?: string | null
+          claims_free?: boolean | null
           client_name?: string
           comparison_id?: string | null
           created_at?: string
+          current_broker?: string | null
+          current_carrier?: string | null
+          current_premium_total?: number | null
           id?: string
           key_changes?: Json | null
           pdf_storage_path?: string | null
+          recent_claims_details?: string | null
           recommendations?: string[] | null
           renewal_date?: string | null
           report_data?: Json
           report_status?: string | null
           report_title?: string
+          revenue_split_geography?: Json | null
+          sells_in_us?: boolean | null
           updated_at?: string
           user_id?: string
         }

@@ -30,6 +30,14 @@ interface ClientData {
   created_at: string;
   report_data: any;
   renewal_date?: string | null;
+  current_broker?: string | null;
+  current_carrier?: string | null;
+  current_premium_total?: number | null;
+  claims_free?: boolean | null;
+  recent_claims_details?: string | null;
+  revenue_split_geography?: any;
+  activity_split?: any;
+  sells_in_us?: boolean | null;
 }
 
 interface ClientManagementProps {
@@ -140,7 +148,13 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
     organisation_type: "",
     website: "",
     wage_roll: "",
-    renewal_date: ""
+    renewal_date: "",
+    current_broker: "",
+    current_carrier: "",
+    current_premium_total: "",
+    claims_free: null as boolean | null,
+    recent_claims_details: "",
+    sells_in_us: null as boolean | null
   });
 
   useEffect(() => {
@@ -223,7 +237,13 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
         organisation_type: "",
         website: "",
         wage_roll: "",
-        renewal_date: ""
+        renewal_date: "",
+        current_broker: "",
+        current_carrier: "",
+        current_premium_total: "",
+        claims_free: null,
+        recent_claims_details: "",
+        sells_in_us: null
       });
       fetchClients();
       onStatsUpdate();
@@ -258,7 +278,13 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
       organisation_type: extractedData["Type of organisation"] || extractedData.organisation_type || "",
       website: extractedData["Website"] || extractedData.website || "",
       wage_roll: (extractedData["Total wage roll"] || extractedData.wage_roll)?.toString() || "",
-      renewal_date: extractedData["Policy renewal date"] || extractedData.renewal_date || ""
+      renewal_date: extractedData["Policy renewal date"] || extractedData.renewal_date || "",
+      current_broker: extractedData.current_broker || "",
+      current_carrier: extractedData.current_carrier || "",
+      current_premium_total: extractedData.current_premium_total?.toString() || "",
+      claims_free: extractedData.claims_free ?? null,
+      recent_claims_details: extractedData.recent_claims_details || "",
+      sells_in_us: extractedData.sells_in_us ?? null
     };
 
     setNewClient(mappedClient);
@@ -1056,6 +1082,175 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Insurance Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Insurance Information</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Current Broker</Label>
+                      {isEditingClient ? (
+                        <Input
+                          value={editingClientData.current_broker || ""}
+                          onChange={(e) => setEditingClientData({...editingClientData, current_broker: e.target.value})}
+                          className="mt-1"
+                          placeholder="Current broker name"
+                        />
+                      ) : (
+                        <p className="text-sm">{selectedClient.current_broker || 'N/A'}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Current Carrier</Label>
+                      {isEditingClient ? (
+                        <Input
+                          value={editingClientData.current_carrier || ""}
+                          onChange={(e) => setEditingClientData({...editingClientData, current_carrier: e.target.value})}
+                          className="mt-1"
+                          placeholder="Current carrier/underwriter"
+                        />
+                      ) : (
+                        <p className="text-sm">{selectedClient.current_carrier || 'N/A'}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Current Premium (Total)</Label>
+                      {isEditingClient ? (
+                        <Input
+                          type="number"
+                          value={editingClientData.current_premium_total || ""}
+                          onChange={(e) => setEditingClientData({...editingClientData, current_premium_total: e.target.value})}
+                          className="mt-1"
+                          placeholder="Total premium amount"
+                        />
+                      ) : (
+                        <p className="text-sm">
+                          {selectedClient.current_premium_total 
+                            ? `£${Number(selectedClient.current_premium_total).toLocaleString()}` 
+                            : 'N/A'}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Claims Free?</Label>
+                      {isEditingClient ? (
+                        <Select 
+                          value={editingClientData.claims_free === null ? "unknown" : editingClientData.claims_free ? "yes" : "no"} 
+                          onValueChange={(value) => setEditingClientData({
+                            ...editingClientData, 
+                            claims_free: value === "unknown" ? null : value === "yes"
+                          })}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="yes">Yes</SelectItem>
+                            <SelectItem value="no">No</SelectItem>
+                            <SelectItem value="unknown">Unknown</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <p className="text-sm">
+                          {selectedClient.claims_free === null ? 'Unknown' : selectedClient.claims_free ? 'Yes' : 'No'}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Sells in US?</Label>
+                      {isEditingClient ? (
+                        <Select 
+                          value={editingClientData.sells_in_us === null ? "unknown" : editingClientData.sells_in_us ? "yes" : "no"} 
+                          onValueChange={(value) => setEditingClientData({
+                            ...editingClientData, 
+                            sells_in_us: value === "unknown" ? null : value === "yes"
+                          })}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="yes">Yes</SelectItem>
+                            <SelectItem value="no">No</SelectItem>
+                            <SelectItem value="unknown">Unknown</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <p className="text-sm">
+                          {selectedClient.sells_in_us === null ? 'Unknown' : selectedClient.sells_in_us ? 'Yes' : 'No'}
+                        </p>
+                      )}
+                    </div>
+                    {selectedClient.recent_claims_details && (
+                      <div className="col-span-full">
+                        <Label className="text-sm font-medium text-muted-foreground">Recent Claims Details</Label>
+                        {isEditingClient ? (
+                          <Textarea
+                            value={editingClientData.recent_claims_details || ""}
+                            onChange={(e) => setEditingClientData({...editingClientData, recent_claims_details: e.target.value})}
+                            className="mt-1"
+                            rows={3}
+                          />
+                        ) : (
+                          <p className="text-sm whitespace-pre-wrap">{selectedClient.recent_claims_details}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Revenue & Activity Split */}
+              {(selectedClient.revenue_split_geography || selectedClient.activity_split) && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Revenue & Activity Analysis</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {selectedClient.revenue_split_geography && (
+                        <div>
+                          <Label className="text-sm font-medium text-muted-foreground mb-2 block">
+                            Revenue Split by Geography
+                          </Label>
+                          <div className="space-y-2">
+                            {Object.entries(selectedClient.revenue_split_geography).map(([region, percentage]) => {
+                              const pct = Number(percentage);
+                              return pct && pct > 0 ? (
+                                <div key={region} className="flex items-center justify-between">
+                                  <span className="text-sm">{region}</span>
+                                  <Badge variant="secondary">{pct}%</Badge>
+                                </div>
+                              ) : null;
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      {selectedClient.activity_split && (
+                        <div>
+                          <Label className="text-sm font-medium text-muted-foreground mb-2 block">
+                            Activity Split by Channel
+                          </Label>
+                          <div className="space-y-2">
+                            {Object.entries(selectedClient.activity_split).map(([activity, percentage]) => {
+                              const pct = Number(percentage);
+                              return pct && pct > 0 ? (
+                                <div key={activity} className="flex items-center justify-between">
+                                  <span className="text-sm capitalize">{activity.replace('_', ' ')}</span>
+                                  <Badge variant="secondary">{pct}%</Badge>
+                                </div>
+                              ) : null;
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Contact Information */}
               <Card>
