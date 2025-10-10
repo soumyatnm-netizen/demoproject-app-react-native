@@ -94,7 +94,7 @@ serve(async (req) => {
     console.log('File downloaded, size:', fileData.size);
 
     // Import PDF.js for text extraction (Deno-compatible)
-    const pdfjsLib = await import('https://esm.sh/pdfjs-dist@3.4.120/build/pdf.min.mjs');
+    const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@3.4.120/build/pdf.min.mjs');
     
     console.log('Extracting text from PDF...');
     const arrayBuffer = await fileData.arrayBuffer();
