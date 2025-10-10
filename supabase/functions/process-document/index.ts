@@ -157,34 +157,40 @@ serve(async (req) => {
 
     console.log('Calling OpenAI GPT-5-mini for extraction...');
     
-    const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-5-mini',
-        messages: [
-          {
-            role: 'user',
-            content: fullPrompt
-          }
-        ],
-        max_completion_tokens: 4096
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error('OpenAI API error:', aiResponse.status, errorText);
-      throw new Error(`AI extraction failed: ${errorText}`);
+    let aiResponse;
+    try {
+      aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-5-mini',
+          messages: [
+            {
+              role: 'user',
+              content: fullPrompt
+            }
+          ],
+          max_completion_tokens: 4096
+        }),
+      });
+    } catch (fetchError) {
+      console.error('OpenAI fetch failed:', fetchError);
+      throw new Error(`Failed to connect to OpenAI: ${fetchError.message}`);
     }
 
     if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error('AI API error:', aiResponse.status, errorText);
-      throw new Error(`AI extraction failed: ${errorText}`);
+      let errorDetails;
+      try {
+        errorDetails = await aiResponse.json();
+        console.error('OpenAI API error (JSON):', aiResponse.status, JSON.stringify(errorDetails));
+      } catch {
+        errorDetails = await aiResponse.text();
+        console.error('OpenAI API error (text):', aiResponse.status, errorDetails);
+      }
+      throw new Error(`OpenAI API failed (${aiResponse.status}): ${JSON.stringify(errorDetails)}`);
     }
 
     const aiResult = await aiResponse.json();
@@ -300,6 +306,7 @@ serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ 
+      ok: false,
       error: (error as any).message,
       details: (error as any).stack,
       timestamp: new Date().toISOString()
