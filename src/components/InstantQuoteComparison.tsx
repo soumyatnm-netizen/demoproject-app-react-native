@@ -1301,7 +1301,7 @@ const InstantQuoteComparison = () => {
               onDragOver={(e) => e.preventDefault()}
               onDragEnter={(e) => e.preventDefault()}
             >
-              <FileText className={`h-8 w-8 mx-auto mb-2 ${
+              <Upload className={`h-8 w-8 mx-auto mb-2 ${
                 policyWordingDocs.length >= 5 ? 'text-gray-400' : 'text-muted-foreground'
               }`} />
               {policyWordingDocs.length >= 5 ? (
