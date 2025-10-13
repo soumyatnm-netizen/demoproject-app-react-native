@@ -248,6 +248,30 @@ const InstantQuoteComparison = () => {
 
         if (docError) throw docError;
 
+        // Preflight classification
+        console.log('Running preflight classification for policy wording...');
+        setProcessingStep(`Classifying policy wording ${i + 1}...`);
+        
+        const { data: preflightResult, error: preflightError } = await supabase.functions
+          .invoke('preflight-classify', {
+            body: { documentId: docData.id }
+          });
+
+        if (preflightError) {
+          console.error('Preflight classification error:', preflightError);
+        } else if (preflightResult?.classification) {
+          const classification = preflightResult.classification;
+          console.log('Policy wording classification:', classification);
+          
+          if (classification.warnings && classification.warnings.length > 0) {
+            console.warn('Classification warnings:', classification.warnings);
+          }
+          
+          if (classification.document_type_detected === 'Quote') {
+            console.warn(`⚠️ This appears to be a Quote, not a Policy Wording! File: ${file.name}`);
+          }
+        }
+
         // Process with AI
         setProcessingStep(`Analyzing policy wording ${i + 1} with AI...`);
         const { data: processResult, error: processError } = await supabase.functions
@@ -385,6 +409,37 @@ const InstantQuoteComparison = () => {
             throw docError;
           }
           console.log('Document created:', docData.id);
+
+          // Preflight classification
+          console.log('Running preflight classification...');
+          setProcessingStep(`Classifying document ${i + 1}...`);
+          addStatusLog(`Running preflight classification: ${file.name}`, 'info');
+          
+          const { data: preflightResult, error: preflightError } = await supabase.functions
+            .invoke('preflight-classify', {
+              body: { documentId: docData.id }
+            });
+
+          if (preflightError) {
+            console.error('Preflight classification error:', preflightError);
+            addStatusLog(`⚠️ Classification warning for ${file.name}: ${preflightError.message}`, 'error');
+          } else if (preflightResult?.classification) {
+            const classification = preflightResult.classification;
+            console.log('Classification result:', classification);
+            
+            // Log classification results
+            addStatusLog(`✓ Detected: ${classification.carrier_detected} - ${classification.document_type_detected}`, 'success');
+            
+            if (classification.warnings && classification.warnings.length > 0) {
+              classification.warnings.forEach((warning: string) => {
+                addStatusLog(`⚠️ ${warning}`, 'error');
+              });
+            }
+            
+            if (classification.document_type_detected === 'PolicyWording') {
+              addStatusLog(`⚠️ This appears to be a Policy Wording, not a Quote. Code: ${classification.wording_code_or_version || 'Unknown'}`, 'error');
+            }
+          }
 
           // Process document with AI
           console.log('Calling process-document edge function...');

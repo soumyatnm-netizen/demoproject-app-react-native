@@ -46,3 +46,6 @@ verify_jwt = false
 
 [functions.files-health]
 verify_jwt = false
+
+[functions.preflight-classify]
+verify_jwt = true
