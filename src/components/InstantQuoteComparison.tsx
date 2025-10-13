@@ -1391,27 +1391,9 @@ const InstantQuoteComparison = () => {
                       }
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground mb-3">
+                  <p className="text-xs text-muted-foreground">
                     These documents will be analyzed alongside quotes for comprehensive coverage comparison.
                   </p>
-                  <Button
-                    onClick={processPolicyWordings}
-                    disabled={isProcessingPolicyWordings}
-                    className="w-full"
-                    size="sm"
-                  >
-                    {isProcessingPolicyWordings ? (
-                      <>
-                        <span className="animate-spin mr-2">⚙️</span>
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <FileText className="h-4 w-4 mr-2" />
-                        Analyze Policy Wordings
-                      </>
-                    )}
-                  </Button>
                 </div>
               </div>
             )}
