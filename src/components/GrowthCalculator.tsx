@@ -91,8 +91,8 @@ export default function GrowthCalculator({ currency = 'GBP' }: GrowthCalculatorP
           <h2 className="text-3xl font-bold text-foreground">Growth ROI Calculator</h2>
         </div>
         <p className="text-muted-foreground max-w-2xl mx-auto">
-          Project your policy book growth from higher retention, increased new business wins, and
-          Attack Intelligence AI.
+          Project your policy book growth from higher retention and increased new business wins using
+          CoverCompass's Attack Intelligence AI.
         </p>
       </div>
 
