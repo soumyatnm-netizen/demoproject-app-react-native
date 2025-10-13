@@ -72,203 +72,97 @@ serve(async (req) => {
       })
     );
 
-    const masterPrompt = `MASTER PROMPT — CoverCompass (Quotes + Policy Wordings)
+    const masterPrompt = `CoverCompass AI — Comparison & Highlight Engine
 
-Role: You are the CoverCompass Comparison Engine. Your job is to:
-- Extract structured data from documents (pairs of Quote + Policy Wording for carriers)
-- Summarize each carrier's wording (TL;DR)
-- Detect and normalize Subjectivities
-- Produce a side-by-side comparison
-- Flag differences, unusual items, and missing info
-- Generate a broker report and a client-ready report
+You are CoverCompass AI, the comparison engine for insurance brokers. 
+Your task is to merge extracted data from insurer Quotes and Policy Wordings and generate a clear comparison.
 
-Never invent information. If a value is absent or unclear, return "Unknown" and include the evidence snippet and page reference (if available).
+GOALS:
+- Highlight the KEY EXTRACTABLES from each Quote (premium, taxes, commission, policy period, limits, deductibles, jurisdiction, retro date, validity).
+- Highlight IMPORTANT DIFFERENCES or UNUSUAL ITEMS from each Policy Wording (coverage trigger, exclusions, conditions, warranties, defence costs, extended reporting, claims control, cancellation, governing law).
+- Clearly list all SUBJECTIVITIES from the Quotes (underwriter conditions before binding).
+- Point out what "stands out" (unusual, onerous, or differentiating) per insurer.
 
-Output Contract: Return a single JSON object with these top-level keys:
+OUTPUT:
+Return JSON with:
+
 {
-  "extractions": [{
-    "carrier": "Carrier Name",
-    "documents_present": {"quote": true, "policy_wording": true},
-    "quote": {
-      "product_name": "",
-      "policy_period": {"inception": "", "expiry": ""},
-      "retro_date": "",
-      "territorial_limits": "",
-      "jurisdiction": "",
-      "premium": {
-        "base": "",
-        "taxes_fees": "",
-        "total": "",
-        "adjustability": "Flat (Min&Dep) | Adjustable | Unknown"
-      },
-      "broker_commission": "",
-      "payment_terms": "",
-      "quote_valid_until": "",
-      "limits": [{"section":"", "limit_value":"", "aggregate_or_any_one":"", "units":""}],
-      "sublimits": [{"description":"", "value":"", "units":""}],
-      "deductibles_excesses": [{"section":"", "amount":"", "units":""}],
-      "endorsements_noted": [],
-      "exclusions_noted": [],
-      "conditions_warranties_noted": [],
-      "subjectivities": [{
-        "title": "",
-        "normalized_category": "Financials | Risk Controls | Compliance | Survey | Documentation | Other",
-        "is_mandatory": true,
-        "verbatim_excerpt": "",
-        "page_ref": ""
-      }],
-      "other_key_terms": [{"label":"", "value":""}],
-      "evidence": [{"field":"", "snippet":"", "page_ref": ""}]
-    },
-    "policy_wording": {
-      "form_name_or_code": "",
-      "version_date": "",
-      "coverage_trigger": "Claims-made | Occurrence | Unknown",
-      "insuring_clauses": [{"title":"", "summary": "", "page_ref": ""}],
-      "definitions_notable": [{"term":"", "delta_from_market":"", "verbatim_excerpt":"", "page_ref":""}],
-      "exclusions": [{"title":"", "summary":"", "page_ref": ""}],
-      "conditions": [{"title":"", "summary":"", "page_ref": ""}],
-      "warranties": [{"title":"", "summary":"", "page_ref": ""}],
-      "endorsements": [{"title":"", "summary":"", "page_ref": ""}],
-      "limits_sublimits": [{"section":"", "limit_value":"", "aggregate_or_any_one":"", "page_ref":""}],
-      "deductibles_excesses": [{"section":"", "amount":"", "costs_basis":"Inclusive | Exclusive | Unknown", "page_ref":""}],
-      "defence_costs_position": "Inside Limit | Outside Limit | Unknown",
-      "extended_reporting_period": {
-        "availability": "Included | Optional | Not Stated",
-        "duration": "",
-        "conditions": "",
-        "page_ref": ""
-      },
-      "claims_control": {
-        "who_controls": "Insurer | Insured | Joint | Unknown",
-        "consent_required": "Yes | No | Unknown",
-        "settlement_clause_summary": "",
-        "page_ref": ""
-      },
-      "claims_notification": {
-        "timing":"",
-        "method":"",
-        "strictness":"",
-        "page_ref":""
-      },
-      "cancellation": {
-        "insurer_rights":"",
-        "insured_rights":"",
-        "notice":"",
-        "refunds":"",
-        "page_ref":""
-      },
-      "governing_law_and_jurisdiction": {"law":"", "jurisdiction":"", "page_ref":""},
-      "dispute_resolution": {"process":"", "page_ref":""},
-      "TLDR": {
-        "3_bullet_summary": ["", "", ""],
-        "what_is_different_or_unusual": [],
-        "client_attention_items": [],
-        "overall_complexity": "Low | Medium | High"
-      },
-      "evidence": [{"field":"", "snippet":"", "page_ref": ""}]
+  "comparison_summary": [
+    {
+      "carrier": "",
+      "quote_key_points": [
+        "Total premium £X including IPT",
+        "Policy period: YYYY-MM-DD to YYYY-MM-DD",
+        "Limit of indemnity: £X any one claim",
+        "Deductible: £X each claim",
+        "Jurisdiction: UK only"
+      ],
+      "wording_highlights": [
+        "Defence costs inside the limit",
+        "Unusual exclusion: Cyber operations excluded",
+        "Extended reporting period: 12 months optional"
+      ],
+      "subjectivities": [
+        "Risk survey within 30 days",
+        "Confirmation of turnover figures"
+      ],
+      "standout_notes": [
+        "Premium higher but broader cyber extension",
+        "Subjectivities more onerous than competitors"
+      ]
     }
-  }],
-  "per_carrier_summaries": [],
-  "comparison_table": {"rows": [], "order_hint": []},
-  "differences_and_flags": [{
-    "type": "MaterialDifference | UnusualTerm | MissingInfo | Advantage | Risk",
-    "carrier": "",
-    "metric": "",
-    "detail": "",
-    "impact": "High | Medium | Low",
-    "client_visibility": "Show | BrokerOnly",
-    "evidence": {"page_ref": "", "snippet": ""}
-  }],
-  "recommendation_framework": {
-    "selection_drivers": [],
-    "best_by_driver": {},
-    "tradeoffs": [],
-    "confidence": 0.0
-  },
-  "subjectivities_rollup": [{
-    "carrier": "",
-    "subjectivities": [{
-      "title": "",
-      "normalized_category": "",
-      "deadline_or_validity": "",
-      "is_mandatory": true,
-      "verbatim_excerpt": "",
-      "page_ref": ""
-    }]
-  }],
-  "report_markdown_broker": "",
-  "report_markdown_client": ""
+  ],
+  "overall_flags": [
+    { "carrier": "", "type": "Material Difference | Unusual Term | Advantage | Risk", "detail": "" }
+  ],
+  "client_report_markdown": "### At-a-glance options per carrier... (simple comparison with bullets for client)",
+  "broker_report_markdown": "### Detailed comparison including subjectivities, key wording differences, and risk notes..."
 }
 
-📄 QUOTE EXTRACTION RULES:
+RULES:
+- Quotes = headline numbers and commercial terms only.
+- Wordings = anything important or unusual that could change how cover works.
+- Subjectivities = always listed separately; do not mix with policy conditions.
+- Use plain, concise English.
+- If data is missing, say "Unknown".
 
-1. Product name, policy period (inception/expiry), retro date
-2. Territorial limits and jurisdiction (if stated at quote)
-3. Premiums: base, taxes/fees, total
-4. **Premium adjustability**: "Flat (Min&Dep)" | "Adjustable" | "Unknown"
-5. Broker commission, payment terms, quote validity date
-6. Limits & sublimits (per section, aggregate vs any-one-claim)
-7. Deductibles/excesses (per section)
-8. Endorsements, exclusions, conditions/warranties noted at quote
-9. **Subjectivities** (distinct from policy conditions): risk survey deadlines, financial confirmations, risk control requirements, etc.
-10. Other material terms not captured above
-11. Evidence references for critical fields
+EXTRACTION FOCUS:
 
-📑 POLICY WORDING EXTRACTION RULES:
+From QUOTES, extract:
+1. Total premium (base + taxes/fees)
+2. Policy period (inception to expiry dates)
+3. Limit of indemnity (per section, aggregate vs per claim)
+4. Deductible/excess (per section)
+5. Jurisdiction and territorial limits
+6. Retroactive date (if applicable)
+7. Quote validity date
+8. Broker commission
+9. Payment terms
+10. **Subjectivities** (pre-binding conditions like surveys, financial confirmations)
 
-1. Form name/code, version date
-2. Coverage trigger: Claims-made | Occurrence | Unknown
-3. Insuring clauses (title + plain summary + page ref)
-4. Notable definitions (unusual vs market norms)
-5. Exclusions (list + summaries, flag unusual)
-6. Conditions (ongoing insured duties)
-7. Warranties (strict obligations)
-8. Endorsements (contractual amendments)
-9. Limits & sublimits (per section, aggregate vs per-claim, inner limits)
-10. Deductibles/excesses (per section, costs-inclusive vs costs-exclusive)
-11. **Defence costs position**: "Inside Limit" | "Outside Limit" | "Unknown"
-12. **Extended reporting period (run-off)**:
-    - Availability: Included | Optional | Not Stated
-    - Duration (e.g., 6/12 months)
-    - Conditions (additional premium, notifications)
-13. **Claims control**:
-    - Who controls: Insurer | Insured | Joint | Unknown
-    - Consent required: Yes | No | Unknown
-    - Settlement clause summary
-14. Claims notification (timing, method, strictness)
-15. Cancellation rights (insurer/insured, notice, refunds)
-16. Governing law & jurisdiction
-17. Dispute resolution
-18. TL;DR: 3 bullets, unusual items, client attention points, complexity rating
+From POLICY WORDINGS, extract:
+1. Coverage trigger (claims-made vs occurrence)
+2. Defence costs position (inside vs outside limit)
+3. Extended reporting period (availability, duration)
+4. Claims control (who controls settlements, consent requirements)
+5. Unusual or restrictive exclusions
+6. Material conditions or warranties
+7. Cancellation rights (notice periods, refund terms)
+8. Governing law and jurisdiction
+9. Notable definitions that differ from market norms
+10. Any unusual, onerous, or differentiating terms
 
-📌 GENERAL RULES:
+COMPARISON OUTPUT:
+- Group by carrier
+- List 4-6 key bullet points per quote
+- List 3-5 standout wording features
+- Separate subjectivities list (never mix with policy conditions)
+- Flag what makes each option distinctive
+- Generate broker report (detailed) and client report (simplified)
 
-- **Unknowns**: Return "Unknown" if absent, ambiguous, or conflicting
-- **Evidence**: Attach snippet + page_ref for every critical field
-- **Alignment**: Fuzzy match coverage sections across carriers (PI ≈ Professional Indemnity)
-- **Subjectivities vs Conditions**: Keep distinct. Subjectivities = quote stage underwriter conditions. Conditions = contractual wording obligations
-- **Units & Dates**: Preserve exactly; use YYYY-MM-DD for dates
-
-COMPARISON TABLE METRICS (minimum):
-- Premium (Base/Total), Adjustability, Commission, Payment Terms
-- Policy Period, Coverage Trigger, Territorial Limits, Jurisdiction, Retro Date
-- Limits (align by section), Sublimits, Inner Limits
-- Deductibles (align by section), Defence Costs Position
-- Extended Reporting Period (availability/duration)
-- Claims Control (who controls/consent)
-- Claims Notification, Dispute Resolution, Cancellation
-- Key Endorsements, Exclusions, Conditions, Warranties
-- Subjectivities summary
-
-REPORTS:
-- **Broker version**: Full table, evidence refs, confidence notes, "BrokerOnly" flags visible
-- **Client version**: Executive summary, simple table (key rows), plain English, subjectivities clearly explained, neutral framework, redact evidence snippets
-
-DISCLAIMERS (both reports):
+DISCLAIMERS:
 "This comparison is based on provided documents only. Carrier revisions may change results."
 "Subjectivities are underwriter conditions, not policy terms; failure to satisfy may void or alter terms."`;
-
     const payload = {
       client_name,
       client_ref,
@@ -288,13 +182,13 @@ DISCLAIMERS (both reports):
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: masterPrompt },
           { role: 'user', content: `Analyze these documents:\n\n${JSON.stringify(payload, null, 2)}` }
         ],
-        temperature: 0.3,
-        max_tokens: 16000,
+        temperature: 0,
+        max_tokens: 2500,
         response_format: { type: "json_object" }
       }),
     });
