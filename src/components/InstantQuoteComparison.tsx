@@ -67,6 +67,7 @@ const InstantQuoteComparison = () => {
   const [rankings, setRankings] = useState<QuoteRanking[]>([]);
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [scoredRankings, setScoredRankings] = useState<QuoteRanking[]>([]);
+  const [shouldCancel, setShouldCancel] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -311,6 +312,7 @@ const InstantQuoteComparison = () => {
 
     setIsProcessing(true);
     setAnalysisComplete(false);
+    setShouldCancel(false);
     
     const uploadedQuoteIds: string[] = [];
     const processedPolicyWordingIds: string[] = [];
@@ -324,6 +326,14 @@ const InstantQuoteComparison = () => {
         setProcessingStep("Uploading quote documents...");
 
         for (let i = 0; i < uploadedQuotes.length; i++) {
+          if (shouldCancel) {
+            toast({
+              title: "Cancelled",
+              description: "Analysis cancelled by user",
+            });
+            return;
+          }
+          
           const file = uploadedQuotes[i];
           console.log(`Processing quote file ${i + 1}:`, file.name);
           setProcessingStep(`Processing quote ${i + 1} of ${uploadedQuotes.length}...`);
@@ -421,6 +431,14 @@ const InstantQuoteComparison = () => {
         setProcessingStep("Processing policy wording documents...");
 
         for (let i = 0; i < policyWordingDocs.length; i++) {
+          if (shouldCancel) {
+            toast({
+              title: "Cancelled",
+              description: "Analysis cancelled by user",
+            });
+            return;
+          }
+          
           const file = policyWordingDocs[i];
           console.log(`Processing policy wording ${i + 1}:`, file.name);
           setProcessingStep(`Analyzing policy wording ${i + 1} of ${policyWordingDocs.length}...`);
@@ -505,6 +523,14 @@ const InstantQuoteComparison = () => {
 
       // Step 2: Analyze and rank quotes (only if quotes were uploaded)
       if (uploadedQuoteIds.length > 0) {
+        if (shouldCancel) {
+          toast({
+            title: "Cancelled",
+            description: "Analysis cancelled by user",
+          });
+          return;
+        }
+        
         console.log('Starting quote ranking with IDs:', uploadedQuoteIds);
         setProcessingStep("Ranking quotes by coverage and value...");
         
@@ -567,7 +593,18 @@ const InstantQuoteComparison = () => {
     } finally {
       setIsProcessing(false);
       setProcessingStep("");
+      setShouldCancel(false);
     }
+  };
+
+  const cancelAnalysis = () => {
+    setShouldCancel(true);
+    setIsProcessing(false);
+    setProcessingStep("");
+    toast({
+      title: "Cancelling",
+      description: "Stopping analysis process...",
+    });
   };
 
   const getRankIcon = (position: number) => {
@@ -1545,7 +1582,7 @@ const InstantQuoteComparison = () => {
             )}
             
             {isProcessing && (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between text-sm">
                   <span>{processingStep}</span>
                   <span>Processing...</span>
@@ -1554,6 +1591,15 @@ const InstantQuoteComparison = () => {
                 <p className="text-xs text-muted-foreground">
                   Using CoverCompassAI to analyze schedules, limits, exclusions, enhancements, and core policy wording...
                 </p>
+                <Button
+                  onClick={cancelAnalysis}
+                  variant="destructive"
+                  size="sm"
+                  className="w-full"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Stop Analysis
+                </Button>
               </div>
             )}
           </div>
