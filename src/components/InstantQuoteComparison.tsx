@@ -68,7 +68,13 @@ const InstantQuoteComparison = () => {
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [scoredRankings, setScoredRankings] = useState<QuoteRanking[]>([]);
   const [shouldCancel, setShouldCancel] = useState(false);
+  const [statusLog, setStatusLog] = useState<Array<{time: string, message: string, type: 'info' | 'success' | 'error'}>>([]);
   const { toast } = useToast();
+
+  const addStatusLog = (message: string, type: 'info' | 'success' | 'error' = 'info') => {
+    const timestamp = new Date().toLocaleTimeString();
+    setStatusLog(prev => [...prev, { time: timestamp, message, type }]);
+  };
 
   useEffect(() => {
     fetchClients();
@@ -313,10 +319,13 @@ const InstantQuoteComparison = () => {
     setIsProcessing(true);
     setAnalysisComplete(false);
     setShouldCancel(false);
+    setStatusLog([]);
     
     const uploadedQuoteIds: string[] = [];
     const processedPolicyWordingIds: string[] = [];
     const documentsForAnalysis: any[] = [];
+    
+    addStatusLog('Starting comprehensive analysis...', 'info');
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -325,6 +334,7 @@ const InstantQuoteComparison = () => {
       // Step 1: Upload and process quote documents
       if (uploadedQuotes.length > 0) {
         setProcessingStep("Uploading quote documents...");
+        addStatusLog(`Processing ${uploadedQuotes.length} quote document(s)`, 'info');
 
         for (let i = 0; i < uploadedQuotes.length; i++) {
           if (shouldCancel) {
@@ -338,6 +348,7 @@ const InstantQuoteComparison = () => {
           const file = uploadedQuotes[i];
           console.log(`Processing quote file ${i + 1}:`, file.name);
           setProcessingStep(`Processing quote ${i + 1} of ${uploadedQuotes.length}...`);
+          addStatusLog(`Uploading quote: ${file.name}`, 'info');
           
           // Upload to storage with user-specific folder structure
           console.log('Uploading to storage...');
@@ -348,9 +359,11 @@ const InstantQuoteComparison = () => {
 
           if (uploadError) {
             console.error('Storage upload error:', uploadError);
+            addStatusLog(`Failed to upload ${file.name}: ${uploadError.message}`, 'error');
             throw uploadError;
           }
           console.log('Upload successful:', uploadData.path);
+          addStatusLog(`Quote uploaded successfully: ${file.name}`, 'success');
 
           // Create document record
           console.log('Creating document record...');
@@ -376,6 +389,7 @@ const InstantQuoteComparison = () => {
           // Process document with AI
           console.log('Calling process-document edge function...');
           setProcessingStep(`Analyzing quote ${i + 1} with AI...`);
+          addStatusLog(`Analyzing quote with AI: ${file.name}`, 'info');
           
           // Get the selected client's name
           const selectedClientData = clients.find(client => client.id === selectedClient);
@@ -395,9 +409,11 @@ const InstantQuoteComparison = () => {
               context: processError.context,
               details: processError.details
             });
+            addStatusLog(`AI analysis failed for ${file.name}: ${processError.message}`, 'error');
             throw processError;
           }
           console.log('Process result:', processResult);
+          addStatusLog(`AI analysis completed for ${file.name}`, 'success');
           
           // The process-document function creates a structured_quote record
           // We need to get the quote ID from the structured_quotes table
@@ -436,6 +452,7 @@ const InstantQuoteComparison = () => {
       // Step 1.5: Upload and process policy wording documents
       if (policyWordingDocs.length > 0) {
         setProcessingStep("Processing policy wording documents...");
+        addStatusLog(`Processing ${policyWordingDocs.length} policy wording document(s)`, 'info');
 
         for (let i = 0; i < policyWordingDocs.length; i++) {
           if (shouldCancel) {
@@ -449,6 +466,7 @@ const InstantQuoteComparison = () => {
           const file = policyWordingDocs[i];
           console.log(`Processing policy wording ${i + 1}:`, file.name);
           setProcessingStep(`Analyzing policy wording ${i + 1} of ${policyWordingDocs.length}...`);
+          addStatusLog(`Uploading policy wording: ${file.name}`, 'info');
 
           try {
             // Upload to storage
@@ -459,8 +477,10 @@ const InstantQuoteComparison = () => {
 
             if (uploadError) {
               console.error('Policy wording upload error:', uploadError);
+              addStatusLog(`Failed to upload policy wording ${file.name}: ${uploadError.message}`, 'error');
               throw uploadError;
             }
+            addStatusLog(`Policy wording uploaded: ${file.name}`, 'success');
 
             // Create document record
             const { data: docData, error: docError } = await supabase
@@ -482,6 +502,7 @@ const InstantQuoteComparison = () => {
             }
 
             console.log('Policy wording document created:', docData.id);
+            addStatusLog(`Analyzing policy wording with AI: ${file.name}`, 'info');
 
             // Process with AI using specialized policy wording analysis
             const { data: processResult, error: processError } = await supabase.functions
@@ -491,6 +512,7 @@ const InstantQuoteComparison = () => {
 
             if (processError) {
               console.error('Policy wording processing error:', processError);
+              addStatusLog(`AI analysis failed for policy wording ${file.name}: ${processError.message}`, 'error');
               // Continue with other documents even if one fails
               toast({
                 title: "Processing Warning",
@@ -502,6 +524,7 @@ const InstantQuoteComparison = () => {
 
             if (!processResult?.ok) {
               console.error('Policy wording processing returned unsuccessful:', processResult);
+              addStatusLog(`Processing error for ${file.name}: ${processResult?.error || 'Unknown error'}`, 'error');
               toast({
                 title: "Processing Warning", 
                 description: `${file.name} processing failed: ${processResult?.error || 'Unknown error'}`,
@@ -511,6 +534,7 @@ const InstantQuoteComparison = () => {
             }
 
             console.log('Policy wording processed successfully:', processResult);
+            addStatusLog(`AI analysis completed for policy wording: ${file.name}`, 'success');
 
             if (processResult?.meta?.policyWordingId) {
               processedPolicyWordingIds.push(processResult.meta.policyWordingId);
@@ -546,6 +570,7 @@ const InstantQuoteComparison = () => {
         
         console.log('Starting comprehensive comparison with documents:', documentsForAnalysis);
         setProcessingStep("Running comprehensive comparison analysis...");
+        addStatusLog(`Starting comprehensive comparison with ${documentsForAnalysis.length} document(s)`, 'info');
         
         // Get the selected client's data
         const selectedClientData = clients.find(client => client.id === selectedClient);
@@ -567,15 +592,18 @@ const InstantQuoteComparison = () => {
 
         if (comparisonError) {
           console.error('Comprehensive comparison error:', comparisonError);
+          addStatusLog(`Comprehensive comparison failed: ${comparisonError.message}`, 'error');
           throw new Error(`Comprehensive comparison failed: ${comparisonError.message}`);
         }
 
         if (!comparisonData?.analysis) {
           console.error('No analysis returned from comprehensive comparison');
+          addStatusLog('No analysis data received from comprehensive comparison', 'error');
           throw new Error('Failed to generate comprehensive comparison');
         }
 
         console.log('Comprehensive analysis received:', comparisonData.analysis);
+        addStatusLog('Comprehensive comparison completed successfully', 'success');
         
         // Store the comprehensive analysis for display
         setRankings(comparisonData.analysis.extractions || []);
@@ -1613,6 +1641,31 @@ const InstantQuoteComparison = () => {
                 <p className="text-xs text-muted-foreground">
                   Using CoverCompassAI to analyze schedules, limits, exclusions, enhancements, and core policy wording...
                 </p>
+                
+                {/* Status Log */}
+                {statusLog.length > 0 && (
+                  <div className="mt-4 border border-border rounded-lg overflow-hidden">
+                    <div className="bg-muted/50 px-3 py-2 border-b border-border">
+                      <span className="text-xs font-medium">Processing Log</span>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto bg-background">
+                      {statusLog.map((log, index) => (
+                        <div 
+                          key={index} 
+                          className={`px-3 py-2 text-xs border-b border-border/50 last:border-0 flex items-start space-x-2 ${
+                            log.type === 'error' ? 'bg-destructive/10 text-destructive' : 
+                            log.type === 'success' ? 'bg-green-50 text-green-700' : 
+                            'text-muted-foreground'
+                          }`}
+                        >
+                          <span className="font-mono text-[10px] text-muted-foreground/60 min-w-[60px]">{log.time}</span>
+                          <span className="flex-1">{log.message}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
                 <Button
                   onClick={cancelAnalysis}
                   variant="destructive"

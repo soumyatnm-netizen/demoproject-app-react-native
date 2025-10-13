@@ -235,8 +235,61 @@ serve(async (req) => {
     
     const analysisData = structured;
 
+    // Helper function to parse potentially incomplete dates
+    const parseDate = (dateStr: string | null | undefined): string | null => {
+      if (!dateStr) return null;
+      
+      const trimmed = String(dateStr).trim();
+      
+      // If it's already a valid YYYY-MM-DD format
+      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        return trimmed;
+      }
+      
+      // If it's just a year (e.g., "2025")
+      if (/^\d{4}$/.test(trimmed)) {
+        return `${trimmed}-01-01`;
+      }
+      
+      // If it's MM/YY format (e.g., "04/17")
+      const mmYYMatch = trimmed.match(/^(\d{2})\/(\d{2})$/);
+      if (mmYYMatch) {
+        const month = mmYYMatch[1];
+        const year = `20${mmYYMatch[2]}`; // Assume 20xx century
+        return `${year}-${month}-01`;
+      }
+      
+      // If it's MM/YYYY format (e.g., "04/2017")
+      const mmYYYYMatch = trimmed.match(/^(\d{2})\/(\d{4})$/);
+      if (mmYYYYMatch) {
+        const month = mmYYYYMatch[1];
+        const year = mmYYYYMatch[2];
+        return `${year}-${month}-01`;
+      }
+      
+      // Try to parse other common date formats
+      try {
+        const date = new Date(trimmed);
+        if (!isNaN(date.getTime())) {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        }
+      } catch (e) {
+        console.warn('[date-parse] Failed to parse date:', dateStr, String(e));
+      }
+      
+      // If all parsing fails, return null
+      console.warn('[date-parse] Unable to parse date string:', dateStr);
+      return null;
+    };
+
     // Store the analysis in the database
     console.log('[db] Mapping analysis data to database structure...');
+    const parsedPolicyDate = parseDate(analysisData.policy?.edition_date);
+    console.log('[db] Parsed policy date:', analysisData.policy?.edition_date, '->', parsedPolicyDate);
+    
     const { data: policyWording, error: insertError } = await supabase
       .from('policy_wordings')
       .insert({
@@ -244,7 +297,7 @@ serve(async (req) => {
         user_id: document.user_id,
         insurer_name: analysisData.policy?.carrier || 'Extracted',
         policy_version: analysisData.policy?.version || null,
-        policy_date: analysisData.policy?.edition_date || null,
+        policy_date: parsedPolicyDate,
         insured_name: null,
         policy_period: analysisData.policy?.effective_date && analysisData.policy?.expiry_date 
           ? `${analysisData.policy.effective_date} to ${analysisData.policy.expiry_date}`
