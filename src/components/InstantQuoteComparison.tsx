@@ -1288,7 +1288,7 @@ const InstantQuoteComparison = () => {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <FileText className="h-5 w-5" />
-            <span>Step 2.1: Upload Policy Wording Documents (Optional, 1-5)</span>
+            <span>Step 2.1: Upload Policy Wording Documents (1-5) *Optional*</span>
           </CardTitle>
           <CardDescription>Upload policy wording documents for detailed coverage comparison</CardDescription>
         </CardHeader>
