@@ -425,51 +425,82 @@ const InstantQuoteComparison = () => {
           console.log(`Processing policy wording ${i + 1}:`, file.name);
           setProcessingStep(`Analyzing policy wording ${i + 1} of ${policyWordingDocs.length}...`);
 
-          // Upload to storage
-          const fileName = `${user.id}/${Date.now()}-${file.name}`;
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('documents')
-            .upload(fileName, file);
+          try {
+            // Upload to storage
+            const fileName = `${user.id}/${Date.now()}-${file.name}`;
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('documents')
+              .upload(fileName, file);
 
-          if (uploadError) throw uploadError;
+            if (uploadError) {
+              console.error('Policy wording upload error:', uploadError);
+              throw uploadError;
+            }
 
-          // Create document record
-          const { data: docData, error: docError } = await supabase
-            .from('documents')
-            .insert({
-              user_id: user.id,
-              filename: file.name,
-              storage_path: uploadData.path,
-              file_type: file.type,
-              file_size: file.size,
-              status: 'uploaded'
-            })
-            .select()
-            .single();
+            // Create document record
+            const { data: docData, error: docError } = await supabase
+              .from('documents')
+              .insert({
+                user_id: user.id,
+                filename: file.name,
+                storage_path: uploadData.path,
+                file_type: file.type,
+                file_size: file.size,
+                status: 'uploaded'
+              })
+              .select()
+              .single();
 
-          if (docError) throw docError;
+            if (docError) {
+              console.error('Document creation error:', docError);
+              throw docError;
+            }
 
-          // Process with AI
-          const { data: processResult, error: processError } = await supabase.functions
-            .invoke('process-policy-wording', {
-              body: { documentId: docData.id }
-            });
+            console.log('Policy wording document created:', docData.id);
 
-          if (processError) {
-            console.error('Policy wording processing error:', processError);
-            throw new Error(processError.message || 'Failed to process policy wording');
-          }
+            // Process with AI using specialized policy wording analysis
+            const { data: processResult, error: processError } = await supabase.functions
+              .invoke('process-policy-wording', {
+                body: { documentId: docData.id }
+              });
 
-          if (!processResult?.ok) {
-            throw new Error(processResult?.error || 'Policy wording processing returned unsuccessful result');
-          }
+            if (processError) {
+              console.error('Policy wording processing error:', processError);
+              // Continue with other documents even if one fails
+              toast({
+                title: "Processing Warning",
+                description: `Failed to process ${file.name}: ${processError.message}`,
+                variant: "destructive",
+              });
+              continue;
+            }
 
-          if (processResult?.meta?.policyWordingId) {
-            processedPolicyWordingIds.push(processResult.meta.policyWordingId);
+            if (!processResult?.ok) {
+              console.error('Policy wording processing returned unsuccessful:', processResult);
+              toast({
+                title: "Processing Warning", 
+                description: `${file.name} processing failed: ${processResult?.error || 'Unknown error'}`,
+                variant: "destructive",
+              });
+              continue;
+            }
+
+            console.log('Policy wording processed successfully:', processResult);
+
+            if (processResult?.meta?.policyWordingId) {
+              processedPolicyWordingIds.push(processResult.meta.policyWordingId);
+              console.log('Added policy wording ID:', processResult.meta.policyWordingId);
+            } else {
+              console.warn('No policyWordingId returned for document:', docData.id);
+            }
+          } catch (error) {
+            console.error(`Error processing policy wording ${file.name}:`, error);
+            // Continue with other documents
           }
         }
         
         setPolicyWordingIds(processedPolicyWordingIds);
+        console.log('Policy wording processing complete. IDs:', processedPolicyWordingIds);
       }
 
       // Step 2: Analyze and rank quotes (only if quotes were uploaded)
