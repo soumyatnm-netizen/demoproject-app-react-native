@@ -78,66 +78,71 @@ export default function OperationalRoiCalculator({
             <CardTitle>Your Current Process</CardTitle>
             <CardDescription>Adjust the values to match your business</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="employees">Brokers on Task</Label>
+          <CardContent className="space-y-4">
+            <div className="space-y-1">
+              <Label htmlFor="employees" className="text-sm">Brokers on Task</Label>
               <Input
                 id="employees"
                 type="number"
                 min="1"
                 value={inputs.employees}
                 onChange={(e) => handleInputChange('employees', e.target.value)}
+                className="h-9"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="policiesPerMonth">Policies per Month</Label>
+            <div className="space-y-1">
+              <Label htmlFor="policiesPerMonth" className="text-sm">Policies per Month</Label>
               <Input
                 id="policiesPerMonth"
                 type="number"
                 min="1"
                 value={inputs.policiesPerMonth}
                 onChange={(e) => handleInputChange('policiesPerMonth', e.target.value)}
+                className="h-9"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="manualTimeMin">Manual Time per Policy (minutes)</Label>
+            <div className="space-y-1">
+              <Label htmlFor="manualTimeMin" className="text-sm">Manual Time per Policy (minutes)</Label>
               <Input
                 id="manualTimeMin"
                 type="number"
                 min="0"
                 value={inputs.manualTimeMin}
                 onChange={(e) => handleInputChange('manualTimeMin', e.target.value)}
+                className="h-9"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="ccTimeMin">Time with CoverCompass (minutes)</Label>
+            <div className="space-y-1">
+              <Label htmlFor="ccTimeMin" className="text-sm">Time with CoverCompass (minutes)</Label>
               <Input
                 id="ccTimeMin"
                 type="number"
                 min="0"
                 value={inputs.ccTimeMin}
                 onChange={(e) => handleInputChange('ccTimeMin', e.target.value)}
+                className="h-9"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="annualSalary">Average Annual Salary ({currency})</Label>
+            <div className="space-y-1">
+              <Label htmlFor="annualSalary" className="text-sm">Average Annual Salary ({currency})</Label>
               <Input
                 id="annualSalary"
                 type="number"
                 min="0"
                 value={inputs.annualSalary}
                 onChange={(e) => handleInputChange('annualSalary', e.target.value)}
+                className="h-9"
               />
             </div>
           </CardContent>
         </Card>
 
         {/* Outputs Section */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           <Card className="bg-primary text-primary-foreground">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -145,9 +150,9 @@ export default function OperationalRoiCalculator({
                 Annual Operational Savings
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-4xl font-bold">{formatCurrency(outputs.annualOperationalSavings, currency, 0)}</p>
-              <p className="text-sm opacity-90 mt-2">
+            <CardContent className="py-4">
+              <p className="text-3xl font-bold">{formatCurrency(outputs.annualOperationalSavings, currency, 0)}</p>
+              <p className="text-xs opacity-90 mt-1">
                 {formatCurrency(outputs.monthlyOperationalSavings, currency, 0)} per month
               </p>
             </CardContent>
@@ -160,9 +165,9 @@ export default function OperationalRoiCalculator({
                 Time Saved Annually
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-4xl font-bold">{formatHours(outputs.annualTimeSavedHrs)}</p>
-              <p className="text-sm opacity-90 mt-2">
+            <CardContent className="py-4">
+              <p className="text-3xl font-bold">{formatHours(outputs.annualTimeSavedHrs)}</p>
+              <p className="text-xs opacity-90 mt-1">
                 {formatHours(outputs.monthlyTimeSavedHrs)} per month
               </p>
             </CardContent>
@@ -175,8 +180,8 @@ export default function OperationalRoiCalculator({
                 Percentage reduction in operational costs vs current manual process
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-primary">{formatPercent(outputs.roiPercent)}</p>
+            <CardContent className="py-4">
+              <p className="text-2xl font-bold text-primary">{formatPercent(outputs.roiPercent)}</p>
             </CardContent>
           </Card>
 
@@ -184,7 +189,7 @@ export default function OperationalRoiCalculator({
             <CardHeader>
               <CardTitle className="text-base">Operational Cost Breakdown</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-2 py-4">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Current Monthly Operational Cost</span>
                 <span className="font-semibold">
