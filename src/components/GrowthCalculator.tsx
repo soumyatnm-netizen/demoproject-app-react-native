@@ -3,12 +3,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Download, TrendingUp, Users, DollarSign } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { calculateGrowth, GROWTH_PRESETS, type GrowthInputs } from '@/utils/growth';
+import { calculateGrowth, type GrowthInputs } from '@/utils/growth';
 import { formatCurrency, formatPercent } from '@/utils/roi';
 
 interface GrowthCalculatorProps {
@@ -17,7 +16,6 @@ interface GrowthCalculatorProps {
 
 export default function GrowthCalculator({ currency = 'GBP' }: GrowthCalculatorProps) {
   const { toast } = useToast();
-  const [preset, setPreset] = useState<'conservative' | 'typical' | 'aggressive'>('typical');
   const [showMonetary, setShowMonetary] = useState(false);
   const [inputs, setInputs] = useState<GrowthInputs>({
     currentPolicies: 1000,
@@ -38,11 +36,6 @@ export default function GrowthCalculator({ currency = 'GBP' }: GrowthCalculatorP
   const handleInputChange = (field: keyof GrowthInputs, value: string) => {
     const numValue = parseFloat(value) || 0;
     setInputs((prev) => ({ ...prev, [field]: Math.max(0, numValue) }));
-  };
-
-  const applyPreset = (presetName: 'conservative' | 'typical' | 'aggressive') => {
-    setPreset(presetName);
-    setInputs((prev) => ({ ...prev, ...GROWTH_PRESETS[presetName] }));
   };
 
   const downloadCsv = () => {
@@ -101,17 +94,6 @@ export default function GrowthCalculator({ currency = 'GBP' }: GrowthCalculatorP
           Project your policy book growth from higher retention, increased new business wins, and
           Attack Intelligence AI.
         </p>
-      </div>
-
-      {/* Preset Selector */}
-      <div className="flex justify-center">
-        <Tabs value={preset} onValueChange={(v) => applyPreset(v as typeof preset)} className="w-full max-w-md">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="conservative">Conservative</TabsTrigger>
-            <TabsTrigger value="typical">Typical</TabsTrigger>
-            <TabsTrigger value="aggressive">Aggressive</TabsTrigger>
-          </TabsList>
-        </Tabs>
       </div>
 
       {/* Main Grid */}
