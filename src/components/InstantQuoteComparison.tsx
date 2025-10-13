@@ -313,104 +313,164 @@ const InstantQuoteComparison = () => {
     setAnalysisComplete(false);
     
     const uploadedQuoteIds: string[] = [];
+    const processedPolicyWordingIds: string[] = [];
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No authenticated user');
 
-      // Step 1: Upload and process documents
-      setProcessingStep("Uploading documents...");
+      // Step 1: Upload and process quote documents
+      if (uploadedQuotes.length > 0) {
+        setProcessingStep("Uploading quote documents...");
 
-      for (let i = 0; i < uploadedQuotes.length; i++) {
-        const file = uploadedQuotes[i];
-        console.log(`Processing file ${i + 1}:`, file.name);
-        setProcessingStep(`Processing quote ${i + 1} of ${uploadedQuotes.length}...`);
-        
-        // Upload to storage with user-specific folder structure
-        console.log('Uploading to storage...');
-        const fileName = `${user.id}/${Date.now()}-${file.name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('documents')
-          .upload(fileName, file);
-
-        if (uploadError) {
-          console.error('Storage upload error:', uploadError);
-          throw uploadError;
-        }
-        console.log('Upload successful:', uploadData.path);
-
-        // Create document record
-        console.log('Creating document record...');
-        const { data: docData, error: docError } = await supabase
-          .from('documents')
-          .insert({
-            user_id: user.id,
-            filename: file.name,
-            storage_path: uploadData.path,
-            file_type: file.type,
-            file_size: file.size,
-            status: 'uploaded'
-          })
-          .select()
-          .single();
-
-        if (docError) {
-          console.error('Document creation error:', docError);
-          throw docError;
-        }
-        console.log('Document created:', docData.id);
-
-        // Process document with AI
-        console.log('Calling process-document edge function...');
-        setProcessingStep(`Analyzing quote ${i + 1} with AI...`);
-        
-        // Get the selected client's name
-        const selectedClientData = clients.find(client => client.id === selectedClient);
-        
-        const { data: processResult, error: processError } = await supabase.functions
-          .invoke('process-document', {
-            body: { 
-              documentId: docData.id,
-              clientName: selectedClientData?.client_name
-            }
-          });
-
-        if (processError) {
-          console.error('Process document error:', processError);
-          console.error('Process error details:', {
-            message: processError.message,
-            context: processError.context,
-            details: processError.details
-          });
-          throw processError;
-        }
-        console.log('Process result:', processResult);
-        
-        // The process-document function creates a structured_quote record
-        // We need to get the quote ID from the structured_quotes table
-        console.log('Looking up structured quote...');
-        const { data: quoteData, error: quoteError } = await supabase
-          .from('structured_quotes')
-          .select('id')
-          .eq('document_id', docData.id)
-          .single();
+        for (let i = 0; i < uploadedQuotes.length; i++) {
+          const file = uploadedQuotes[i];
+          console.log(`Processing quote file ${i + 1}:`, file.name);
+          setProcessingStep(`Processing quote ${i + 1} of ${uploadedQuotes.length}...`);
           
-        if (quoteError) {
-          console.error('Quote lookup error:', quoteError);
-          console.error('Quote lookup details:', {
-            documentId: docData.id,
-            error: quoteError
-          });
-          throw quoteError;
+          // Upload to storage with user-specific folder structure
+          console.log('Uploading to storage...');
+          const fileName = `${user.id}/${Date.now()}-${file.name}`;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('documents')
+            .upload(fileName, file);
+
+          if (uploadError) {
+            console.error('Storage upload error:', uploadError);
+            throw uploadError;
+          }
+          console.log('Upload successful:', uploadData.path);
+
+          // Create document record
+          console.log('Creating document record...');
+          const { data: docData, error: docError } = await supabase
+            .from('documents')
+            .insert({
+              user_id: user.id,
+              filename: file.name,
+              storage_path: uploadData.path,
+              file_type: file.type,
+              file_size: file.size,
+              status: 'uploaded'
+            })
+            .select()
+            .single();
+
+          if (docError) {
+            console.error('Document creation error:', docError);
+            throw docError;
+          }
+          console.log('Document created:', docData.id);
+
+          // Process document with AI
+          console.log('Calling process-document edge function...');
+          setProcessingStep(`Analyzing quote ${i + 1} with AI...`);
+          
+          // Get the selected client's name
+          const selectedClientData = clients.find(client => client.id === selectedClient);
+          
+          const { data: processResult, error: processError } = await supabase.functions
+            .invoke('process-document', {
+              body: { 
+                documentId: docData.id,
+                clientName: selectedClientData?.client_name
+              }
+            });
+
+          if (processError) {
+            console.error('Process document error:', processError);
+            console.error('Process error details:', {
+              message: processError.message,
+              context: processError.context,
+              details: processError.details
+            });
+            throw processError;
+          }
+          console.log('Process result:', processResult);
+          
+          // The process-document function creates a structured_quote record
+          // We need to get the quote ID from the structured_quotes table
+          console.log('Looking up structured quote...');
+          const { data: quoteData, error: quoteError } = await supabase
+            .from('structured_quotes')
+            .select('id')
+            .eq('document_id', docData.id)
+            .single();
+            
+          if (quoteError) {
+            console.error('Quote lookup error:', quoteError);
+            console.error('Quote lookup details:', {
+              documentId: docData.id,
+              error: quoteError
+            });
+            throw quoteError;
+          }
+          console.log('Quote found:', quoteData);
+          
+          if (quoteData?.id) {
+            uploadedQuoteIds.push(quoteData.id);
+            console.log('Added quote ID to array:', quoteData.id);
+          } else {
+            console.warn('No quote ID found for document:', docData.id);
+          }
         }
-        console.log('Quote found:', quoteData);
+      }
+
+      // Step 1.5: Upload and process policy wording documents
+      if (policyWordingDocs.length > 0) {
+        setProcessingStep("Processing policy wording documents...");
+
+        for (let i = 0; i < policyWordingDocs.length; i++) {
+          const file = policyWordingDocs[i];
+          console.log(`Processing policy wording ${i + 1}:`, file.name);
+          setProcessingStep(`Analyzing policy wording ${i + 1} of ${policyWordingDocs.length}...`);
+
+          // Upload to storage
+          const fileName = `${user.id}/${Date.now()}-${file.name}`;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('documents')
+            .upload(fileName, file);
+
+          if (uploadError) throw uploadError;
+
+          // Create document record
+          const { data: docData, error: docError } = await supabase
+            .from('documents')
+            .insert({
+              user_id: user.id,
+              filename: file.name,
+              storage_path: uploadData.path,
+              file_type: file.type,
+              file_size: file.size,
+              status: 'uploaded',
+              document_type: 'policy_wording'
+            })
+            .select()
+            .single();
+
+          if (docError) throw docError;
+
+          // Process with AI
+          const { data: processResult, error: processError } = await supabase.functions
+            .invoke('process-policy-wording', {
+              body: { documentId: docData.id }
+            });
+
+          if (processError) {
+            console.error('Policy wording processing error:', processError);
+            throw new Error(processError.message || 'Failed to process policy wording');
+          }
+
+          if (!processResult?.ok) {
+            throw new Error(processResult?.error || 'Policy wording processing returned unsuccessful result');
+          }
+
+          if (processResult?.meta?.policyWordingId) {
+            processedPolicyWordingIds.push(processResult.meta.policyWordingId);
+          }
+        }
         
-        if (quoteData?.id) {
-          uploadedQuoteIds.push(quoteData.id);
-          console.log('Added quote ID to array:', quoteData.id);
-        } else {
-          console.warn('No quote ID found for document:', docData.id);
-        }
+        setPolicyWordingIds(processedPolicyWordingIds);
       }
 
       // Step 2: Analyze and rank quotes (only if quotes were uploaded)
@@ -447,12 +507,12 @@ const InstantQuoteComparison = () => {
       setAnalysisComplete(true);
 
       let successMessage = "Analysis complete!";
-      if (uploadedQuoteIds.length > 0 && policyWordingIds.length > 0) {
-        successMessage = `Analyzed ${uploadedQuoteIds.length} quote${uploadedQuoteIds.length !== 1 ? 's' : ''} and ${policyWordingIds.length} policy wording${policyWordingIds.length !== 1 ? 's' : ''}`;
+      if (uploadedQuoteIds.length > 0 && processedPolicyWordingIds.length > 0) {
+        successMessage = `Analyzed ${uploadedQuoteIds.length} quote${uploadedQuoteIds.length !== 1 ? 's' : ''} and ${processedPolicyWordingIds.length} policy wording${processedPolicyWordingIds.length !== 1 ? 's' : ''}`;
       } else if (uploadedQuoteIds.length > 0) {
         successMessage = `Ranked ${uploadedQuoteIds.length} quote${uploadedQuoteIds.length !== 1 ? 's' : ''} from best to worst`;
-      } else if (policyWordingIds.length > 0) {
-        successMessage = `Analyzed ${policyWordingIds.length} policy wording${policyWordingIds.length !== 1 ? 's' : ''}`;
+      } else if (processedPolicyWordingIds.length > 0) {
+        successMessage = `Analyzed ${processedPolicyWordingIds.length} policy wording${processedPolicyWordingIds.length !== 1 ? 's' : ''}`;
       }
 
       toast({
