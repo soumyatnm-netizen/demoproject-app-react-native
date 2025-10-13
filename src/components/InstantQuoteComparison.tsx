@@ -300,10 +300,10 @@ const InstantQuoteComparison = () => {
   };
 
   const analyzeQuotes = async () => {
-    if (!selectedClient || uploadedQuotes.length === 0) {
+    if (!selectedClient || (uploadedQuotes.length === 0 && policyWordingDocs.length === 0)) {
       toast({
         title: "Missing Information",
-        description: "Please select a client and upload at least one quote",
+        description: "Please select a client and upload at least one quote or policy wording document",
         variant: "destructive",
       });
       return;
@@ -413,43 +413,51 @@ const InstantQuoteComparison = () => {
         }
       }
 
-      // Step 2: Analyze and rank quotes
-      console.log('Starting quote ranking with IDs:', uploadedQuoteIds);
-      setProcessingStep("Ranking quotes by coverage and value...");
-      
-      if (uploadedQuoteIds.length === 0) {
-        throw new Error('No quotes were processed successfully');
+      // Step 2: Analyze and rank quotes (only if quotes were uploaded)
+      if (uploadedQuoteIds.length > 0) {
+        console.log('Starting quote ranking with IDs:', uploadedQuoteIds);
+        setProcessingStep("Ranking quotes by coverage and value...");
+        
+        const { data: rankingData, error: rankingError } = await supabase
+          .rpc('rank_quotes_for_client', {
+            p_client_id: selectedClient,
+            p_quote_ids: uploadedQuoteIds
+          });
+
+        if (rankingError) {
+          console.error('Ranking error:', rankingError);
+          console.error('Ranking details:', {
+            selectedClient,
+            uploadedQuoteIds,
+            error: rankingError
+          });
+          throw rankingError;
+        }
+        console.log('Ranking result:', rankingData);
+
+        // Sort by overall score (best first)
+        const sortedRankings = (rankingData || []).sort((a, b) => b.overall_score - a.overall_score);
+        setRankings(sortedRankings);
+        
+        // Calculate scored rankings with real coverage analysis
+        const scoredRanks = calculateScoredRankings(sortedRankings);
+        setScoredRankings(scoredRanks);
       }
       
-      const { data: rankingData, error: rankingError } = await supabase
-        .rpc('rank_quotes_for_client', {
-          p_client_id: selectedClient,
-          p_quote_ids: uploadedQuoteIds
-        });
-
-      if (rankingError) {
-        console.error('Ranking error:', rankingError);
-        console.error('Ranking details:', {
-          selectedClient,
-          uploadedQuoteIds,
-          error: rankingError
-        });
-        throw rankingError;
-      }
-      console.log('Ranking result:', rankingData);
-
-      // Sort by overall score (best first)
-      const sortedRankings = (rankingData || []).sort((a, b) => b.overall_score - a.overall_score);
-      setRankings(sortedRankings);
-      
-      // Calculate scored rankings with real coverage analysis
-      const scoredRanks = calculateScoredRankings(sortedRankings);
-      setScoredRankings(scoredRanks);
       setAnalysisComplete(true);
+
+      let successMessage = "Analysis complete!";
+      if (uploadedQuoteIds.length > 0 && policyWordingIds.length > 0) {
+        successMessage = `Analyzed ${uploadedQuoteIds.length} quote${uploadedQuoteIds.length !== 1 ? 's' : ''} and ${policyWordingIds.length} policy wording${policyWordingIds.length !== 1 ? 's' : ''}`;
+      } else if (uploadedQuoteIds.length > 0) {
+        successMessage = `Ranked ${uploadedQuoteIds.length} quote${uploadedQuoteIds.length !== 1 ? 's' : ''} from best to worst`;
+      } else if (policyWordingIds.length > 0) {
+        successMessage = `Analyzed ${policyWordingIds.length} policy wording${policyWordingIds.length !== 1 ? 's' : ''}`;
+      }
 
       toast({
         title: "Analysis Complete!",
-        description: `Ranked ${sortedRankings.length} quotes from best to worst`,
+        description: successMessage,
       });
 
     } catch (error) {
@@ -1430,24 +1438,28 @@ const InstantQuoteComparison = () => {
             
             <Button 
               onClick={analyzeQuotes}
-              disabled={!selectedClient || uploadedQuotes.length === 0 || isProcessing}
+              disabled={!selectedClient || (uploadedQuotes.length === 0 && policyWordingDocs.length === 0) || isProcessing}
               size="lg"
               className="w-full"
             >
               {isProcessing ? (
                 <>
                   <div className="animate-spin h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full" />
-                  Analyzing Quotes...
+                  Analyzing Documents...
                 </>
               ) : (
                 <>
                   <Zap className="h-4 w-4 mr-2" />
-                  Compare Quotes Instantly
+                  {uploadedQuotes.length > 0 && policyWordingDocs.length > 0
+                    ? "Compare Quotes & Policy Wordings"
+                    : uploadedQuotes.length > 0
+                    ? "Compare Quotes Instantly"
+                    : "Analyze Policy Wordings"}
                 </>
               )}
             </Button>
             
-            {(!selectedClient || uploadedQuotes.length === 0) && (
+            {(!selectedClient || (uploadedQuotes.length === 0 && policyWordingDocs.length === 0)) && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                 <div className="flex items-center space-x-2">
                   <AlertTriangle className="h-4 w-4 text-yellow-600" />
@@ -1455,7 +1467,7 @@ const InstantQuoteComparison = () => {
                 </div>
                 <ul className="text-xs text-yellow-700 mt-1 space-y-1">
                   {!selectedClient && <li>• Please select a client in Step 1</li>}
-                  {uploadedQuotes.length === 0 && <li>• Please upload at least one quote in Step 2</li>}
+                  {uploadedQuotes.length === 0 && policyWordingDocs.length === 0 && <li>• Please upload at least one quote or policy wording in Step 2</li>}
                 </ul>
               </div>
             )}
