@@ -156,7 +156,7 @@ evidence[{field,snippet,page_ref}]`;
             role: 'user',
             content: [
               { type: 'text', text: userPrompt },
-              { type: 'file', file: { id: fileId } }
+              { type: 'file', file: { file_id: fileId } }
             ]
           }
         ],
