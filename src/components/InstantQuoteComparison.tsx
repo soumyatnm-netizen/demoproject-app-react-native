@@ -1626,107 +1626,222 @@ const InstantQuoteComparison = () => {
       {/* Coverage Comparison Results */}
       {analysisComplete && comparisonData && (
         <>
-          {/* Comparison Summary Cards */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {comparisonData.comparison_summary?.map((summary: any, index: number) => (
-              <Card key={index} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    {(() => {
-                      const insurerInfo = getInsurerInfo(summary.carrier);
-                      return insurerInfo.logo ? (
-                        <img 
-                          src={insurerInfo.logo} 
-                          alt={insurerInfo.altText}
-                          className="h-8 w-8 object-contain rounded"
-                        />
-                      ) : (
-                        <div className="h-8 w-8 bg-primary/10 rounded flex items-center justify-center">
-                          <span className="text-sm font-medium text-primary">
-                            {summary.carrier.substring(0, 2).toUpperCase()}
-                          </span>
-                        </div>
-                      );
-                    })()}
-                    <span>{summary.carrier}</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Quote Key Points */}
-                  {summary.quote_key_points && summary.quote_key_points.length > 0 && (
-                    <div>
-                      <h4 className="text-sm font-semibold mb-2 flex items-center">
-                        <DollarSign className="h-4 w-4 mr-1 text-green-600" />
-                        Quote Summary
-                      </h4>
-                      <ul className="space-y-1">
-                        {summary.quote_key_points.map((point: string, idx: number) => (
-                          <li key={idx} className="text-sm text-muted-foreground flex items-start">
-                            <span className="text-primary mr-2">•</span>
-                            {point}
-                          </li>
+          {/* Quote Comparison Table */}
+          {comparisonData.quote_table && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <DollarSign className="h-5 w-5 text-green-600" />
+                  <span>Quote Comparison</span>
+                </CardTitle>
+                <CardDescription>
+                  Side-by-side comparison of key quote terms
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        {comparisonData.quote_table.columns.map((col: string, idx: number) => (
+                          <TableHead key={idx} className={idx === 0 ? "font-semibold" : ""}>
+                            {col}
+                          </TableHead>
                         ))}
-                      </ul>
-                    </div>
-                  )}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {comparisonData.quote_table.rows.map((row: any, idx: number) => (
+                        <TableRow key={idx}>
+                          {comparisonData.quote_table.columns.map((col: string, colIdx: number) => (
+                            <TableCell key={colIdx} className={colIdx === 0 ? "font-medium" : ""}>
+                              {colIdx === 0 && (() => {
+                                const insurerInfo = getInsurerInfo(row[col]);
+                                return (
+                                  <div className="flex items-center space-x-2">
+                                    {insurerInfo.logo ? (
+                                      <img 
+                                        src={insurerInfo.logo} 
+                                        alt={insurerInfo.altText}
+                                        className="h-6 w-6 object-contain"
+                                      />
+                                    ) : (
+                                      <div className="h-6 w-6 bg-primary/10 rounded flex items-center justify-center">
+                                        <span className="text-xs font-medium text-primary">
+                                          {row[col].substring(0, 2).toUpperCase()}
+                                        </span>
+                                      </div>
+                                    )}
+                                    <span>{row[col]}</span>
+                                  </div>
+                                );
+                              })()}
+                              {colIdx !== 0 && row[col]}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-                  {/* Wording Highlights */}
-                  {summary.wording_highlights && summary.wording_highlights.length > 0 && (
-                    <div>
-                      <h4 className="text-sm font-semibold mb-2 flex items-center">
-                        <Shield className="h-4 w-4 mr-1 text-blue-600" />
-                        Wording Highlights
-                      </h4>
-                      <ul className="space-y-1">
-                        {summary.wording_highlights.map((highlight: string, idx: number) => (
-                          <li key={idx} className="text-sm text-muted-foreground flex items-start">
-                            <span className="text-blue-600 mr-2">•</span>
-                            {highlight}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+          {/* Wording Highlights per Carrier */}
+          {comparisonData.wording_highlights && comparisonData.wording_highlights.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Shield className="h-5 w-5 text-blue-600" />
+                  <span>Policy Wording Highlights</span>
+                </CardTitle>
+                <CardDescription>
+                  Important terms and unusual features from each wording
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {comparisonData.wording_highlights.map((wording: any, index: number) => (
+                    <Card key={index} className="border-2">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center space-x-2">
+                          {(() => {
+                            const insurerInfo = getInsurerInfo(wording.carrier);
+                            return insurerInfo.logo ? (
+                              <img 
+                                src={insurerInfo.logo} 
+                                alt={insurerInfo.altText}
+                                className="h-6 w-6 object-contain"
+                              />
+                            ) : (
+                              <div className="h-6 w-6 bg-primary/10 rounded flex items-center justify-center">
+                                <span className="text-xs font-medium text-primary">
+                                  {wording.carrier.substring(0, 2).toUpperCase()}
+                                </span>
+                              </div>
+                            );
+                          })()}
+                          <span>{wording.carrier}</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <ul className="space-y-2">
+                          {wording.key_highlights.map((highlight: string, idx: number) => (
+                            <li key={idx} className="text-sm flex items-start">
+                              <CheckCircle className="h-4 w-4 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
+                              <span>{highlight}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-                  {/* Subjectivities */}
-                  {summary.subjectivities && summary.subjectivities.length > 0 && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                      <h4 className="text-sm font-semibold mb-2 flex items-center text-amber-900">
-                        <AlertTriangle className="h-4 w-4 mr-1" />
-                        Subjectivities (Pre-Binding Conditions)
-                      </h4>
-                      <ul className="space-y-1">
-                        {summary.subjectivities.map((sub: string, idx: number) => (
+          {/* Subjectivities Alert Panel */}
+          {comparisonData.subjectivities && comparisonData.subjectivities.length > 0 && (
+            <Card className="border-amber-300 bg-amber-50/50">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2 text-amber-900">
+                  <AlertTriangle className="h-5 w-5 text-amber-600" />
+                  <span>Subjectivities (Pre-Binding Conditions)</span>
+                </CardTitle>
+                <CardDescription className="text-amber-800">
+                  These are underwriter conditions that must be satisfied before the policy binds. Failure to meet these may void or alter terms.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {comparisonData.subjectivities.map((sub: any, index: number) => (
+                    <div key={index} className="bg-white border-2 border-amber-200 rounded-lg p-4">
+                      <div className="flex items-center space-x-2 mb-3">
+                        {(() => {
+                          const insurerInfo = getInsurerInfo(sub.carrier);
+                          return insurerInfo.logo ? (
+                            <img 
+                              src={insurerInfo.logo} 
+                              alt={insurerInfo.altText}
+                              className="h-6 w-6 object-contain"
+                            />
+                          ) : (
+                            <div className="h-6 w-6 bg-amber-100 rounded flex items-center justify-center">
+                              <span className="text-xs font-medium text-amber-700">
+                                {sub.carrier.substring(0, 2).toUpperCase()}
+                              </span>
+                            </div>
+                          );
+                        })()}
+                        <span className="font-semibold text-amber-900">{sub.carrier}</span>
+                      </div>
+                      <ul className="space-y-2">
+                        {sub.items.map((item: string, idx: number) => (
                           <li key={idx} className="text-sm text-amber-800 flex items-start">
-                            <span className="text-amber-600 mr-2">⚠</span>
-                            {sub}
+                            <span className="text-amber-600 mr-2 font-bold">⚠</span>
+                            {item}
                           </li>
                         ))}
                       </ul>
                     </div>
-                  )}
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-                  {/* Standout Notes */}
-                  {summary.standout_notes && summary.standout_notes.length > 0 && (
-                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                      <h4 className="text-sm font-semibold mb-2 flex items-center text-purple-900">
-                        <Star className="h-4 w-4 mr-1" />
-                        What Stands Out
-                      </h4>
-                      <ul className="space-y-1">
-                        {summary.standout_notes.map((note: string, idx: number) => (
-                          <li key={idx} className="text-sm text-purple-800 flex items-start">
-                            <span className="text-purple-600 mr-2">→</span>
-                            {note}
-                          </li>
-                        ))}
-                      </ul>
+          {/* Standout Summary Banner */}
+          {comparisonData.standout_summary && comparisonData.standout_summary.length > 0 && (
+            <Card className="border-purple-300 bg-gradient-to-r from-purple-50 to-purple-100/50">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2 text-purple-900">
+                  <Star className="h-5 w-5 text-purple-600" />
+                  <span>Key Things to Know</span>
+                </CardTitle>
+                <CardDescription className="text-purple-800">
+                  What makes each option distinctive
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {comparisonData.standout_summary.map((standout: any, index: number) => (
+                    <div key={index} className="bg-white border border-purple-200 rounded-lg p-4">
+                      <div className="flex items-start space-x-3">
+                        <div className="flex items-center space-x-2 min-w-[120px]">
+                          {(() => {
+                            const insurerInfo = getInsurerInfo(standout.carrier);
+                            return insurerInfo.logo ? (
+                              <img 
+                                src={insurerInfo.logo} 
+                                alt={insurerInfo.altText}
+                                className="h-6 w-6 object-contain"
+                              />
+                            ) : (
+                              <div className="h-6 w-6 bg-purple-100 rounded flex items-center justify-center">
+                                <span className="text-xs font-medium text-purple-700">
+                                  {standout.carrier.substring(0, 2).toUpperCase()}
+                                </span>
+                              </div>
+                            );
+                          })()}
+                          <span className="font-semibold text-purple-900">{standout.carrier}</span>
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          {standout.notes.map((note: string, idx: number) => (
+                            <p key={idx} className="text-sm text-purple-800">
+                              → {note}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Overall Flags */}
           {comparisonData.overall_flags && comparisonData.overall_flags.length > 0 && (
@@ -1737,7 +1852,7 @@ const InstantQuoteComparison = () => {
                   <span>Key Differences & Flags</span>
                 </CardTitle>
                 <CardDescription>
-                  Important distinctions to consider when making your decision
+                  Important distinctions to consider
                 </CardDescription>
               </CardHeader>
               <CardContent>
