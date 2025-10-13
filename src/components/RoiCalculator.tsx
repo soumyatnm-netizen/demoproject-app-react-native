@@ -97,7 +97,7 @@ export default function RoiCalculator({
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="employees">Employees on Task</Label>
+              <Label htmlFor="employees">Brokers on Task</Label>
               <Input
                 id="employees"
                 type="number"

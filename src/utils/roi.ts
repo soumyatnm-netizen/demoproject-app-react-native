@@ -112,7 +112,7 @@ export function generateCsvData(inputs: RoiInputs, outputs: RoiOutputs): string 
     ['CoverCompass ROI Calculator - Labour Savings Analysis'],
     [''],
     ['INPUTS'],
-    ['Employees on Task', inputs.employees.toString()],
+    ['Brokers on Task', inputs.employees.toString()],
     ['Policies per Month', inputs.policiesPerMonth.toString()],
     ['Manual Time per Policy (min)', inputs.manualTimeMin.toString()],
     ['Time with CoverCompass (min)', inputs.ccTimeMin.toString()],
