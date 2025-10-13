@@ -756,7 +756,7 @@ const InstantQuoteComparison = () => {
   };
 
   const generatePDFReport = async () => {
-    if (!selectedClient || rankings.length === 0) {
+    if (!selectedClient || !comparisonData) {
       toast({
         title: "Cannot Generate Report",
         description: "Please complete the comparison first",
@@ -771,81 +771,295 @@ const InstantQuoteComparison = () => {
         throw new Error("Client data not found");
       }
 
-      // Create a temporary container for printing sized for A4
+      toast({
+        title: "Generating PDF Report",
+        description: "Creating comprehensive comparison report...",
+      });
+
+      // Create a temporary container for the PDF content
       const printContainer = document.createElement('div');
       printContainer.style.position = 'absolute';
       printContainer.style.top = '-9999px';
       printContainer.style.left = '-9999px';
       printContainer.style.width = '210mm'; // A4 width
-      printContainer.style.padding = '20mm';
+      printContainer.style.padding = '15mm';
       printContainer.style.backgroundColor = 'white';
-      printContainer.style.fontFamily = 'system-ui, sans-serif';
-      printContainer.style.fontSize = '16px';
-      printContainer.style.lineHeight = '1.5';
+      printContainer.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+      printContainer.style.fontSize = '12px';
+      printContainer.style.lineHeight = '1.4';
+      printContainer.style.color = '#1e293b';
       
-      // Get only the comparison results sections (not the upload/selection steps)
-      const pdfCoverageSection = document.querySelector('[data-section="coverage-highlights"]');
-      const pdfRankingsSection = document.querySelector('[data-section="quote-rankings"]');
-      
-      let contentHTML = '';
-      if (pdfCoverageSection) {
-        contentHTML += pdfCoverageSection.outerHTML;
-      }
-      if (pdfRankingsSection) {
-        contentHTML += pdfRankingsSection.outerHTML;
-      }
-      
-      printContainer.innerHTML = `
-        <div style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 40px; margin-bottom: 30px; border-radius: 16px; box-shadow: 0 10px 30px rgba(37, 99, 235, 0.3);">
-          <div style="display: flex; align-items: center; gap: 24px;">
-            <img src="${coverCompassLogo}" alt="CoverCompass Logo" style="height: 70px; width: auto; object-fit: contain;" />
+      // Build HTML content for PDF
+      let pdfContent = `
+        <div style="margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
+            <img src="${coverCompassLogo}" alt="CoverCompass Logo" style="height: 50px; width: auto;" />
             <div>
-              <h1 style="font-size: 36px; font-weight: 700; margin: 0; line-height: 1.1; letter-spacing: -0.02em;">CoverCompass</h1>
-              <p style="font-size: 18px; opacity: 0.95; margin: 10px 0 0 0; font-weight: 500;">Insurance Quote Comparison Report</p>
+              <h1 style="font-size: 28px; font-weight: 700; margin: 0; color: #1e293b;">Insurance Quote Comparison</h1>
+              <p style="font-size: 14px; color: #64748b; margin: 4px 0 0 0;">${selectedClientData.client_name} • ${new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
             </div>
           </div>
-        </div>
-        
-        <div style="background: linear-gradient(145deg, #f8fafc, #f1f5f9); padding: 32px; border-radius: 16px; margin-bottom: 30px; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);">
-          <div style="display: flex; align-items: center; margin-bottom: 24px;">
-            <div style="background: #2563eb; color: white; padding: 12px; border-radius: 12px; margin-right: 16px;">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-            </div>
-            <h3 style="font-size: 24px; margin: 0; color: #1e293b; font-weight: 700;">Client Information</h3>
-          </div>
-          
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 16px;">
-            <div style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #2563eb;">
-              <div style="color: #64748b; font-size: 14px; font-weight: 500; margin-bottom: 4px;">CLIENT NAME</div>
-              <div style="color: #1e293b; font-weight: 600; font-size: 16px;">${selectedClientData.client_name}</div>
-            </div>
-            <div style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #2563eb;">
-              <div style="color: #64748b; font-size: 14px; font-weight: 500; margin-bottom: 4px;">REPORT DATE</div>
-              <div style="color: #1e293b; font-weight: 600; font-size: 16px;">${new Date().toLocaleDateString('en-GB', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}</div>
-            </div>
-            ${selectedClientData.industry ? `
-            <div style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #2563eb;">
-              <div style="color: #64748b; font-size: 14px; font-weight: 500; margin-bottom: 4px;">INDUSTRY</div>
-              <div style="color: #1e293b; font-weight: 600; font-size: 16px;">${selectedClientData.industry}</div>
-            </div>
-            ` : ""}
-            <div style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #2563eb;">
-              <div style="color: #64748b; font-size: 14px; font-weight: 500; margin-bottom: 4px;">QUOTES ANALYZED</div>
-              <div style="color: #1e293b; font-weight: 600; font-size: 16px;">${rankings.length} Insurance Quotes</div>
-            </div>
-          </div>
+          <div style="border-bottom: 3px solid #2563eb; margin-bottom: 16px;"></div>
         </div>
       `;
+
+      // Add insurer comparison cards
+      if (comparisonData.insurers && comparisonData.insurers.length > 0) {
+        pdfContent += '<div style="margin-bottom: 24px;">';
+        
+        comparisonData.insurers.forEach((insurer: any, index: number) => {
+          const insurerInfo = getInsurerInfo(insurer.carrier);
+          const isEven = index % 2 === 0;
+          
+          pdfContent += `
+            <div style="
+              border: 2px solid #e2e8f0; 
+              border-radius: 12px; 
+              padding: 16px; 
+              margin-bottom: 16px;
+              ${isEven ? '' : 'page-break-before: avoid;'}
+              background: white;
+            ">
+              <!-- Header -->
+              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0;">
+                ${insurerInfo.logo ? `
+                  <img src="${insurerInfo.logo}" alt="${insurerInfo.altText}" style="height: 32px; width: auto; object-fit: contain;" />
+                ` : ''}
+                <h2 style="font-size: 20px; font-weight: 700; margin: 0; color: #1e293b;">${insurer.carrier}</h2>
+              </div>
+              
+              ${insurer.standout_summary ? `
+                <p style="font-size: 13px; color: #64748b; font-weight: 500; margin-bottom: 12px;">${insurer.standout_summary}</p>
+              ` : ''}
+              
+              <!-- Quote Details -->
+              ${insurer.quote_metrics ? `
+                <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                  <h3 style="font-size: 13px; font-weight: 600; color: #15803d; margin: 0 0 8px 0; display: flex; align-items: center;">
+                    <span style="margin-right: 6px;">💰</span> Quote Details
+                  </h3>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 11px;">
+                    <div style="background: white; padding: 8px; border-radius: 6px;">
+                      <span style="color: #64748b; display: block;">Total Premium:</span>
+                      <strong style="color: #15803d; font-size: 14px;">${insurer.quote_metrics.total_premium || 'Unknown'}</strong>
+                    </div>
+                    <div style="background: white; padding: 8px; border-radius: 6px;">
+                      <span style="color: #64748b; display: block;">Period:</span>
+                      <strong style="color: #1e293b;">${insurer.quote_metrics.policy_period || 'Unknown'}</strong>
+                    </div>
+                    <div style="background: white; padding: 8px; border-radius: 6px;">
+                      <span style="color: #64748b; display: block;">Validity:</span>
+                      <strong style="color: #1e293b;">${insurer.quote_metrics.quote_validity || 'Unknown'}</strong>
+                    </div>
+                    <div style="background: white; padding: 8px; border-radius: 6px;">
+                      <span style="color: #64748b; display: block;">Limit:</span>
+                      <strong style="color: #1e293b;">${insurer.quote_metrics.limit || 'Unknown'}</strong>
+                    </div>
+                    <div style="background: white; padding: 8px; border-radius: 6px;">
+                      <span style="color: #64748b; display: block;">Deductible:</span>
+                      <strong style="color: #1e293b;">${insurer.quote_metrics.deductible || 'Unknown'}</strong>
+                    </div>
+                    <div style="background: white; padding: 8px; border-radius: 6px;">
+                      <span style="color: #64748b; display: block;">Jurisdiction:</span>
+                      <strong style="color: #1e293b;">${insurer.quote_metrics.jurisdiction || 'Unknown'}</strong>
+                    </div>
+                    ${insurer.quote_metrics.retro_date && insurer.quote_metrics.retro_date !== 'Unknown' ? `
+                      <div style="background: white; padding: 8px; border-radius: 6px; grid-column: span 2;">
+                        <span style="color: #64748b; display: block;">Retro Date:</span>
+                        <strong style="color: #1e293b;">${insurer.quote_metrics.retro_date}</strong>
+                      </div>
+                    ` : ''}
+                  </div>
+                </div>
+              ` : ''}
+              
+              <!-- Wording Highlights -->
+              ${insurer.wording_highlights && insurer.wording_highlights.length > 0 ? `
+                <div style="margin-bottom: 12px;">
+                  <h3 style="font-size: 13px; font-weight: 600; color: #1d4ed8; margin: 0 0 8px 0; display: flex; align-items: center;">
+                    <span style="margin-right: 6px;">🛡️</span> Wording Highlights
+                  </h3>
+                  <div style="space-y: 6px;">
+                    ${insurer.wording_highlights.map((highlight: any) => `
+                      <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 8px; margin-bottom: 6px; font-size: 11px; display: flex; align-items: start;">
+                        <span style="margin-right: 8px; font-size: 14px;">${highlight.icon}</span>
+                        <span style="flex: 1; color: #1e293b;">${highlight.text}</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              ` : ''}
+              
+              <!-- Subjectivities -->
+              ${insurer.subjectivities && insurer.subjectivities.length > 0 ? `
+                <div style="background: #fffbeb; border: 2px solid #fbbf24; border-radius: 8px; padding: 12px;">
+                  <h3 style="font-size: 13px; font-weight: 600; color: #92400e; margin: 0 0 8px 0; display: flex; align-items: center;">
+                    <span style="margin-right: 6px;">⚠️</span> Subjectivities (Pre-Binding)
+                  </h3>
+                  <div>
+                    ${insurer.subjectivities.map((sub: string) => `
+                      <div style="font-size: 11px; color: #92400e; margin-bottom: 6px; display: flex; align-items: start;">
+                        <span style="color: #d97706; margin-right: 8px; font-weight: bold;">⚠</span>
+                        <span style="flex: 1;">${sub}</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+          `;
+        });
+        
+        pdfContent += '</div>';
+      }
+
+      // Add comparison table
+      if (comparisonData.quote_table) {
+        pdfContent += `
+          <div style="page-break-before: always; margin-bottom: 20px;">
+            <h2 style="font-size: 20px; font-weight: 700; color: #1e293b; margin-bottom: 12px;">Quote Comparison Table</h2>
+            <p style="font-size: 12px; color: #64748b; margin-bottom: 16px;">Side-by-side comparison of all key quote metrics</p>
+            <div style="overflow: hidden; border: 1px solid #e2e8f0; border-radius: 8px;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                <thead>
+                  <tr style="background: #f8fafc;">
+                    ${comparisonData.quote_table.columns.map((col: string, idx: number) => `
+                      <th style="padding: 10px; text-align: left; font-weight: 600; color: #475569; border-bottom: 2px solid #e2e8f0; ${idx === 0 ? 'width: 120px;' : ''}">${col}</th>
+                    `).join('')}
+                  </tr>
+                </thead>
+                <tbody>
+                  ${comparisonData.quote_table.rows.map((row: any, rowIdx: number) => `
+                    <tr style="${rowIdx % 2 === 0 ? 'background: #f9fafb;' : 'background: white;'}">
+                      ${comparisonData.quote_table.columns.map((col: string, colIdx: number) => {
+                        if (colIdx === 0) {
+                          const insurerInfo = getInsurerInfo(row[col]);
+                          return `
+                            <td style="padding: 10px; font-weight: 500; border-bottom: 1px solid #e2e8f0;">
+                              <div style="display: flex; align-items: center; gap: 8px;">
+                                ${insurerInfo.logo ? `
+                                  <img src="${insurerInfo.logo}" alt="${insurerInfo.altText}" style="height: 20px; width: auto; object-fit: contain;" />
+                                ` : ''}
+                                <span>${row[col]}</span>
+                              </div>
+                            </td>
+                          `;
+                        }
+                        return `<td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${row[col] || 'Unknown'}</td>`;
+                      }).join('')}
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      // Add key differences & flags
+      if (comparisonData.overall_flags && comparisonData.overall_flags.length > 0) {
+        pdfContent += `
+          <div style="margin-bottom: 20px;">
+            <h2 style="font-size: 20px; font-weight: 700; color: #1e293b; margin-bottom: 12px;">⚠️ Key Differences & Flags</h2>
+            <p style="font-size: 12px; color: #64748b; margin-bottom: 16px;">Important distinctions to consider</p>
+            <div>
+              ${comparisonData.overall_flags.map((flag: any) => `
+                <div style="
+                  padding: 12px; 
+                  border-radius: 8px; 
+                  border: 2px solid ${flag.type === 'Risk' ? '#fca5a5' : flag.type === 'Advantage' ? '#86efac' : '#fcd34d'}; 
+                  background: ${flag.type === 'Risk' ? '#fef2f2' : flag.type === 'Advantage' ? '#f0fdf4' : '#fffbeb'};
+                  margin-bottom: 10px;
+                  display: flex;
+                  gap: 12px;
+                ">
+                  <div style="
+                    padding: 4px 8px; 
+                    border-radius: 4px; 
+                    border: 1px solid ${flag.type === 'Risk' ? '#ef4444' : flag.type === 'Advantage' ? '#22c55e' : '#eab308'}; 
+                    background: white;
+                    font-weight: 600;
+                    font-size: 10px;
+                    height: fit-content;
+                  ">${flag.type}</div>
+                  <div style="flex: 1;">
+                    <p style="font-weight: 600; font-size: 11px; margin: 0 0 4px 0; color: #1e293b;">${flag.carrier}</p>
+                    <p style="font-size: 11px; margin: 0; color: #334155;">${flag.detail}</p>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      // Add footer/disclaimer
+      pdfContent += `
+        <div style="margin-top: 24px; padding-top: 16px; border-top: 2px solid #e2e8f0; font-size: 10px; color: #64748b; text-align: center;">
+          <p style="margin: 0;">Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation.</p>
+          <p style="margin: 4px 0 0 0;">Always verify against original insurer documentation; the original documents prevail.</p>
+        </div>
+      `;
+
+
+      printContainer.innerHTML = pdfContent;
+      document.body.appendChild(printContainer);
+
+      // Create PDF using jsPDF and html2canvas
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      // Convert HTML to canvas
+      const canvas = await html2canvas(printContainer, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = pdfWidth - 30; // Leave margins
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
-      // Create content section for subsequent pages
-      const contentContainer = document.createElement('div');
-      contentContainer.style.position = 'absolute';
+      let heightLeft = imgHeight;
+      let position = 15;
+      
+      // Add first page
+      pdf.addImage(imgData, 'PNG', 15, position, imgWidth, imgHeight);
+      heightLeft -= (pdfHeight - 30);
+
+      // Add additional pages if content is longer than one page
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight + 15;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 15, position, imgWidth, imgHeight);
+        heightLeft -= (pdfHeight - 30);
+      }
+
+      // Clean up
+      document.body.removeChild(printContainer);
+
+      // Download the PDF
+      const fileName = `${selectedClientData.client_name.replace(/[^a-z0-9]/gi, '_')}_Quote_Comparison_${new Date().toISOString().split('T')[0]}.pdf`;
+      pdf.save(fileName);
+
+      toast({
+        title: "PDF Generated Successfully",
+        description: `Report downloaded as ${fileName}`,
+      });
+
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({
+        title: "PDF Generation Failed",
+        description: error.message || "An error occurred while generating the PDF",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
       contentContainer.style.top = '-9999px';
       contentContainer.style.left = '-9999px';
       contentContainer.style.width = '210mm';
