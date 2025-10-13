@@ -71,7 +71,7 @@ export default function RoiCalculator({
           <h2 className="text-3xl font-bold text-foreground">CoverCompass ROI Calculator</h2>
         </div>
         <p className="text-muted-foreground max-w-2xl mx-auto">
-          Calculate your labour time and cost savings with CoverCompass. See the efficiency gains
+          Calculate your operational time and cost savings with CoverCompass. See the efficiency gains
           from automating your insurance comparison workflow.
         </p>
       </div>
@@ -159,13 +159,13 @@ export default function RoiCalculator({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <DollarSign className="h-5 w-5" />
-                Annual Labour Savings
+                Annual Operational Savings
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-4xl font-bold">{formatCurrency(outputs.annualLabourSavings, currency)}</p>
+              <p className="text-4xl font-bold">{formatCurrency(outputs.annualOperationalSavings, currency)}</p>
               <p className="text-sm opacity-90 mt-2">
-                {formatCurrency(outputs.monthlyLabourSavings, currency)} per month
+                {formatCurrency(outputs.monthlyOperationalSavings, currency)} per month
               </p>
             </CardContent>
           </Card>
@@ -189,7 +189,7 @@ export default function RoiCalculator({
             <CardHeader className="pb-3">
               <CardTitle className="text-base">ROI % (Cost Reduction)</CardTitle>
               <CardDescription className="text-xs">
-                Percentage reduction in labour costs vs current manual process
+                Percentage reduction in operational costs vs current manual process
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -199,35 +199,35 @@ export default function RoiCalculator({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Labour Cost Breakdown</CardTitle>
+              <CardTitle className="text-base">Operational Cost Breakdown</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Current Monthly Labour Cost</span>
+                <span className="text-muted-foreground">Current Monthly Operational Cost</span>
                 <span className="font-semibold">
-                  {formatCurrency(outputs.currentMonthlyLabourCost, currency)}
+                  {formatCurrency(outputs.currentMonthlyOperationalCost, currency)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">With CoverCompass Monthly Labour Cost</span>
+                <span className="text-muted-foreground">With CoverCompass Monthly Operational Cost</span>
                 <span className="font-semibold">
-                  {formatCurrency(outputs.ccMonthlyLabourCost, currency)}
+                  {formatCurrency(outputs.ccMonthlyOperationalCost, currency)}
                 </span>
               </div>
               <div className="border-t pt-3 flex justify-between font-bold">
-                <span>Monthly Labour Savings</span>
+                <span>Monthly Operational Savings</span>
                 <span className="text-primary">
-                  {formatCurrency(outputs.monthlyLabourSavings, currency)}
+                  {formatCurrency(outputs.monthlyOperationalSavings, currency)}
                 </span>
               </div>
             </CardContent>
           </Card>
 
-          {outputs.monthlyLabourSavings === 0 && (
+          {outputs.monthlyOperationalSavings === 0 && (
             <Card className="border-amber-500/50 bg-amber-500/10">
               <CardContent className="pt-6">
                 <p className="text-sm text-center text-muted-foreground">
-                  No labour savings with current assumptions. Try adjusting the time values.
+                  No operational savings with current assumptions. Try adjusting the time values.
                 </p>
               </CardContent>
             </Card>

@@ -16,12 +16,12 @@ export interface RoiInputs {
 
 export interface RoiOutputs {
   monthlyOperations: number;
-  currentMonthlyLabourCost: number;
-  ccMonthlyLabourCost: number;
+  currentMonthlyOperationalCost: number;
+  ccMonthlyOperationalCost: number;
   monthlyTimeSavedHrs: number;
   annualTimeSavedHrs: number;
-  monthlyLabourSavings: number;
-  annualLabourSavings: number;
+  monthlyOperationalSavings: number;
+  annualOperationalSavings: number;
   roiPercent: number;
 }
 
@@ -47,25 +47,25 @@ export function calculateRoi(inputs: RoiInputs): RoiOutputs {
   const timeSavedMonth = policiesPerMonth * deltaHr;
   const timeSavedYear = timeSavedMonth * 12;
 
-  // Labour costs
-  const labourCurrentMonth = policiesPerMonth * tManualHr * hourlyRate * employees;
-  const labourCcMonth = policiesPerMonth * tCcHr * hourlyRate * employees;
+  // Operational costs
+  const operationalCurrentMonth = policiesPerMonth * tManualHr * hourlyRate * employees;
+  const operationalCcMonth = policiesPerMonth * tCcHr * hourlyRate * employees;
 
-  // Labour savings (no platform cost)
-  const savingsMonth = Math.max(0, labourCurrentMonth - labourCcMonth);
+  // Operational savings (no platform cost)
+  const savingsMonth = Math.max(0, operationalCurrentMonth - operationalCcMonth);
   const savingsYear = savingsMonth * 12;
 
   // ROI % (cost reduction)
-  const roiPercent = labourCurrentMonth <= 0 ? 0 : (savingsMonth / labourCurrentMonth) * 100;
+  const roiPercent = operationalCurrentMonth <= 0 ? 0 : (savingsMonth / operationalCurrentMonth) * 100;
 
   return {
     monthlyOperations: Math.round(policiesPerMonth),
-    currentMonthlyLabourCost: labourCurrentMonth,
-    ccMonthlyLabourCost: labourCcMonth,
+    currentMonthlyOperationalCost: operationalCurrentMonth,
+    ccMonthlyOperationalCost: operationalCcMonth,
     monthlyTimeSavedHrs: timeSavedMonth,
     annualTimeSavedHrs: timeSavedYear,
-    monthlyLabourSavings: savingsMonth,
-    annualLabourSavings: savingsYear,
+    monthlyOperationalSavings: savingsMonth,
+    annualOperationalSavings: savingsYear,
     roiPercent,
   };
 }
@@ -109,7 +109,7 @@ export const PRESETS = {
 
 export function generateCsvData(inputs: RoiInputs, outputs: RoiOutputs): string {
   const rows = [
-    ['CoverCompass ROI Calculator - Labour Savings Analysis'],
+    ['CoverCompass ROI Calculator - Operational Savings Analysis'],
     [''],
     ['INPUTS'],
     ['Brokers on Task', inputs.employees.toString()],
@@ -122,10 +122,10 @@ export function generateCsvData(inputs: RoiInputs, outputs: RoiOutputs): string 
     ['Monthly Operations', outputs.monthlyOperations.toString()],
     ['Monthly Time Saved', formatHours(outputs.monthlyTimeSavedHrs)],
     ['Annual Time Saved', formatHours(outputs.annualTimeSavedHrs)],
-    ['Current Monthly Labour Cost', formatCurrency(outputs.currentMonthlyLabourCost)],
-    ['CoverCompass Monthly Labour Cost', formatCurrency(outputs.ccMonthlyLabourCost)],
-    ['Monthly Labour Savings', formatCurrency(outputs.monthlyLabourSavings)],
-    ['Annual Labour Savings', formatCurrency(outputs.annualLabourSavings)],
+    ['Current Monthly Operational Cost', formatCurrency(outputs.currentMonthlyOperationalCost)],
+    ['CoverCompass Monthly Operational Cost', formatCurrency(outputs.ccMonthlyOperationalCost)],
+    ['Monthly Operational Savings', formatCurrency(outputs.monthlyOperationalSavings)],
+    ['Annual Operational Savings', formatCurrency(outputs.annualOperationalSavings)],
     ['ROI % (Cost Reduction)', formatPercent(outputs.roiPercent)],
   ];
 
