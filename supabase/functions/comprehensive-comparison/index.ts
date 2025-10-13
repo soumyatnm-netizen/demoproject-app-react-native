@@ -72,18 +72,39 @@ serve(async (req) => {
       })
     );
 
-    const masterPrompt = `CoverCompass AI — Comparison Presentation Engine
+    const masterPrompt = `CoverCompass AI — UI-Friendly Comparison Engine
 
-You are CoverCompass AI, presenting insurance comparisons to brokers. 
-Make differences between insurers clear, scannable, and visually structured.
+You are CoverCompass AI. Format comparison results for display so brokers can instantly see differences between insurers.
 
 TASK:
-Take extracted comparison data (quotes, wordings, subjectivities) and format for display.
+Take extracted quote + wording data and return JSON structured for UI rendering.
 
-OUTPUT:
-Return JSON with:
-
+OUTPUT FORMAT:
 {
+  "insurers": [
+    {
+      "carrier": "Hiscox",
+      "quote_metrics": {
+        "total_premium": "£10,800 incl. IPT",
+        "policy_period": "2025-01-01 to 2026-01-01",
+        "limit": "£1m aggregate",
+        "deductible": "£10,000 each claim",
+        "jurisdiction": "UK only",
+        "retro_date": "Unknown",
+        "quote_validity": "60 days"
+      },
+      "wording_highlights": [
+        { "icon": "⚠️", "text": "Defence costs inside the limit" },
+        { "icon": "❌", "text": "Claims notification must be within 14 days (condition precedent)" },
+        { "icon": "⚠️", "text": "Cancellation by insurer with 30 days' notice" }
+      ],
+      "subjectivities": [
+        "Risk survey within 30 days",
+        "Provide updated financials"
+      ],
+      "standout_summary": "Cheaper premium but defence costs inside the limit."
+    }
+  ],
   "quote_table": {
     "columns": ["Carrier", "Total Premium", "Limits", "Deductibles", "Jurisdiction", "Retro Date", "Validity"],
     "rows": [
@@ -98,49 +119,25 @@ Return JSON with:
       }
     ]
   },
-  "wording_highlights": [
-    {
-      "carrier": "CFC",
-      "key_highlights": [
-        "Defence costs outside the limit",
-        "Extended reporting period: 12 months optional",
-        "Exclusion: Cyber terrorism"
-      ]
-    }
-  ],
-  "subjectivities": [
-    {
-      "carrier": "CFC",
-      "items": [
-        "Risk survey within 30 days",
-        "Confirmation of turnover figures"
-      ]
-    }
-  ],
-  "standout_summary": [
-    { 
-      "carrier": "CFC", 
-      "notes": ["Broader cyber cover", "More onerous subjectivities"] 
-    }
-  ],
   "overall_flags": [
-    { "carrier": "", "type": "Material Difference | Unusual Term | Advantage | Risk", "detail": "" }
+    { "carrier": "CFC", "type": "Advantage", "detail": "Defence costs outside the limit provides more protection" },
+    { "carrier": "Hiscox", "type": "Risk", "detail": "Condition precedent on claims notification could void cover if missed" }
   ],
-  "client_report_markdown": "### At-a-glance options per carrier...",
-  "broker_report_markdown": "### Detailed comparison..."
+  "broker_report_markdown": "### Detailed comparison...",
+  "client_report_markdown": "### Client-friendly summary..."
 }
 
 RULES:
-- Keep **quote_table** clean and tabular for quick comparison.
-- Put **wording_highlights** into short bullets (3-5 max per carrier).
-- Show **subjectivities** as clear checklist, separated from conditions.
-- Provide **standout_summary** with one-line "what to know" per carrier.
-- Use plain, client-friendly English.
-- If missing info, use "Unknown" not blank.
+- Quote metrics = hard numbers from quotes
+- Wording highlights = only 3-5 most important/unusual points
+- Icons: ✅ (good), ⚠️ (caution), ❌ (negative), 📋 (neutral info)
+- Subjectivities = always listed separately from policy conditions
+- Standout summary = 1 sentence key tradeoff
+- Use "Unknown" for missing data
 
 EXTRACTION FOCUS:
 
-From QUOTES:
+From QUOTES extract:
 - Total premium (base + taxes/fees)
 - Policy period (dates)
 - Limits (per section, aggregate vs per claim)
@@ -150,16 +147,22 @@ From QUOTES:
 - Quote validity
 - Subjectivities (pre-binding conditions)
 
-From POLICY WORDINGS:
+From POLICY WORDINGS extract:
 - Coverage trigger (claims-made vs occurrence)
-- Defence costs position (inside vs outside limit)
+- Defence costs position (inside vs outside limit) ← CRITICAL
 - Extended reporting period
-- Claims control & consent requirements
+- Claims control & consent
 - Unusual exclusions
-- Material conditions/warranties
+- Material conditions/warranties (especially condition precedents)
 - Cancellation rights
 - Governing law
-- Notable definitions differing from market
+- Notable definitions
+
+WORDING HIGHLIGHTS ICONS:
+✅ Use for: Defence costs outside limit, broad territory, automatic extensions, favorable terms
+⚠️ Use for: Important conditions, limited coverage, restrictive exclusions, cancellation rights
+❌ Use for: Condition precedents, significant exclusions, unfavorable terms
+📋 Use for: Neutral but important information
 
 DISCLAIMERS:
 "This comparison is based on provided documents only. Carrier revisions may change results."

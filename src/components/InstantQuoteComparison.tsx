@@ -1626,16 +1626,133 @@ const InstantQuoteComparison = () => {
       {/* Coverage Comparison Results */}
       {analysisComplete && comparisonData && (
         <>
+          {/* Insurer Cards Grid */}
+          {comparisonData.insurers && comparisonData.insurers.length > 0 && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {comparisonData.insurers.map((insurer: any, index: number) => (
+                <Card key={index} className="hover:shadow-xl transition-all duration-300 border-2">
+                  <CardHeader className="bg-gradient-to-r from-muted/50 to-background pb-4">
+                    <CardTitle className="flex items-center space-x-3">
+                      {(() => {
+                        const insurerInfo = getInsurerInfo(insurer.carrier);
+                        return insurerInfo.logo ? (
+                          <img 
+                            src={insurerInfo.logo} 
+                            alt={insurerInfo.altText}
+                            className="h-10 w-10 object-contain"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 bg-primary/10 rounded flex items-center justify-center">
+                            <span className="text-sm font-medium text-primary">
+                              {insurer.carrier.substring(0, 2).toUpperCase()}
+                            </span>
+                          </div>
+                        );
+                      })()}
+                      <span className="text-xl">{insurer.carrier}</span>
+                    </CardTitle>
+                    {insurer.standout_summary && (
+                      <CardDescription className="mt-2 text-base font-medium">
+                        {insurer.standout_summary}
+                      </CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-4 pt-6">
+                    {/* Quote Metrics */}
+                    {insurer.quote_metrics && (
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 flex items-center text-green-700">
+                          <DollarSign className="h-4 w-4 mr-1" />
+                          Quote Details
+                        </h4>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div className="col-span-2 bg-green-50 border border-green-200 rounded p-2">
+                            <span className="text-muted-foreground">Total Premium:</span>
+                            <p className="font-semibold text-green-900">{insurer.quote_metrics.total_premium || 'Unknown'}</p>
+                          </div>
+                          <div className="bg-muted/30 rounded p-2">
+                            <span className="text-muted-foreground block text-xs">Period:</span>
+                            <p className="font-medium text-xs">{insurer.quote_metrics.policy_period || 'Unknown'}</p>
+                          </div>
+                          <div className="bg-muted/30 rounded p-2">
+                            <span className="text-muted-foreground block text-xs">Validity:</span>
+                            <p className="font-medium text-xs">{insurer.quote_metrics.quote_validity || 'Unknown'}</p>
+                          </div>
+                          <div className="bg-muted/30 rounded p-2">
+                            <span className="text-muted-foreground block text-xs">Limit:</span>
+                            <p className="font-medium text-xs">{insurer.quote_metrics.limit || 'Unknown'}</p>
+                          </div>
+                          <div className="bg-muted/30 rounded p-2">
+                            <span className="text-muted-foreground block text-xs">Deductible:</span>
+                            <p className="font-medium text-xs">{insurer.quote_metrics.deductible || 'Unknown'}</p>
+                          </div>
+                          <div className="col-span-2 bg-muted/30 rounded p-2">
+                            <span className="text-muted-foreground block text-xs">Jurisdiction:</span>
+                            <p className="font-medium text-xs">{insurer.quote_metrics.jurisdiction || 'Unknown'}</p>
+                          </div>
+                          {insurer.quote_metrics.retro_date !== 'Unknown' && (
+                            <div className="col-span-2 bg-muted/30 rounded p-2">
+                              <span className="text-muted-foreground block text-xs">Retro Date:</span>
+                              <p className="font-medium text-xs">{insurer.quote_metrics.retro_date}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <Separator />
+
+                    {/* Wording Highlights */}
+                    {insurer.wording_highlights && insurer.wording_highlights.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 flex items-center text-blue-700">
+                          <Shield className="h-4 w-4 mr-1" />
+                          Wording Highlights
+                        </h4>
+                        <ul className="space-y-2">
+                          {insurer.wording_highlights.map((highlight: any, idx: number) => (
+                            <li key={idx} className="text-sm flex items-start bg-blue-50/50 rounded p-2 border border-blue-100">
+                              <span className="mr-2 text-base">{highlight.icon}</span>
+                              <span className="flex-1">{highlight.text}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Subjectivities */}
+                    {insurer.subjectivities && insurer.subjectivities.length > 0 && (
+                      <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-3">
+                        <h4 className="text-sm font-semibold mb-2 flex items-center text-amber-900">
+                          <AlertTriangle className="h-4 w-4 mr-1" />
+                          Subjectivities (Pre-Binding)
+                        </h4>
+                        <ul className="space-y-1.5">
+                          {insurer.subjectivities.map((sub: string, idx: number) => (
+                            <li key={idx} className="text-sm text-amber-800 flex items-start">
+                              <span className="text-amber-600 mr-2 font-bold">⚠</span>
+                              <span className="flex-1">{sub}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
           {/* Quote Comparison Table */}
           {comparisonData.quote_table && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <DollarSign className="h-5 w-5 text-green-600" />
-                  <span>Quote Comparison</span>
+                  <Table className="h-5 w-5 text-green-600" />
+                  <span>Quote Comparison Table</span>
                 </CardTitle>
                 <CardDescription>
-                  Side-by-side comparison of key quote terms
+                  Side-by-side comparison of all key quote metrics
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1644,7 +1761,7 @@ const InstantQuoteComparison = () => {
                     <TableHeader>
                       <TableRow>
                         {comparisonData.quote_table.columns.map((col: string, idx: number) => (
-                          <TableHead key={idx} className={idx === 0 ? "font-semibold" : ""}>
+                          <TableHead key={idx} className={idx === 0 ? "font-semibold w-[150px]" : ""}>
                             {col}
                           </TableHead>
                         ))}
@@ -1652,9 +1769,9 @@ const InstantQuoteComparison = () => {
                     </TableHeader>
                     <TableBody>
                       {comparisonData.quote_table.rows.map((row: any, idx: number) => (
-                        <TableRow key={idx}>
+                        <TableRow key={idx} className="hover:bg-muted/50">
                           {comparisonData.quote_table.columns.map((col: string, colIdx: number) => (
-                            <TableCell key={colIdx} className={colIdx === 0 ? "font-medium" : ""}>
+                            <TableCell key={colIdx} className={colIdx === 0 ? "font-medium" : "text-sm"}>
                               {colIdx === 0 && (() => {
                                 const insurerInfo = getInsurerInfo(row[col]);
                                 return (
@@ -1676,168 +1793,13 @@ const InstantQuoteComparison = () => {
                                   </div>
                                 );
                               })()}
-                              {colIdx !== 0 && row[col]}
+                              {colIdx !== 0 && (row[col] || 'Unknown')}
                             </TableCell>
                           ))}
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Wording Highlights per Carrier */}
-          {comparisonData.wording_highlights && comparisonData.wording_highlights.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Shield className="h-5 w-5 text-blue-600" />
-                  <span>Policy Wording Highlights</span>
-                </CardTitle>
-                <CardDescription>
-                  Important terms and unusual features from each wording
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {comparisonData.wording_highlights.map((wording: any, index: number) => (
-                    <Card key={index} className="border-2">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-base flex items-center space-x-2">
-                          {(() => {
-                            const insurerInfo = getInsurerInfo(wording.carrier);
-                            return insurerInfo.logo ? (
-                              <img 
-                                src={insurerInfo.logo} 
-                                alt={insurerInfo.altText}
-                                className="h-6 w-6 object-contain"
-                              />
-                            ) : (
-                              <div className="h-6 w-6 bg-primary/10 rounded flex items-center justify-center">
-                                <span className="text-xs font-medium text-primary">
-                                  {wording.carrier.substring(0, 2).toUpperCase()}
-                                </span>
-                              </div>
-                            );
-                          })()}
-                          <span>{wording.carrier}</span>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <ul className="space-y-2">
-                          {wording.key_highlights.map((highlight: string, idx: number) => (
-                            <li key={idx} className="text-sm flex items-start">
-                              <CheckCircle className="h-4 w-4 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
-                              <span>{highlight}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Subjectivities Alert Panel */}
-          {comparisonData.subjectivities && comparisonData.subjectivities.length > 0 && (
-            <Card className="border-amber-300 bg-amber-50/50">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2 text-amber-900">
-                  <AlertTriangle className="h-5 w-5 text-amber-600" />
-                  <span>Subjectivities (Pre-Binding Conditions)</span>
-                </CardTitle>
-                <CardDescription className="text-amber-800">
-                  These are underwriter conditions that must be satisfied before the policy binds. Failure to meet these may void or alter terms.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {comparisonData.subjectivities.map((sub: any, index: number) => (
-                    <div key={index} className="bg-white border-2 border-amber-200 rounded-lg p-4">
-                      <div className="flex items-center space-x-2 mb-3">
-                        {(() => {
-                          const insurerInfo = getInsurerInfo(sub.carrier);
-                          return insurerInfo.logo ? (
-                            <img 
-                              src={insurerInfo.logo} 
-                              alt={insurerInfo.altText}
-                              className="h-6 w-6 object-contain"
-                            />
-                          ) : (
-                            <div className="h-6 w-6 bg-amber-100 rounded flex items-center justify-center">
-                              <span className="text-xs font-medium text-amber-700">
-                                {sub.carrier.substring(0, 2).toUpperCase()}
-                              </span>
-                            </div>
-                          );
-                        })()}
-                        <span className="font-semibold text-amber-900">{sub.carrier}</span>
-                      </div>
-                      <ul className="space-y-2">
-                        {sub.items.map((item: string, idx: number) => (
-                          <li key={idx} className="text-sm text-amber-800 flex items-start">
-                            <span className="text-amber-600 mr-2 font-bold">⚠</span>
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Standout Summary Banner */}
-          {comparisonData.standout_summary && comparisonData.standout_summary.length > 0 && (
-            <Card className="border-purple-300 bg-gradient-to-r from-purple-50 to-purple-100/50">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2 text-purple-900">
-                  <Star className="h-5 w-5 text-purple-600" />
-                  <span>Key Things to Know</span>
-                </CardTitle>
-                <CardDescription className="text-purple-800">
-                  What makes each option distinctive
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {comparisonData.standout_summary.map((standout: any, index: number) => (
-                    <div key={index} className="bg-white border border-purple-200 rounded-lg p-4">
-                      <div className="flex items-start space-x-3">
-                        <div className="flex items-center space-x-2 min-w-[120px]">
-                          {(() => {
-                            const insurerInfo = getInsurerInfo(standout.carrier);
-                            return insurerInfo.logo ? (
-                              <img 
-                                src={insurerInfo.logo} 
-                                alt={insurerInfo.altText}
-                                className="h-6 w-6 object-contain"
-                              />
-                            ) : (
-                              <div className="h-6 w-6 bg-purple-100 rounded flex items-center justify-center">
-                                <span className="text-xs font-medium text-purple-700">
-                                  {standout.carrier.substring(0, 2).toUpperCase()}
-                                </span>
-                              </div>
-                            );
-                          })()}
-                          <span className="font-semibold text-purple-900">{standout.carrier}</span>
-                        </div>
-                        <div className="flex-1 space-y-1">
-                          {standout.notes.map((note: string, idx: number) => (
-                            <p key={idx} className="text-sm text-purple-800">
-                              → {note}
-                            </p>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -1860,19 +1822,19 @@ const InstantQuoteComparison = () => {
                   {comparisonData.overall_flags.map((flag: any, index: number) => (
                     <div 
                       key={index} 
-                      className={`p-3 rounded-lg border flex items-start space-x-3 ${
-                        flag.type === 'Risk' ? 'bg-red-50 border-red-200' :
-                        flag.type === 'Advantage' ? 'bg-green-50 border-green-200' :
-                        flag.type === 'Unusual Term' ? 'bg-amber-50 border-amber-200' :
-                        'bg-blue-50 border-blue-200'
+                      className={`p-3 rounded-lg border-2 flex items-start space-x-3 ${
+                        flag.type === 'Risk' ? 'bg-red-50 border-red-300' :
+                        flag.type === 'Advantage' ? 'bg-green-50 border-green-300' :
+                        flag.type === 'Unusual Term' ? 'bg-amber-50 border-amber-300' :
+                        'bg-blue-50 border-blue-300'
                       }`}
                     >
-                      <Badge variant="outline" className="mt-0.5">
+                      <Badge variant="outline" className="mt-0.5 font-semibold">
                         {flag.type}
                       </Badge>
                       <div className="flex-1">
-                        <p className="font-medium text-sm">{flag.carrier}</p>
-                        <p className="text-sm text-muted-foreground mt-1">{flag.detail}</p>
+                        <p className="font-semibold text-sm mb-1">{flag.carrier}</p>
+                        <p className="text-sm">{flag.detail}</p>
                       </div>
                     </div>
                   ))}
@@ -1881,7 +1843,7 @@ const InstantQuoteComparison = () => {
             </Card>
           )}
 
-          {/* Broker Report */}
+          {/* Reports */}
           {comparisonData.broker_report_markdown && (
             <Card>
               <CardHeader>
@@ -1902,7 +1864,6 @@ const InstantQuoteComparison = () => {
             </Card>
           )}
 
-          {/* Client Report */}
           {comparisonData.client_report_markdown && (
             <Card>
               <CardHeader>
