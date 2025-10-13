@@ -70,9 +70,9 @@ export function calculateRoi(inputs: RoiInputs): RoiOutputs {
   };
 }
 
-export function formatCurrency(value: number, currency: string = 'GBP'): string {
+export function formatCurrency(value: number, currency: string = 'GBP', decimals: number = 2): string {
   const symbol = currency === 'GBP' ? '£' : '$';
-  return `${symbol}${value.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `${symbol}${value.toLocaleString('en-GB', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
 export function formatHours(hours: number): string {

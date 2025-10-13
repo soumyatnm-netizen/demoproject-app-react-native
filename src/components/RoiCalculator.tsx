@@ -163,9 +163,9 @@ export default function RoiCalculator({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-4xl font-bold">{formatCurrency(outputs.annualOperationalSavings, currency)}</p>
+              <p className="text-4xl font-bold">{formatCurrency(outputs.annualOperationalSavings, currency, 0)}</p>
               <p className="text-sm opacity-90 mt-2">
-                {formatCurrency(outputs.monthlyOperationalSavings, currency)} per month
+                {formatCurrency(outputs.monthlyOperationalSavings, currency, 0)} per month
               </p>
             </CardContent>
           </Card>
@@ -205,19 +205,19 @@ export default function RoiCalculator({
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Current Monthly Operational Cost</span>
                 <span className="font-semibold">
-                  {formatCurrency(outputs.currentMonthlyOperationalCost, currency)}
+                  {formatCurrency(outputs.currentMonthlyOperationalCost, currency, 0)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">With CoverCompass Monthly Operational Cost</span>
                 <span className="font-semibold">
-                  {formatCurrency(outputs.ccMonthlyOperationalCost, currency)}
+                  {formatCurrency(outputs.ccMonthlyOperationalCost, currency, 0)}
                 </span>
               </div>
               <div className="border-t pt-3 flex justify-between font-bold">
                 <span>Monthly Operational Savings</span>
                 <span className="text-primary">
-                  {formatCurrency(outputs.monthlyOperationalSavings, currency)}
+                  {formatCurrency(outputs.monthlyOperationalSavings, currency, 0)}
                 </span>
               </div>
             </CardContent>
