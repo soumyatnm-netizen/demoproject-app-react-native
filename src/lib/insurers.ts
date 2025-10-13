@@ -4,6 +4,8 @@ import axaLogo from "@/assets/insurers/axa-logo.png";
 import chubbLogo from "@/assets/insurers/chubb-logo.png";
 import rsaLogo from "@/assets/insurers/rsa-logo.png";
 import allianzLogo from "@/assets/insurers/allianz-logo.png";
+import hiscoxLogo from "@/assets/insurers/hiscox-logo.png";
+import cfcLogo from "@/assets/insurers/cfc-logo.png";
 
 // Placeholder function to generate logo URL from insurer name
 const generateLogoPlaceholder = (name: string) => {
@@ -65,22 +67,22 @@ export const insurerMapping: Record<string, InsurerInfo> = {
   },
   "Hiscox Insurance": {
     name: "Hiscox Insurance", 
-    logo: generateLogoPlaceholder("Hiscox"),
+    logo: hiscoxLogo,
     altText: "Hiscox Insurance logo"
   },
   "Hiscox": {
     name: "Hiscox",
-    logo: generateLogoPlaceholder("Hiscox"),
+    logo: hiscoxLogo,
     altText: "Hiscox logo"
   },
   "CFC Underwriting": {
     name: "CFC Underwriting",
-    logo: generateLogoPlaceholder("CFC"),
+    logo: cfcLogo,
     altText: "CFC Underwriting logo"
   },
   "CFC": {
     name: "CFC",
-    logo: generateLogoPlaceholder("CFC"),
+    logo: cfcLogo,
     altText: "CFC logo"
   },
   "Aviva": {
