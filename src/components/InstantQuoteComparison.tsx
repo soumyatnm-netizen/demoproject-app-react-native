@@ -316,6 +316,7 @@ const InstantQuoteComparison = () => {
     
     const uploadedQuoteIds: string[] = [];
     const processedPolicyWordingIds: string[] = [];
+    const documentsForAnalysis: any[] = [];
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -419,6 +420,12 @@ const InstantQuoteComparison = () => {
           
           if (quoteData?.id) {
             uploadedQuoteIds.push(quoteData.id);
+            documentsForAnalysis.push({
+              carrier_name: file.name.split('_')[0] || file.name.split('.')[0] || 'Unknown',
+              document_type: 'Quote',
+              filename: file.name,
+              document_id: quoteData.id
+            });
             console.log('Added quote ID to array:', quoteData.id);
           } else {
             console.warn('No quote ID found for document:', docData.id);
@@ -507,6 +514,12 @@ const InstantQuoteComparison = () => {
 
             if (processResult?.meta?.policyWordingId) {
               processedPolicyWordingIds.push(processResult.meta.policyWordingId);
+              documentsForAnalysis.push({
+                carrier_name: file.name.split('_')[0] || file.name.split('.')[0] || 'Unknown',
+                document_type: 'PolicyWording',
+                filename: file.name,
+                document_id: processResult.meta.policyWordingId
+              });
               console.log('Added policy wording ID:', processResult.meta.policyWordingId);
             } else {
               console.warn('No policyWordingId returned for document:', docData.id);
@@ -521,8 +534,8 @@ const InstantQuoteComparison = () => {
         console.log('Policy wording processing complete. IDs:', processedPolicyWordingIds);
       }
 
-      // Step 2: Analyze and rank quotes (only if quotes were uploaded)
-      if (uploadedQuoteIds.length > 0) {
+      // Step 2: Run comprehensive comparison analysis
+      if (documentsForAnalysis.length > 0) {
         if (shouldCancel) {
           toast({
             title: "Cancelled",
@@ -531,33 +544,42 @@ const InstantQuoteComparison = () => {
           return;
         }
         
-        console.log('Starting quote ranking with IDs:', uploadedQuoteIds);
-        setProcessingStep("Ranking quotes by coverage and value...");
+        console.log('Starting comprehensive comparison with documents:', documentsForAnalysis);
+        setProcessingStep("Running comprehensive comparison analysis...");
         
-        const { data: rankingData, error: rankingError } = await supabase
-          .rpc('rank_quotes_for_client', {
-            p_client_id: selectedClient,
-            p_quote_ids: uploadedQuoteIds
-          });
+        // Get the selected client's data
+        const selectedClientData = clients.find(client => client.id === selectedClient);
+        
+        const { data: comparisonData, error: comparisonError } = await supabase.functions.invoke(
+          'comprehensive-comparison',
+          {
+            body: {
+              client_name: selectedClientData?.client_name || 'Unknown Client',
+              client_ref: `CC-${Date.now()}`,
+              industry: 'Professional Services',
+              jurisdiction: 'UK',
+              broker_name: 'CoverCompass',
+              priority_metrics: ['Premium(Total)', 'CoverageTrigger', 'Limits', 'Deductible', 'Exclusions'],
+              documents: documentsForAnalysis
+            }
+          }
+        );
 
-        if (rankingError) {
-          console.error('Ranking error:', rankingError);
-          console.error('Ranking details:', {
-            selectedClient,
-            uploadedQuoteIds,
-            error: rankingError
-          });
-          throw rankingError;
+        if (comparisonError) {
+          console.error('Comprehensive comparison error:', comparisonError);
+          throw new Error(`Comprehensive comparison failed: ${comparisonError.message}`);
         }
-        console.log('Ranking result:', rankingData);
 
-        // Sort by overall score (best first)
-        const sortedRankings = (rankingData || []).sort((a, b) => b.overall_score - a.overall_score);
-        setRankings(sortedRankings);
+        if (!comparisonData?.analysis) {
+          console.error('No analysis returned from comprehensive comparison');
+          throw new Error('Failed to generate comprehensive comparison');
+        }
+
+        console.log('Comprehensive analysis received:', comparisonData.analysis);
         
-        // Calculate scored rankings with real coverage analysis
-        const scoredRanks = calculateScoredRankings(sortedRankings);
-        setScoredRankings(scoredRanks);
+        // Store the comprehensive analysis for display
+        setRankings(comparisonData.analysis.extractions || []);
+        setScoredRankings(comparisonData.analysis.extractions || []);
       }
       
       setAnalysisComplete(true);

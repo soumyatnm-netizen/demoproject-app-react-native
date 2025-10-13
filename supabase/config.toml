@@ -1,5 +1,8 @@
 project_id = "ijhiavpjobzfxoirhnux"
 
+[functions.comprehensive-comparison]
+verify_jwt = true
+
 [functions.process-policy-wording]
 verify_jwt = true
 
