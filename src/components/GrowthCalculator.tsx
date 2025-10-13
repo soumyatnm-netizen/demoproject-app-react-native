@@ -3,11 +3,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { Download, TrendingUp, Users, DollarSign } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { calculateGrowth, GROWTH_PRESETS, type GrowthInputs } from '@/utils/growth';
-import { formatCurrency } from '@/utils/roi';
+import { formatCurrency, formatPercent } from '@/utils/roi';
 
 interface GrowthCalculatorProps {
   currency?: string;
@@ -15,19 +17,19 @@ interface GrowthCalculatorProps {
 
 export default function GrowthCalculator({ currency = 'GBP' }: GrowthCalculatorProps) {
   const { toast } = useToast();
+  const [preset, setPreset] = useState<'conservative' | 'typical' | 'aggressive'>('typical');
+  const [showMonetary, setShowMonetary] = useState(false);
   const [inputs, setInputs] = useState<GrowthInputs>({
     currentPolicies: 1000,
     avgPremium: 1200,
-    commissionRate: 15,
     currentRetention: 85,
     retentionUplift: 5,
-    newPoliciesPerMonth: 30,
+    newPoliciesPerMonth: 120,
     currentWinRate: 25,
     efficiencyGain: 30,
     winRateUplift: 10,
     aiUplift: 5,
     horizonYears: 3,
-    discountRate: 8,
     currency,
   });
 
@@ -38,17 +40,21 @@ export default function GrowthCalculator({ currency = 'GBP' }: GrowthCalculatorP
     setInputs((prev) => ({ ...prev, [field]: Math.max(0, numValue) }));
   };
 
+  const applyPreset = (presetName: 'conservative' | 'typical' | 'aggressive') => {
+    setPreset(presetName);
+    setInputs((prev) => ({ ...prev, ...GROWTH_PRESETS[presetName] }));
+  };
+
   const downloadCsv = () => {
     const rows = [
-      ['CoverCompass Growth Calculator - Projection'],
+      ['CoverCompass Growth ROI Calculator - Business Impact'],
       [''],
       ['INPUTS'],
       ['Current Active Policies', inputs.currentPolicies.toString()],
       ['Avg Annual Premium', formatCurrency(inputs.avgPremium, currency, 0)],
-      ['Commission Rate', `${inputs.commissionRate}%`],
       ['Current Annual Retention', `${inputs.currentRetention}%`],
       ['Retention Uplift', `+${inputs.retentionUplift}%`],
-      ['New Policies per Month', inputs.newPoliciesPerMonth.toString()],
+      ['New Policy Attempts per Month', inputs.newPoliciesPerMonth.toString()],
       ['Current Win Rate', `${inputs.currentWinRate}%`],
       ['Efficiency Gain', `+${inputs.efficiencyGain}%`],
       ['Win Rate Uplift', `+${inputs.winRateUplift}%`],
@@ -56,12 +62,13 @@ export default function GrowthCalculator({ currency = 'GBP' }: GrowthCalculatorP
       ['Horizon Years', inputs.horizonYears.toString()],
       [''],
       ['YEARLY PROJECTIONS'],
-      ['Year', 'Baseline Commission', 'CoverCompass Commission', 'Incremental Commission'],
+      ['Year', 'Baseline Policies', 'CoverCompass Policies', 'Baseline GWP', 'CoverCompass GWP'],
       ...outputs.yearlyData.map((y) => [
         y.year.toString(),
-        formatCurrency(y.baselineCommission, currency, 0),
-        formatCurrency(y.ccCommission, currency, 0),
-        formatCurrency(y.incrementalCommission, currency, 0),
+        y.baselinePolicies.toString(),
+        y.ccPolicies.toString(),
+        formatCurrency(y.baselineGwp, currency, 0),
+        formatCurrency(y.ccGwp, currency, 0),
       ]),
     ];
 
@@ -70,76 +77,84 @@ export default function GrowthCalculator({ currency = 'GBP' }: GrowthCalculatorP
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'covercompass-growth-projection.csv';
+    a.download = 'covercompass-growth-roi.csv';
     a.click();
     URL.revokeObjectURL(url);
     toast({ title: 'CSV Downloaded', description: 'Your growth projection has been downloaded.' });
   };
 
+  const noUplift =
+    inputs.retentionUplift === 0 &&
+    inputs.efficiencyGain === 0 &&
+    inputs.winRateUplift === 0 &&
+    inputs.aiUplift === 0;
+
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-8">
+    <div className="w-full space-y-8">
       {/* Header */}
       <div className="text-center space-y-4">
         <div className="flex items-center justify-center gap-2">
           <TrendingUp className="h-8 w-8 text-primary" />
-          <h2 className="text-3xl font-bold text-foreground">CoverCompass Growth Calculator</h2>
+          <h2 className="text-3xl font-bold text-foreground">Growth ROI Calculator</h2>
         </div>
         <p className="text-muted-foreground max-w-2xl mx-auto">
-          Project your book growth and revenue uplift from higher retention, increased new business
-          wins, and Attack Intelligence AI.
+          Project your policy book growth from higher retention, increased new business wins, and
+          Attack Intelligence AI.
         </p>
+      </div>
+
+      {/* Preset Selector */}
+      <div className="flex justify-center">
+        <Tabs value={preset} onValueChange={(v) => applyPreset(v as typeof preset)} className="w-full max-w-md">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="conservative">Conservative</TabsTrigger>
+            <TabsTrigger value="typical">Typical</TabsTrigger>
+            <TabsTrigger value="aggressive">Aggressive</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       {/* Main Grid */}
       <div className="grid lg:grid-cols-2 gap-8">
         {/* Inputs Section */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Book & Economics</CardTitle>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base">Book Metrics</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="currentPolicies">Current Active Policies</Label>
+            <CardContent className="space-y-3">
+              <div className="space-y-1">
+                <Label htmlFor="currentPolicies" className="text-sm">Current Active Policies</Label>
                 <Input
                   id="currentPolicies"
                   type="number"
                   min="1"
                   value={inputs.currentPolicies}
                   onChange={(e) => handleInputChange('currentPolicies', e.target.value)}
+                  className="h-9"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="avgPremium">Avg Annual Premium ({currency})</Label>
+              <div className="space-y-1">
+                <Label htmlFor="avgPremium" className="text-sm">Avg Annual Premium ({currency})</Label>
                 <Input
                   id="avgPremium"
                   type="number"
                   min="0"
                   value={inputs.avgPremium}
                   onChange={(e) => handleInputChange('avgPremium', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="commissionRate">Commission Rate (%)</Label>
-                <Input
-                  id="commissionRate"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={inputs.commissionRate}
-                  onChange={(e) => handleInputChange('commissionRate', e.target.value)}
+                  className="h-9"
                 />
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Retention</CardTitle>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base">Retention</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="currentRetention">Current Annual Retention (%)</Label>
+            <CardContent className="space-y-3">
+              <div className="space-y-1">
+                <Label htmlFor="currentRetention" className="text-sm">Current Annual Retention (%)</Label>
                 <Input
                   id="currentRetention"
                   type="number"
@@ -147,10 +162,11 @@ export default function GrowthCalculator({ currency = 'GBP' }: GrowthCalculatorP
                   max="100"
                   value={inputs.currentRetention}
                   onChange={(e) => handleInputChange('currentRetention', e.target.value)}
+                  className="h-9"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="retentionUplift">Expected Uplift from CoverCompass (%)</Label>
+              <div className="space-y-1">
+                <Label htmlFor="retentionUplift" className="text-sm">Retention Uplift (%)</Label>
                 <Input
                   id="retentionUplift"
                   type="number"
@@ -158,28 +174,30 @@ export default function GrowthCalculator({ currency = 'GBP' }: GrowthCalculatorP
                   max="20"
                   value={inputs.retentionUplift}
                   onChange={(e) => handleInputChange('retentionUplift', e.target.value)}
+                  className="h-9"
                 />
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>New Business Engine</CardTitle>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base">New Business Engine</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="newPoliciesPerMonth">Current New Policies per Month</Label>
+            <CardContent className="space-y-3">
+              <div className="space-y-1">
+                <Label htmlFor="newPoliciesPerMonth" className="text-sm">New Policy Attempts per Month</Label>
                 <Input
                   id="newPoliciesPerMonth"
                   type="number"
                   min="0"
                   value={inputs.newPoliciesPerMonth}
                   onChange={(e) => handleInputChange('newPoliciesPerMonth', e.target.value)}
+                  className="h-9"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="currentWinRate">Current Win Rate (%)</Label>
+              <div className="space-y-1">
+                <Label htmlFor="currentWinRate" className="text-sm">Current Win Rate (%)</Label>
                 <Input
                   id="currentWinRate"
                   type="number"
@@ -187,48 +205,52 @@ export default function GrowthCalculator({ currency = 'GBP' }: GrowthCalculatorP
                   max="100"
                   value={inputs.currentWinRate}
                   onChange={(e) => handleInputChange('currentWinRate', e.target.value)}
+                  className="h-9"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="efficiencyGain">Efficiency Gain (%)</Label>
+              <div className="space-y-1">
+                <Label htmlFor="efficiencyGain" className="text-sm">Efficiency Gain (%)</Label>
                 <Input
                   id="efficiencyGain"
                   type="number"
                   min="0"
                   value={inputs.efficiencyGain}
                   onChange={(e) => handleInputChange('efficiencyGain', e.target.value)}
+                  className="h-9"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="winRateUplift">Win Rate Uplift (%)</Label>
+              <div className="space-y-1">
+                <Label htmlFor="winRateUplift" className="text-sm">Win Rate Uplift (%)</Label>
                 <Input
                   id="winRateUplift"
                   type="number"
                   min="0"
                   value={inputs.winRateUplift}
                   onChange={(e) => handleInputChange('winRateUplift', e.target.value)}
+                  className="h-9"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="aiUplift">Attack Intelligence AI Uplift (%)</Label>
+              <div className="space-y-1">
+                <Label htmlFor="aiUplift" className="text-sm">Attack Intelligence AI Uplift (%)</Label>
                 <Input
                   id="aiUplift"
                   type="number"
                   min="0"
                   value={inputs.aiUplift}
                   onChange={(e) => handleInputChange('aiUplift', e.target.value)}
+                  className="h-9"
                 />
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Time & Finance</CardTitle>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base">Projection Settings</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="horizonYears">Projection Horizon (Years)</Label>
+            <CardContent className="space-y-3">
+              <div className="space-y-1">
+                <Label htmlFor="horizonYears" className="text-sm">Horizon (Years)</Label>
                 <Input
                   id="horizonYears"
                   type="number"
@@ -236,16 +258,15 @@ export default function GrowthCalculator({ currency = 'GBP' }: GrowthCalculatorP
                   max="5"
                   value={inputs.horizonYears}
                   onChange={(e) => handleInputChange('horizonYears', e.target.value)}
+                  className="h-9"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="discountRate">Discount Rate for NPV (%)</Label>
-                <Input
-                  id="discountRate"
-                  type="number"
-                  min="0"
-                  value={inputs.discountRate}
-                  onChange={(e) => handleInputChange('discountRate', e.target.value)}
+              <div className="flex items-center justify-between">
+                <Label htmlFor="showMonetary" className="text-sm">Show Monetary Impact (GWP)</Label>
+                <Switch
+                  id="showMonetary"
+                  checked={showMonetary}
+                  onCheckedChange={setShowMonetary}
                 />
               </div>
             </CardContent>
@@ -253,105 +274,138 @@ export default function GrowthCalculator({ currency = 'GBP' }: GrowthCalculatorP
         </div>
 
         {/* Outputs Section */}
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Users className="h-4 w-4" />
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs flex items-center gap-1">
+                  <Users className="h-3 w-3" />
                   Policies (Year {inputs.horizonYears})
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-primary">
+              <CardContent className="py-2">
+                <p className="text-xl font-bold text-primary">
                   {outputs.ccPoliciesEndYear.toLocaleString()}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground">
                   vs {outputs.baselinePoliciesEndYear.toLocaleString()} baseline
                 </p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" />
-                  Annual Commission
-                </CardTitle>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs">Incremental Policies</CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-primary">
-                  {formatCurrency(outputs.ccAnnualCommission, currency, 0)}
+              <CardContent className="py-2">
+                <p className="text-xl font-bold text-primary">
+                  +{outputs.incrementalPolicies.toLocaleString()}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  vs {formatCurrency(outputs.baselineAnnualCommission, currency, 0)}
+                <p className="text-xs text-muted-foreground">
+                  {formatPercent(outputs.roiPoliciesPercent)} growth
                 </p>
               </CardContent>
             </Card>
           </div>
 
           <Card className="bg-primary text-primary-foreground">
-            <CardHeader>
-              <CardTitle>Incremental Annual Commission (Year {inputs.horizonYears})</CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Growth ROI % (Policies)</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-4xl font-bold">
-                {formatCurrency(outputs.incrementalAnnualCommission, currency, 0)}
-              </p>
+            <CardContent className="py-2">
+              <p className="text-3xl font-bold">{formatPercent(outputs.roiPoliciesPercent)}</p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Cumulative Incremental Commission</CardTitle>
-              <CardDescription>Over {inputs.horizonYears}-year horizon</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Nominal Total</span>
-                <span className="font-semibold">
-                  {formatCurrency(outputs.cumulativeIncrementalCommission, currency, 0)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">NPV (@ {inputs.discountRate}%)</span>
-                <span className="font-semibold">
-                  {formatCurrency(outputs.npvIncrementalCommission, currency, 0)}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
+          {showMonetary && (
+            <>
+              <Card className="bg-secondary text-secondary-foreground">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Incremental GWP (Year {inputs.horizonYears})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="py-2">
+                  <p className="text-2xl font-bold">
+                    {formatCurrency(outputs.incrementalGwp, currency, 0)}
+                  </p>
+                  <p className="text-xs opacity-90">
+                    {formatPercent(outputs.roiGwpPercent)} growth
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">GWP Breakdown (Year {inputs.horizonYears})</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 py-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Baseline GWP</span>
+                    <span className="font-semibold">
+                      {formatCurrency(outputs.baselineGwp, currency, 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">With CoverCompass GWP</span>
+                    <span className="font-semibold">
+                      {formatCurrency(outputs.ccGwp, currency, 0)}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
 
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Policy Growth Over Time</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">
+                {showMonetary ? 'Policies & GWP Over Time' : 'Policies Over Time'}
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
+            <CardContent className="py-2">
+              <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={outputs.monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" label={{ value: 'Month', position: 'insideBottom', offset: -5 }} />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fontSize: 10 }}
+                    label={{ value: 'Month', position: 'insideBottom', offset: -5, fontSize: 10 }}
+                  />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip contentStyle={{ fontSize: 12 }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Line
                     type="monotone"
                     dataKey="baselinePolicies"
                     stroke="hsl(var(--muted-foreground))"
                     name="Baseline"
                     strokeWidth={2}
+                    dot={false}
                   />
                   <Line
                     type="monotone"
                     dataKey="ccPolicies"
                     stroke="hsl(var(--primary))"
-                    name="With CoverCompass"
+                    name="CoverCompass"
                     strokeWidth={2}
+                    dot={false}
                   />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
+
+          {noUplift && (
+            <Card className="border-amber-500/50 bg-amber-500/10">
+              <CardContent className="pt-4 pb-3">
+                <p className="text-xs text-center text-muted-foreground">
+                  No uplift configured. Adjust retention, efficiency, win rate, or AI uplift values.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 

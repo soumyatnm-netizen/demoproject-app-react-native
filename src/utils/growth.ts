@@ -1,12 +1,11 @@
 /**
  * Growth Calculator Utility Functions
- * Formulas for retention + new business uplift projections
+ * Business-level formulas for policy growth and retention
  */
 
 export interface GrowthInputs {
   currentPolicies: number;
   avgPremium: number;
-  commissionRate: number;
   currentRetention: number;
   retentionUplift: number;
   newPoliciesPerMonth: number;
@@ -15,28 +14,31 @@ export interface GrowthInputs {
   winRateUplift: number;
   aiUplift: number;
   horizonYears: number;
-  discountRate?: number;
   currency?: string;
 }
 
 export interface GrowthOutputs {
   baselinePoliciesEndYear: number;
   ccPoliciesEndYear: number;
-  baselineAnnualCommission: number;
-  ccAnnualCommission: number;
-  incrementalAnnualCommission: number;
-  cumulativeIncrementalCommission: number;
-  npvIncrementalCommission: number;
+  incrementalPolicies: number;
+  roiPoliciesPercent: number;
+  baselineGwp: number;
+  ccGwp: number;
+  incrementalGwp: number;
+  roiGwpPercent: number;
   monthlyData: {
     month: number;
     baselinePolicies: number;
     ccPolicies: number;
+    baselineGwp: number;
+    ccGwp: number;
   }[];
   yearlyData: {
     year: number;
-    baselineCommission: number;
-    ccCommission: number;
-    incrementalCommission: number;
+    baselinePolicies: number;
+    ccPolicies: number;
+    baselineGwp: number;
+    ccGwp: number;
   }[];
 }
 
@@ -44,7 +46,6 @@ export function calculateGrowth(inputs: GrowthInputs): GrowthOutputs {
   const {
     currentPolicies,
     avgPremium,
-    commissionRate,
     currentRetention,
     retentionUplift,
     newPoliciesPerMonth,
@@ -53,31 +54,28 @@ export function calculateGrowth(inputs: GrowthInputs): GrowthOutputs {
     winRateUplift,
     aiUplift,
     horizonYears,
-    discountRate = 8,
   } = inputs;
 
   // Convert annual retention to monthly retention rate
-  const rm0 = 1 - Math.pow(1 - currentRetention / 100, 1 / 12);
-  const r1 = Math.min(99.5, currentRetention + retentionUplift) / 100;
+  const r0 = currentRetention / 100;
+  const rm0 = 1 - Math.pow(1 - r0, 1 / 12);
+  
+  const r1 = Math.min(0.995, (currentRetention + retentionUplift) / 100);
   const rm1 = 1 - Math.pow(1 - r1, 1 / 12);
 
   // Win rates
-  const win0 = currentWinRate / 100;
+  const w0 = currentWinRate / 100;
   const win1 = Math.min(
     0.99,
-    (currentWinRate / 100) * (1 + winRateUplift / 100) * (1 + aiUplift / 100)
+    w0 * (1 + winRateUplift / 100) * (1 + aiUplift / 100)
   );
 
-  // Capacity multiplier and new business attempts
+  // Capacity and attempts
   const capMult = 1 + efficiencyGain / 100;
-  const nb1 = newPoliciesPerMonth * capMult;
-
+  
   // Monthly wins
-  const nbWon0M = newPoliciesPerMonth * win0;
-  const nbWon1M = nb1 * win1;
-
-  // Annual revenue per policy
-  const arp = avgPremium * (commissionRate / 100);
+  const nbWon0M = newPoliciesPerMonth * w0;
+  const nbWon1M = newPoliciesPerMonth * capMult * win1;
 
   // Monthly evolution
   const totalMonths = horizonYears * 12;
@@ -96,45 +94,45 @@ export function calculateGrowth(inputs: GrowthInputs): GrowthOutputs {
       month: t,
       baselinePolicies: Math.round(nBase[t]),
       ccPolicies: Math.round(nCc[t]),
+      baselineGwp: Math.round(nBase[t] * avgPremium),
+      ccGwp: Math.round(nCc[t] * avgPremium),
     });
   }
 
   // Yearly data
   const yearlyData = [];
-  let cumulativeIncremental = 0;
-  let npvIncremental = 0;
-
   for (let y = 1; y <= horizonYears; y++) {
     const endMonth = y * 12;
-    const baselineComm = nBase[endMonth] * arp;
-    const ccComm = nCc[endMonth] * arp;
-    const incremental = ccComm - baselineComm;
-
     yearlyData.push({
       year: y,
-      baselineCommission: baselineComm,
-      ccCommission: ccComm,
-      incrementalCommission: incremental,
+      baselinePolicies: Math.round(nBase[endMonth]),
+      ccPolicies: Math.round(nCc[endMonth]),
+      baselineGwp: Math.round(nBase[endMonth] * avgPremium),
+      ccGwp: Math.round(nCc[endMonth] * avgPremium),
     });
-
-    cumulativeIncremental += incremental;
-    npvIncremental += incremental / Math.pow(1 + discountRate / 100, y);
   }
 
-  const lastYear = yearlyData[yearlyData.length - 1] || {
-    baselineCommission: 0,
-    ccCommission: 0,
-    incrementalCommission: 0,
-  };
+  // Final year metrics
+  const baselinePif = nBase[totalMonths] || 0;
+  const ccPif = nCc[totalMonths] || 0;
+  const incrementalPolicies = ccPif - baselinePif;
+  const roiPoliciesPercent = baselinePif > 0 ? (incrementalPolicies / baselinePif) * 100 : 0;
+
+  // GWP metrics
+  const baselineGwp = baselinePif * avgPremium;
+  const ccGwp = ccPif * avgPremium;
+  const incrementalGwp = ccGwp - baselineGwp;
+  const roiGwpPercent = baselineGwp > 0 ? (incrementalGwp / baselineGwp) * 100 : 0;
 
   return {
-    baselinePoliciesEndYear: Math.round(nBase[totalMonths] || 0),
-    ccPoliciesEndYear: Math.round(nCc[totalMonths] || 0),
-    baselineAnnualCommission: lastYear.baselineCommission || 0,
-    ccAnnualCommission: lastYear.ccAnnualCommission || 0,
-    incrementalAnnualCommission: lastYear.incrementalCommission || 0,
-    cumulativeIncrementalCommission: cumulativeIncremental || 0,
-    npvIncrementalCommission: npvIncremental || 0,
+    baselinePoliciesEndYear: Math.round(baselinePif),
+    ccPoliciesEndYear: Math.round(ccPif),
+    incrementalPolicies: Math.round(incrementalPolicies),
+    roiPoliciesPercent,
+    baselineGwp: Math.round(baselineGwp),
+    ccGwp: Math.round(ccGwp),
+    incrementalGwp: Math.round(incrementalGwp),
+    roiGwpPercent,
     monthlyData,
     yearlyData,
   };
@@ -152,5 +150,11 @@ export const GROWTH_PRESETS = {
     efficiencyGain: 30,
     winRateUplift: 10,
     aiUplift: 5,
+  },
+  aggressive: {
+    retentionUplift: 7,
+    efficiencyGain: 40,
+    winRateUplift: 15,
+    aiUplift: 8,
   },
 };
