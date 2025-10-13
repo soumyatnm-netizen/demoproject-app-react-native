@@ -233,7 +233,7 @@ serve(async (req) => {
       product_type: firstQuote.product || 'Unknown',
       industry: null,
       revenue_band: null,
-      premium_amount: firstQuote.premium?.base || firstQuote.premium?.total || null,
+      premium_amount: Math.round(firstQuote.premium?.base || firstQuote.premium?.total || 0),
       premium_currency: 'GBP',
       quote_date: firstQuote.effective_date || null,
       expiry_date: firstQuote.expiry_date || null,
