@@ -121,16 +121,20 @@ export function calculateGrowth(inputs: GrowthInputs): GrowthOutputs {
     npvIncremental += incremental / Math.pow(1 + discountRate / 100, y);
   }
 
-  const lastYear = yearlyData[yearlyData.length - 1];
+  const lastYear = yearlyData[yearlyData.length - 1] || {
+    baselineCommission: 0,
+    ccCommission: 0,
+    incrementalCommission: 0,
+  };
 
   return {
-    baselinePoliciesEndYear: Math.round(nBase[totalMonths]),
-    ccPoliciesEndYear: Math.round(nCc[totalMonths]),
-    baselineAnnualCommission: lastYear.baselineCommission,
-    ccAnnualCommission: lastYear.ccAnnualCommission,
-    incrementalAnnualCommission: lastYear.incrementalCommission,
-    cumulativeIncrementalCommission: cumulativeIncremental,
-    npvIncrementalCommission: npvIncremental,
+    baselinePoliciesEndYear: Math.round(nBase[totalMonths] || 0),
+    ccPoliciesEndYear: Math.round(nCc[totalMonths] || 0),
+    baselineAnnualCommission: lastYear.baselineCommission || 0,
+    ccAnnualCommission: lastYear.ccAnnualCommission || 0,
+    incrementalAnnualCommission: lastYear.incrementalCommission || 0,
+    cumulativeIncrementalCommission: cumulativeIncremental || 0,
+    npvIncrementalCommission: npvIncremental || 0,
     monthlyData,
     yearlyData,
   };

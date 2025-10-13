@@ -72,15 +72,18 @@ export function calculateRoi(inputs: RoiInputs): RoiOutputs {
 
 export function formatCurrency(value: number, currency: string = 'GBP', decimals: number = 2): string {
   const symbol = currency === 'GBP' ? '£' : '$';
-  return `${symbol}${value.toLocaleString('en-GB', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+  const safeValue = value ?? 0;
+  return `${symbol}${safeValue.toLocaleString('en-GB', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
 export function formatHours(hours: number): string {
-  return `${hours.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}h`;
+  const safeHours = hours ?? 0;
+  return `${safeHours.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}h`;
 }
 
 export function formatPercent(value: number): string {
-  return `${value.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}%`;
+  const safeValue = value ?? 0;
+  return `${safeValue.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}%`;
 }
 
 export const PRESETS = {
