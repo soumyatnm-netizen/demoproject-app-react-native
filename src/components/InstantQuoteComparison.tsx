@@ -73,6 +73,7 @@ const InstantQuoteComparison = () => {
 
   const addStatusLog = (message: string, type: 'info' | 'success' | 'error' = 'info') => {
     const timestamp = new Date().toLocaleTimeString();
+    console.log(`[${timestamp}] ${type.toUpperCase()}:`, message);
     setStatusLog(prev => [...prev, { time: timestamp, message, type }]);
   };
 
@@ -340,359 +341,212 @@ const InstantQuoteComparison = () => {
       return;
     }
 
+    const t_start = performance.now();
     setIsProcessing(true);
     setAnalysisComplete(false);
     setShouldCancel(false);
     setStatusLog([]);
     
-    const uploadedQuoteIds: string[] = [];
-    const processedPolicyWordingIds: string[] = [];
-    const documentsForAnalysis: any[] = [];
-    
-    addStatusLog('Starting comprehensive analysis...', 'info');
+    addStatusLog('🚀 Starting optimized analysis pipeline...', 'info');
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No authenticated user');
 
-      // Step 1: Upload and process quote documents
-      if (uploadedQuotes.length > 0) {
-        setProcessingStep("Uploading quote documents...");
-        addStatusLog(`Processing ${uploadedQuotes.length} quote document(s)`, 'info');
-
-        for (let i = 0; i < uploadedQuotes.length; i++) {
-          if (shouldCancel) {
-            toast({
-              title: "Cancelled",
-              description: "Analysis cancelled by user",
-            });
-            return;
-          }
-          
-          const file = uploadedQuotes[i];
-          console.log(`Processing quote file ${i + 1}:`, file.name);
-          setProcessingStep(`Processing quote ${i + 1} of ${uploadedQuotes.length}...`);
-          addStatusLog(`Uploading quote: ${file.name}`, 'info');
-          
-          // Upload to storage with user-specific folder structure
-          console.log('Uploading to storage...');
-          const fileName = `${user.id}/${Date.now()}-${file.name}`;
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('documents')
-            .upload(fileName, file);
-
-          if (uploadError) {
-            console.error('Storage upload error:', uploadError);
-            addStatusLog(`Failed to upload ${file.name}: ${uploadError.message}`, 'error');
-            throw uploadError;
-          }
-          console.log('Upload successful:', uploadData.path);
-          addStatusLog(`Quote uploaded successfully: ${file.name}`, 'success');
-
-          // Create document record
-          console.log('Creating document record...');
-          const { data: docData, error: docError } = await supabase
-            .from('documents')
-            .insert({
-              user_id: user.id,
-              filename: file.name,
-              storage_path: uploadData.path,
-              file_type: file.type,
-              file_size: file.size,
-              status: 'uploaded'
-            })
-            .select()
-            .single();
-
-          if (docError) {
-            console.error('Document creation error:', docError);
-            throw docError;
-          }
-          console.log('Document created:', docData.id);
-
-          // Preflight classification
-          console.log('Running preflight classification...');
-          setProcessingStep(`Classifying document ${i + 1}...`);
-          addStatusLog(`Running preflight classification: ${file.name}`, 'info');
-          
-          const { data: preflightResult, error: preflightError } = await supabase.functions
-            .invoke('preflight-classify', {
-              body: { documentId: docData.id }
-            });
-
-          if (preflightError) {
-            console.error('Preflight classification error:', preflightError);
-            addStatusLog(`⚠️ Classification warning for ${file.name}: ${preflightError.message}`, 'error');
-          } else if (preflightResult?.classification) {
-            const classification = preflightResult.classification;
-            console.log('Classification result:', classification);
-            
-            // Log classification results
-            addStatusLog(`✓ Detected: ${classification.carrier_detected} - ${classification.document_type_detected}`, 'success');
-            
-            if (classification.warnings && classification.warnings.length > 0) {
-              classification.warnings.forEach((warning: string) => {
-                addStatusLog(`⚠️ ${warning}`, 'error');
-              });
-            }
-            
-            if (classification.document_type_detected === 'PolicyWording') {
-              addStatusLog(`⚠️ This appears to be a Policy Wording, not a Quote. Code: ${classification.wording_code_or_version || 'Unknown'}`, 'error');
-            }
-          }
-
-          // Process document with AI
-          console.log('Calling process-document edge function...');
-          setProcessingStep(`Analyzing quote ${i + 1} with AI...`);
-          addStatusLog(`Analyzing quote with AI: ${file.name}`, 'info');
-          
-          // Get the selected client's name
-          const selectedClientData = clients.find(client => client.id === selectedClient);
-          
-          const { data: processResult, error: processError } = await supabase.functions
-            .invoke('process-document', {
-              body: { 
-                documentId: docData.id,
-                clientName: selectedClientData?.client_name
-              }
-            });
-
-          if (processError) {
-            console.error('Process document error:', processError);
-            console.error('Process error details:', {
-              message: processError.message,
-              context: processError.context,
-              details: processError.details
-            });
-            addStatusLog(`AI analysis failed for ${file.name}: ${processError.message}`, 'error');
-            throw processError;
-          }
-          console.log('Process result:', processResult);
-          addStatusLog(`AI analysis completed for ${file.name}`, 'success');
-          
-          // The process-document function creates a structured_quote record
-          // We need to get the quote ID from the structured_quotes table
-          console.log('Looking up structured quote...');
-          const { data: quoteData, error: quoteError } = await supabase
-            .from('structured_quotes')
-            .select('id')
-            .eq('document_id', docData.id)
-            .single();
-            
-          if (quoteError) {
-            console.error('Quote lookup error:', quoteError);
-            console.error('Quote lookup details:', {
-              documentId: docData.id,
-              error: quoteError
-            });
-            throw quoteError;
-          }
-          console.log('Quote found:', quoteData);
-          
-          if (quoteData?.id) {
-            uploadedQuoteIds.push(quoteData.id);
-            documentsForAnalysis.push({
-              carrier_name: file.name.split('_')[0] || file.name.split('.')[0] || 'Unknown',
-              document_type: 'Quote',
-              filename: file.name,
-              document_id: quoteData.id
-            });
-            console.log('Added quote ID to array:', quoteData.id);
-          } else {
-            console.warn('No quote ID found for document:', docData.id);
-          }
-        }
-      }
-
-      // Step 1.5: Upload and process policy wording documents
-      if (policyWordingDocs.length > 0) {
-        setProcessingStep("Processing policy wording documents...");
-        addStatusLog(`Processing ${policyWordingDocs.length} policy wording document(s)`, 'info');
-
-        for (let i = 0; i < policyWordingDocs.length; i++) {
-          if (shouldCancel) {
-            toast({
-              title: "Cancelled",
-              description: "Analysis cancelled by user",
-            });
-            return;
-          }
-          
-          const file = policyWordingDocs[i];
-          console.log(`Processing policy wording ${i + 1}:`, file.name);
-          setProcessingStep(`Analyzing policy wording ${i + 1} of ${policyWordingDocs.length}...`);
-          addStatusLog(`Uploading policy wording: ${file.name}`, 'info');
-
-          try {
-            // Upload to storage
-            const fileName = `${user.id}/${Date.now()}-${file.name}`;
-            const { data: uploadData, error: uploadError } = await supabase.storage
-              .from('documents')
-              .upload(fileName, file);
-
-            if (uploadError) {
-              console.error('Policy wording upload error:', uploadError);
-              addStatusLog(`Failed to upload policy wording ${file.name}: ${uploadError.message}`, 'error');
-              throw uploadError;
-            }
-            addStatusLog(`Policy wording uploaded: ${file.name}`, 'success');
-
-            // Create document record
-            const { data: docData, error: docError } = await supabase
-              .from('documents')
-              .insert({
-                user_id: user.id,
-                filename: file.name,
-                storage_path: uploadData.path,
-                file_type: file.type,
-                file_size: file.size,
-                status: 'uploaded'
-              })
-              .select()
-              .single();
-
-            if (docError) {
-              console.error('Document creation error:', docError);
-              throw docError;
-            }
-
-            console.log('Policy wording document created:', docData.id);
-            addStatusLog(`Analyzing policy wording with AI: ${file.name}`, 'info');
-
-            // Process with AI using specialized policy wording analysis
-            const { data: processResult, error: processError } = await supabase.functions
-              .invoke('process-policy-wording', {
-                body: { documentId: docData.id }
-              });
-
-            if (processError) {
-              console.error('Policy wording processing error:', processError);
-              addStatusLog(`AI analysis failed for policy wording ${file.name}: ${processError.message}`, 'error');
-              // Continue with other documents even if one fails
-              toast({
-                title: "Processing Warning",
-                description: `Failed to process ${file.name}: ${processError.message}`,
-                variant: "destructive",
-              });
-              continue;
-            }
-
-            if (!processResult?.ok) {
-              console.error('Policy wording processing returned unsuccessful:', processResult);
-              addStatusLog(`Processing error for ${file.name}: ${processResult?.error || 'Unknown error'}`, 'error');
-              toast({
-                title: "Processing Warning", 
-                description: `${file.name} processing failed: ${processResult?.error || 'Unknown error'}`,
-                variant: "destructive",
-              });
-              continue;
-            }
-
-            console.log('Policy wording processed successfully:', processResult);
-            addStatusLog(`AI analysis completed for policy wording: ${file.name}`, 'success');
-
-            if (processResult?.meta?.policyWordingId) {
-              processedPolicyWordingIds.push(processResult.meta.policyWordingId);
-              documentsForAnalysis.push({
-                carrier_name: file.name.split('_')[0] || file.name.split('.')[0] || 'Unknown',
-                document_type: 'PolicyWording',
-                filename: file.name,
-                document_id: processResult.meta.policyWordingId
-              });
-              console.log('Added policy wording ID:', processResult.meta.policyWordingId);
-            } else {
-              console.warn('No policyWordingId returned for document:', docData.id);
-            }
-          } catch (error) {
-            console.error(`Error processing policy wording ${file.name}:`, error);
-            // Continue with other documents
-          }
-        }
-        
-        setPolicyWordingIds(processedPolicyWordingIds);
-        console.log('Policy wording processing complete. IDs:', processedPolicyWordingIds);
-      }
-
-      // Step 2: Run comprehensive comparison analysis
-      if (documentsForAnalysis.length > 0) {
-        if (shouldCancel) {
-          toast({
-            title: "Cancelled",
-            description: "Analysis cancelled by user",
-          });
-          return;
-        }
-        
-        console.log('Starting comprehensive comparison with documents:', documentsForAnalysis);
-        setProcessingStep("Running comprehensive comparison analysis...");
-        addStatusLog(`Starting comprehensive comparison with ${documentsForAnalysis.length} document(s)`, 'info');
-        
-        // Get the selected client's data
-        const selectedClientData = clients.find(client => client.id === selectedClient);
-        
-        const { data: comparisonData, error: comparisonError } = await supabase.functions.invoke(
-          'comprehensive-comparison',
-          {
-            body: {
-              client_name: selectedClientData?.client_name || 'Unknown Client',
-              client_ref: `CC-${Date.now()}`,
-              industry: 'Professional Services',
-              jurisdiction: 'UK',
-              broker_name: 'CoverCompass',
-              priority_metrics: ['Premium(Total)', 'CoverageTrigger', 'Limits', 'Deductible', 'Exclusions'],
-              documents: documentsForAnalysis
-            }
-          }
-        );
-
-        if (comparisonError) {
-          console.error('Comprehensive comparison error:', comparisonError);
-          addStatusLog(`Comprehensive comparison failed: ${comparisonError.message}`, 'error');
-          throw new Error(`Comprehensive comparison failed: ${comparisonError.message}`);
-        }
-
-        if (!comparisonData?.analysis) {
-          console.error('No analysis returned from comprehensive comparison');
-          addStatusLog('No analysis data received from comprehensive comparison', 'error');
-          throw new Error('Failed to generate comprehensive comparison');
-        }
-
-        console.log('Comprehensive analysis received:', comparisonData.analysis);
-        addStatusLog('Comprehensive comparison completed successfully', 'success');
-        
-        // Store the comprehensive analysis for display
-        setRankings(comparisonData.analysis.extractions || []);
-        setScoredRankings(comparisonData.analysis.extractions || []);
-      }
+      const allDocs: File[] = [...uploadedQuotes, ...policyWordingDocs];
+      const docTypes = [
+        ...uploadedQuotes.map(() => 'Quote'),
+        ...policyWordingDocs.map(() => 'PolicyWording')
+      ];
       
+      addStatusLog(`📄 Processing ${allDocs.length} document(s) in parallel...`, 'info');
+      
+      // PHASE 1: Upload all documents (parallel)
+      setProcessingStep("Uploading documents...");
+      const t_upload_start = performance.now();
+      
+      const uploadPromises = allDocs.map(async (file, idx) => {
+        const fileName = `${user.id}/${Date.now()}-${idx}-${file.name}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('documents')
+          .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: docData, error: docError } = await supabase
+          .from('documents')
+          .insert({
+            user_id: user.id,
+            filename: file.name,
+            storage_path: uploadData.path,
+            file_type: file.type,
+            file_size: file.size,
+            status: 'uploaded'
+          })
+          .select()
+          .single();
+
+        if (docError) throw docError;
+        
+        return { documentId: docData.id, filename: file.name, type: docTypes[idx] };
+      });
+
+      const uploadedDocs = await Promise.all(uploadPromises);
+      const t_upload = performance.now() - t_upload_start;
+      addStatusLog(`✓ Uploaded ${uploadedDocs.length} documents in ${Math.round(t_upload)}ms`, 'success');
+
+      // PHASE 2: Preflight classification (parallel, optional - can skip for speed)
+      setProcessingStep("Classifying documents...");
+      const t_preflight_start = performance.now();
+      
+      const preflightPromises = uploadedDocs.map(async (doc) => {
+        const { data, error } = await supabase.functions.invoke('preflight-classify', {
+          body: { documentId: doc.documentId }
+        });
+        
+        if (!error && data?.classification) {
+          const cls = data.classification;
+          addStatusLog(`📋 ${doc.filename}: ${cls.carrier || 'Unknown'} - ${cls.doc_type || 'Unknown'}`, 'info');
+          
+          if (cls.warnings?.length > 0) {
+            cls.warnings.forEach((w: string) => addStatusLog(`⚠️ ${w}`, 'error'));
+          }
+          return { ...doc, classification: cls };
+        }
+        return { ...doc, classification: null };
+      });
+
+      const classifiedDocs = await Promise.all(preflightPromises);
+      const t_preflight = performance.now() - t_preflight_start;
+      addStatusLog(`✓ Classified ${classifiedDocs.length} documents in ${Math.round(t_preflight)}ms`, 'success');
+
+      // PHASE 3: Extract fields (parallel)
+      setProcessingStep("Extracting data with AI...");
+      const t_extract_start = performance.now();
+      
+      const extractPromises = classifiedDocs.map(async (doc) => {
+        const functionName = doc.type === 'Quote' ? 'extract-quote' : 'extract-wording';
+        
+        const { data, error } = await supabase.functions.invoke(functionName, {
+          body: { documentId: doc.documentId }
+        });
+
+        if (error) {
+          addStatusLog(`❌ Failed to extract ${doc.filename}: ${error.message}`, 'error');
+          return null;
+        }
+
+        if (!data?.ok) {
+          addStatusLog(`❌ Extraction error for ${doc.filename}`, 'error');
+          return null;
+        }
+
+        const timing = data.meta?.timing;
+        if (timing) {
+          addStatusLog(`✓ Extracted ${doc.filename} in ${timing.total_ms}ms (fetch: ${timing.fetch_ms}ms, upload: ${timing.upload_ms}ms, extract: ${timing.extract_ms}ms)`, 'success');
+        } else {
+          addStatusLog(`✓ Extracted ${doc.filename}`, 'success');
+        }
+
+        return {
+          ...doc,
+          extraction: data.result,
+          meta: data.meta
+        };
+      });
+
+      const extractedDocs = (await Promise.all(extractPromises)).filter(Boolean);
+      const t_extract = performance.now() - t_extract_start;
+      addStatusLog(`✓ Extracted ${extractedDocs.length}/${classifiedDocs.length} documents in ${Math.round(t_extract)}ms`, 'success');
+
+      if (extractedDocs.length === 0) {
+        throw new Error('No documents extracted successfully');
+      }
+
+      // Track IDs for final summary
+      const quoteCount = extractedDocs.filter(d => d.type === 'Quote').length;
+      const wordingCount = extractedDocs.filter(d => d.type === 'PolicyWording').length;
+
+      // PHASE 4: Aggregate & compare (single call)
+      if (shouldCancel) {
+        toast({ title: "Cancelled", description: "Analysis cancelled by user" });
+        return;
+      }
+
+      setProcessingStep("Generating comprehensive comparison...");
+      const t_aggregate_start = performance.now();
+      addStatusLog('🔄 Generating comprehensive comparison...', 'info');
+
+      const documentsForAnalysis = extractedDocs.map(doc => ({
+        carrier_name: doc.classification?.carrier || doc.filename.split('_')[0] || 'Unknown',
+        document_type: doc.type,
+        filename: doc.filename,
+        document_id: doc.documentId
+      }));
+
+      const selectedClientData = clients.find(c => c.id === selectedClient);
+      
+      const { data: comparisonData, error: comparisonError } = await supabase.functions.invoke(
+        'comprehensive-comparison',
+        {
+          body: {
+            client_name: selectedClientData?.client_name || 'Unknown Client',
+            client_ref: `CC-${Date.now()}`,
+            industry: selectedClientData?.industry || 'Professional Services',
+            jurisdiction: 'UK',
+            broker_name: 'CoverCompass',
+            priority_metrics: ['Premium(Total)', 'CoverageTrigger', 'Limits', 'Deductible', 'Exclusions'],
+            documents: documentsForAnalysis
+          }
+        }
+      );
+
+      const t_aggregate = performance.now() - t_aggregate_start;
+
+      if (comparisonError) {
+        addStatusLog(`❌ Comparison failed: ${comparisonError.message}`, 'error');
+        throw new Error(`Comprehensive comparison failed: ${comparisonError.message}`);
+      }
+
+      if (!comparisonData?.analysis) {
+        addStatusLog('❌ No analysis data received', 'error');
+        throw new Error('Failed to generate comprehensive comparison');
+      }
+
+      addStatusLog(`✓ Comparison completed in ${Math.round(t_aggregate)}ms`, 'success');
+      
+      setRankings(comparisonData.analysis.extractions || []);
+      setScoredRankings(comparisonData.analysis.extractions || []);
       setAnalysisComplete(true);
 
+      // Final timing summary
+      const t_total = performance.now() - t_start;
+      addStatusLog(`\n🎉 TOTAL TIME: ${Math.round(t_total)}ms`, 'success');
+      addStatusLog(`  • Upload: ${Math.round(t_upload)}ms`, 'info');
+      addStatusLog(`  • Classify: ${Math.round(t_preflight)}ms`, 'info');
+      addStatusLog(`  • Extract: ${Math.round(t_extract)}ms`, 'info');
+      addStatusLog(`  • Compare: ${Math.round(t_aggregate)}ms`, 'info');
+
       let successMessage = "Analysis complete!";
-      if (uploadedQuoteIds.length > 0 && processedPolicyWordingIds.length > 0) {
-        successMessage = `Analyzed ${uploadedQuoteIds.length} quote${uploadedQuoteIds.length !== 1 ? 's' : ''} and ${processedPolicyWordingIds.length} policy wording${processedPolicyWordingIds.length !== 1 ? 's' : ''}`;
-      } else if (uploadedQuoteIds.length > 0) {
-        successMessage = `Ranked ${uploadedQuoteIds.length} quote${uploadedQuoteIds.length !== 1 ? 's' : ''} from best to worst`;
-      } else if (processedPolicyWordingIds.length > 0) {
-        successMessage = `Analyzed ${processedPolicyWordingIds.length} policy wording${processedPolicyWordingIds.length !== 1 ? 's' : ''}`;
+      if (quoteCount > 0 && wordingCount > 0) {
+        successMessage = `Analyzed ${quoteCount} quote${quoteCount !== 1 ? 's' : ''} and ${wordingCount} wording${wordingCount !== 1 ? 's' : ''} in ${Math.round(t_total / 1000)}s`;
+      } else if (quoteCount > 0) {
+        successMessage = `Ranked ${quoteCount} quote${quoteCount !== 1 ? 's' : ''} in ${Math.round(t_total / 1000)}s`;
+      } else if (wordingCount > 0) {
+        successMessage = `Analyzed ${wordingCount} wording${wordingCount !== 1 ? 's' : ''} in ${Math.round(t_total / 1000)}s`;
       }
 
       toast({
-        title: "Analysis Complete!",
+        title: "Analysis Complete! ⚡",
         description: successMessage,
       });
 
     } catch (error) {
       console.error('Analysis error:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        uploadedQuotes: uploadedQuotes.length,
-        selectedClient,
-        uploadedQuoteIds
-      });
+      addStatusLog(`❌ Fatal error: ${error.message}`, 'error');
       toast({
         title: "Analysis Failed",
-        description: `Error: ${error.message}. Check console for details.`,
+        description: `Error: ${error.message}`,
         variant: "destructive",
       });
     } finally {

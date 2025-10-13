@@ -49,3 +49,9 @@ verify_jwt = false
 
 [functions.preflight-classify]
 verify_jwt = true
+
+[functions.extract-quote]
+verify_jwt = true
+
+[functions.extract-wording]
+verify_jwt = true

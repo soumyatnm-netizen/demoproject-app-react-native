@@ -80,36 +80,22 @@ serve(async (req) => {
     const fileId = uploadData.id;
     console.log(`[Preflight] Uploaded to OpenAI: ${fileId}`);
 
-    // Classification prompt
-    const classificationPrompt = `You are the CoverCompass Preflight Classifier.
-Your job is to make sure each uploaded insurance document is correctly identified before we run extraction.
+    // Lightweight classification prompt (150-250 tokens)
+    const classificationPrompt = `CoverCompass Preflight. Return JSON only.
 
-TASK:
-Given the full extracted text of ONE PDF and its filename, return JSON ONLY:
+INPUTS: filename="${doc.filename}"
 
-{
-  "carrier_detected": "",
-  "document_type_detected": "Quote | PolicyWording | Unknown",
-  "document_type_from_filename": "${doc.filename}",
-  "wording_code_or_version": "",
-  "purchased_sections": [],
-  "warnings": []
-}
+OUTPUT:
+{ "carrier": "", "doc_type": "Quote|PolicyWording|Unknown",
+  "wording_version": "", "purchased_sections": [], "warnings": [] }
 
 RULES:
-- Detect carrier: normalize variations → "CFC" or "Hiscox" or other carrier names.
-- Detect type by CONTENT not filename:
-  - If text contains "Policy wording", "Form", "Version", or wording code (e.g. DC565), set "PolicyWording".
-  - If text contains "Quote", "Quote Schedule", "Indication of Terms", or "Quote expiry", set "Quote".
-- If filename type and detected type differ, add a warning.
-- For Policy Wordings:
-  - Extract the wording code/version if visible.
-  - If the wording is a portfolio, leave "purchased_sections" blank (we will fill from schedule later).
-- For Quotes:
-  - Try to extract list of purchased sections (e.g. PI, PL, EL, Cyber).
-- Always keep JSON valid. If info not found, set value = "Unknown".
-
-Analyze the document and return ONLY valid JSON.`;
+- Detect by content, not filename.
+- Normalize carriers: "Hiscox Insurance"→"Hiscox", "CFC Underwriting"→"CFC".
+- If mismatch filename↔content, push warning.
+- For Quotes: list purchased sections.
+- For Wordings: extract wording/form code.
+- Use "Unknown" when absent.`;
 
     // Call OpenAI with file
     const completionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -132,7 +118,8 @@ Analyze the document and return ONLY valid JSON.`;
             ]
           }
         ],
-        temperature: 0.1,
+        temperature: 0,
+        max_tokens: 300,
       }),
     });
 
