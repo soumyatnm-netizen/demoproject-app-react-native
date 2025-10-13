@@ -442,8 +442,7 @@ const InstantQuoteComparison = () => {
               storage_path: uploadData.path,
               file_type: file.type,
               file_size: file.size,
-              status: 'uploaded',
-              document_type: 'policy_wording'
+              status: 'uploaded'
             })
             .select()
             .single();
