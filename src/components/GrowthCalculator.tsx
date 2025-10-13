@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Download, TrendingUp, Users, DollarSign } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { calculateGrowth, type GrowthInputs } from '@/utils/growth';
 import { formatCurrency, formatPercent } from '@/utils/roi';
 
@@ -294,7 +293,7 @@ export default function GrowthCalculator({ currency = 'GBP' }: GrowthCalculatorP
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">Growth ROI % (Policies)</CardTitle>
             </CardHeader>
-            <CardContent className="py-2">
+            <CardContent className="py-4">
               <p className="text-3xl font-bold">{formatPercent(outputs.roiPoliciesPercent)}</p>
             </CardContent>
           </Card>
@@ -308,11 +307,11 @@ export default function GrowthCalculator({ currency = 'GBP' }: GrowthCalculatorP
                     Incremental GWP (Year {inputs.horizonYears})
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="py-2">
+                <CardContent className="py-4">
                   <p className="text-2xl font-bold">
                     {formatCurrency(outputs.incrementalGwp, currency, 0)}
                   </p>
-                  <p className="text-xs opacity-90">
+                  <p className="text-xs opacity-90 mt-1">
                     {formatPercent(outputs.roiGwpPercent)} growth
                   </p>
                 </CardContent>
@@ -322,7 +321,7 @@ export default function GrowthCalculator({ currency = 'GBP' }: GrowthCalculatorP
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm">GWP Breakdown (Year {inputs.horizonYears})</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2 py-2">
+                <CardContent className="space-y-2 py-4">
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Baseline GWP</span>
                     <span className="font-semibold">
@@ -339,45 +338,6 @@ export default function GrowthCalculator({ currency = 'GBP' }: GrowthCalculatorP
               </Card>
             </>
           )}
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm">
-                {showMonetary ? 'Policies & GWP Over Time' : 'Policies Over Time'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="py-2">
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={outputs.monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis
-                    dataKey="month"
-                    tick={{ fontSize: 10 }}
-                    label={{ value: 'Month', position: 'insideBottom', offset: -5, fontSize: 10 }}
-                  />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip contentStyle={{ fontSize: 12 }} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Line
-                    type="monotone"
-                    dataKey="baselinePolicies"
-                    stroke="hsl(var(--muted-foreground))"
-                    name="Baseline"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="ccPolicies"
-                    stroke="hsl(var(--primary))"
-                    name="CoverCompass"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
 
           {noUplift && (
             <Card className="border-amber-500/50 bg-amber-500/10">
