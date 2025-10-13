@@ -18,28 +18,25 @@ import {
 
 interface RoiCalculatorProps {
   currency?: string;
-  defaultPlatformCost?: number;
   workHoursPerYear?: number;
 }
 
 export default function RoiCalculator({
   currency = 'GBP',
-  defaultPlatformCost = 900,
   workHoursPerYear = 1680,
 }: RoiCalculatorProps) {
   const { toast } = useToast();
   const [preset, setPreset] = useState<'conservative' | 'typical' | 'aggressive'>('typical');
   const [inputs, setInputs] = useState<RoiInputs>({
     ...PRESETS.typical,
-    platformMonthlyCost: defaultPlatformCost,
     workHoursPerYear,
   });
 
   const outputs = useMemo(() => calculateRoi(inputs), [inputs]);
 
   useEffect(() => {
-    setInputs({ ...PRESETS[preset], platformMonthlyCost: defaultPlatformCost, workHoursPerYear });
-  }, [preset, defaultPlatformCost, workHoursPerYear]);
+    setInputs({ ...PRESETS[preset], workHoursPerYear });
+  }, [preset, workHoursPerYear]);
 
   const handleInputChange = (field: keyof RoiInputs, value: string) => {
     const numValue = parseFloat(value) || 0;
@@ -74,8 +71,8 @@ export default function RoiCalculator({
           <h2 className="text-3xl font-bold text-foreground">CoverCompass ROI Calculator</h2>
         </div>
         <p className="text-muted-foreground max-w-2xl mx-auto">
-          Calculate your time and cost savings with CoverCompass. See how much you could save by
-          automating your insurance comparison workflow.
+          Calculate your labour time and cost savings with CoverCompass. See the efficiency gains
+          from automating your insurance comparison workflow.
         </p>
       </div>
 
@@ -153,17 +150,6 @@ export default function RoiCalculator({
                 onChange={(e) => handleInputChange('annualSalary', e.target.value)}
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="platformMonthlyCost">Platform Monthly Cost ({currency})</Label>
-              <Input
-                id="platformMonthlyCost"
-                type="number"
-                min="0"
-                value={inputs.platformMonthlyCost}
-                onChange={(e) => handleInputChange('platformMonthlyCost', e.target.value)}
-              />
-            </div>
           </CardContent>
         </Card>
 
@@ -173,13 +159,13 @@ export default function RoiCalculator({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <DollarSign className="h-5 w-5" />
-                Annual Savings
+                Annual Labour Savings
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-4xl font-bold">{formatCurrency(outputs.annualSavings, currency)}</p>
+              <p className="text-4xl font-bold">{formatCurrency(outputs.annualLabourSavings, currency)}</p>
               <p className="text-sm opacity-90 mt-2">
-                {formatCurrency(outputs.netMonthlySavings, currency)} per month
+                {formatCurrency(outputs.monthlyLabourSavings, currency)} per month
               </p>
             </CardContent>
           </Card>
@@ -199,31 +185,21 @@ export default function RoiCalculator({
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">ROI</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-primary">{formatPercent(outputs.roiPercent)}</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Payback Period</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-primary">
-                  {outputs.paybackMonths ? `${outputs.paybackMonths.toFixed(1)} mo` : 'N/A'}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">ROI % (Cost Reduction)</CardTitle>
+              <CardDescription className="text-xs">
+                Percentage reduction in labour costs vs current manual process
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-primary">{formatPercent(outputs.roiPercent)}</p>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Cost Breakdown</CardTitle>
+              <CardTitle className="text-base">Labour Cost Breakdown</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between text-sm">
@@ -233,25 +209,29 @@ export default function RoiCalculator({
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">CoverCompass Monthly Labour Cost</span>
+                <span className="text-muted-foreground">With CoverCompass Monthly Labour Cost</span>
                 <span className="font-semibold">
                   {formatCurrency(outputs.ccMonthlyLabourCost, currency)}
                 </span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Platform Cost</span>
-                <span className="font-semibold">
-                  {formatCurrency(outputs.platformMonthlyCost, currency)}
-                </span>
-              </div>
               <div className="border-t pt-3 flex justify-between font-bold">
-                <span>Net Monthly Savings</span>
+                <span>Monthly Labour Savings</span>
                 <span className="text-primary">
-                  {formatCurrency(outputs.netMonthlySavings, currency)}
+                  {formatCurrency(outputs.monthlyLabourSavings, currency)}
                 </span>
               </div>
             </CardContent>
           </Card>
+
+          {outputs.monthlyLabourSavings === 0 && (
+            <Card className="border-amber-500/50 bg-amber-500/10">
+              <CardContent className="pt-6">
+                <p className="text-sm text-center text-muted-foreground">
+                  No labour savings with current assumptions. Try adjusting the time values.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 

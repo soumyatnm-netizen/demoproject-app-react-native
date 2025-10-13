@@ -11,7 +11,6 @@ export interface RoiInputs {
   manualTimeMin: number;
   ccTimeMin: number;
   annualSalary: number;
-  platformMonthlyCost: number;
   workHoursPerYear?: number;
 }
 
@@ -19,13 +18,11 @@ export interface RoiOutputs {
   monthlyOperations: number;
   currentMonthlyLabourCost: number;
   ccMonthlyLabourCost: number;
-  platformMonthlyCost: number;
   monthlyTimeSavedHrs: number;
   annualTimeSavedHrs: number;
-  netMonthlySavings: number;
-  annualSavings: number;
+  monthlyLabourSavings: number;
+  annualLabourSavings: number;
   roiPercent: number;
-  paybackMonths: number | null;
 }
 
 export function calculateRoi(inputs: RoiInputs): RoiOutputs {
@@ -35,7 +32,6 @@ export function calculateRoi(inputs: RoiInputs): RoiOutputs {
     manualTimeMin,
     ccTimeMin,
     annualSalary,
-    platformMonthlyCost,
     workHoursPerYear = WORK_HOURS_PER_YEAR,
   } = inputs;
 
@@ -55,26 +51,22 @@ export function calculateRoi(inputs: RoiInputs): RoiOutputs {
   const labourCurrentMonth = policiesPerMonth * tManualHr * hourlyRate * employees;
   const labourCcMonth = policiesPerMonth * tCcHr * hourlyRate * employees;
 
-  // Savings calculations
-  const savingsMonth = Math.max(0, labourCurrentMonth - (labourCcMonth + platformMonthlyCost));
+  // Labour savings (no platform cost)
+  const savingsMonth = Math.max(0, labourCurrentMonth - labourCcMonth);
   const savingsYear = savingsMonth * 12;
 
-  // ROI and payback
-  const totalPlatformCostYear = platformMonthlyCost * 12;
-  const roiPercent = totalPlatformCostYear === 0 ? 0 : (savingsYear / totalPlatformCostYear) * 100;
-  const paybackMonths = savingsMonth <= 0 ? null : platformMonthlyCost / savingsMonth;
+  // ROI % (cost reduction)
+  const roiPercent = labourCurrentMonth <= 0 ? 0 : (savingsMonth / labourCurrentMonth) * 100;
 
   return {
-    monthlyOperations: policiesPerMonth,
+    monthlyOperations: Math.round(policiesPerMonth),
     currentMonthlyLabourCost: labourCurrentMonth,
     ccMonthlyLabourCost: labourCcMonth,
-    platformMonthlyCost,
     monthlyTimeSavedHrs: timeSavedMonth,
     annualTimeSavedHrs: timeSavedYear,
-    netMonthlySavings: savingsMonth,
-    annualSavings: savingsYear,
+    monthlyLabourSavings: savingsMonth,
+    annualLabourSavings: savingsYear,
     roiPercent,
-    paybackMonths,
   };
 }
 
@@ -98,7 +90,6 @@ export const PRESETS = {
     manualTimeMin: 15,
     ccTimeMin: 10,
     annualSalary: 40000,
-    platformMonthlyCost: 900,
   },
   typical: {
     employees: 2,
@@ -106,7 +97,6 @@ export const PRESETS = {
     manualTimeMin: 20,
     ccTimeMin: 8,
     annualSalary: 45000,
-    platformMonthlyCost: 900,
   },
   aggressive: {
     employees: 3,
@@ -114,13 +104,12 @@ export const PRESETS = {
     manualTimeMin: 25,
     ccTimeMin: 7,
     annualSalary: 50000,
-    platformMonthlyCost: 900,
   },
 };
 
 export function generateCsvData(inputs: RoiInputs, outputs: RoiOutputs): string {
   const rows = [
-    ['CoverCompass ROI Calculator Results'],
+    ['CoverCompass ROI Calculator - Labour Savings Analysis'],
     [''],
     ['INPUTS'],
     ['Employees on Task', inputs.employees.toString()],
@@ -128,19 +117,16 @@ export function generateCsvData(inputs: RoiInputs, outputs: RoiOutputs): string 
     ['Manual Time per Policy (min)', inputs.manualTimeMin.toString()],
     ['Time with CoverCompass (min)', inputs.ccTimeMin.toString()],
     ['Average Annual Salary', formatCurrency(inputs.annualSalary)],
-    ['Platform Monthly Cost', formatCurrency(inputs.platformMonthlyCost)],
     [''],
     ['OUTPUTS'],
     ['Monthly Operations', outputs.monthlyOperations.toString()],
-    ['Current Monthly Labour Cost', formatCurrency(outputs.currentMonthlyLabourCost)],
-    ['CoverCompass Monthly Labour Cost', formatCurrency(outputs.ccMonthlyLabourCost)],
-    ['Platform Monthly Cost', formatCurrency(outputs.platformMonthlyCost)],
     ['Monthly Time Saved', formatHours(outputs.monthlyTimeSavedHrs)],
     ['Annual Time Saved', formatHours(outputs.annualTimeSavedHrs)],
-    ['Net Monthly Savings', formatCurrency(outputs.netMonthlySavings)],
-    ['Annual Savings', formatCurrency(outputs.annualSavings)],
-    ['ROI %', formatPercent(outputs.roiPercent)],
-    ['Payback Period (months)', outputs.paybackMonths ? outputs.paybackMonths.toFixed(1) : 'N/A'],
+    ['Current Monthly Labour Cost', formatCurrency(outputs.currentMonthlyLabourCost)],
+    ['CoverCompass Monthly Labour Cost', formatCurrency(outputs.ccMonthlyLabourCost)],
+    ['Monthly Labour Savings', formatCurrency(outputs.monthlyLabourSavings)],
+    ['Annual Labour Savings', formatCurrency(outputs.annualLabourSavings)],
+    ['ROI % (Cost Reduction)', formatPercent(outputs.roiPercent)],
   ];
 
   return rows.map(row => row.join(',')).join('\n');
