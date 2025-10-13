@@ -84,25 +84,11 @@ export function formatPercent(value: number): string {
 }
 
 export const PRESETS = {
-  conservative: {
-    employees: 1,
-    policiesPerMonth: 80,
-    manualTimeMin: 15,
-    ccTimeMin: 10,
-    annualSalary: 40000,
-  },
   typical: {
     employees: 7,
     policiesPerMonth: 120,
     manualTimeMin: 40,
     ccTimeMin: 8,
-    annualSalary: 50000,
-  },
-  aggressive: {
-    employees: 3,
-    policiesPerMonth: 200,
-    manualTimeMin: 25,
-    ccTimeMin: 7,
     annualSalary: 50000,
   },
 };
