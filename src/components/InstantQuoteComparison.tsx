@@ -1422,6 +1422,12 @@ const InstantQuoteComparison = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
+            <div className="bg-muted/50 border border-border rounded-lg p-3 mb-4">
+              <p className="text-xs text-muted-foreground">
+                Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail.
+              </p>
+            </div>
+            
             <Button 
               onClick={analyzeQuotes}
               disabled={!selectedClient || uploadedQuotes.length === 0 || isProcessing}
