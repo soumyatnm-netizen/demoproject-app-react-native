@@ -76,11 +76,11 @@ export function formatCurrency(value: number, currency: string = 'GBP', decimals
 }
 
 export function formatHours(hours: number): string {
-  return `${hours.toLocaleString('en-GB', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h`;
+  return `${hours.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}h`;
 }
 
 export function formatPercent(value: number): string {
-  return `${value.toLocaleString('en-GB', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+  return `${value.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}%`;
 }
 
 export const PRESETS = {
