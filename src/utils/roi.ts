@@ -92,11 +92,11 @@ export const PRESETS = {
     annualSalary: 40000,
   },
   typical: {
-    employees: 2,
+    employees: 7,
     policiesPerMonth: 120,
-    manualTimeMin: 20,
+    manualTimeMin: 40,
     ccTimeMin: 8,
-    annualSalary: 45000,
+    annualSalary: 50000,
   },
   aggressive: {
     employees: 3,
