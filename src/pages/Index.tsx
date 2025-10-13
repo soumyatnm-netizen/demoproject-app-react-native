@@ -6,6 +6,7 @@ import { FileUp, BarChart3, Users, Shield, Upload, Eye, Download } from "lucide-
 import FileUpload from "@/components/FileUpload";
 import Dashboard from "@/components/Dashboard";
 import AuthWrapper from "@/components/AuthWrapper";
+import RoiCalculator from "@/components/RoiCalculator";
 
 const Index = () => {
   const [currentView, setCurrentView] = useState<'landing' | 'dashboard'>('landing');
@@ -180,6 +181,13 @@ const Index = () => {
               </CardContent>
             </Card>
           </div>
+        </div>
+      </section>
+
+      {/* ROI Calculator */}
+      <section className="py-20 bg-background">
+        <div className="container mx-auto px-4">
+          <RoiCalculator />
         </div>
       </section>
 
