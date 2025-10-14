@@ -59,8 +59,8 @@ const Index = () => {
             Markets Mapped. Cover Unlocked
           </Badge>
           <h2 className="text-5xl font-bold text-foreground mb-6">
-            Upload quotes and compare <br />
-            <span className="text-primary">coverage instantly</span>
+            Instant Coverage <br />
+            <span className="text-primary">Comparison</span>
           </h2>
           <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
             Stop spending hours manually comparing insurance documents. CoverCompass&apos;s AI analyses schedules, limits, inner limits, exclusions, subjectives, enhancements, and core wording to compare and create client ready reports.
