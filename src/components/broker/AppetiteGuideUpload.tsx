@@ -3,13 +3,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, FileText, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { Progress } from "@/components/ui/progress";
+import { CategoryCombobox } from "./CategoryCombobox";
 
-type CoverageCategory = 'tech-life-sciences' | 'commercial-combined' | 'cyber' | 'other';
+
 
 interface AppetiteGuideUploadProps {
   onUploadComplete?: () => void;
@@ -26,7 +26,7 @@ interface UploadStatus {
 const AppetiteGuideUpload = ({ onUploadComplete }: AppetiteGuideUploadProps) => {
   const [file, setFile] = useState<File | null>(null);
   const [underwriterName, setUnderwriterName] = useState("");
-  const [category, setCategory] = useState<CoverageCategory>('other');
+  const [category, setCategory] = useState<string>("Other");
   const [logoUrl, setLogoUrl] = useState("");
   const [status, setStatus] = useState<UploadStatus>({
     uploading: false,
@@ -140,7 +140,7 @@ const AppetiteGuideUpload = ({ onUploadComplete }: AppetiteGuideUploadProps) => 
       setTimeout(() => {
         setFile(null);
         setUnderwriterName("");
-        setCategory('other');
+        setCategory("Other");
         setLogoUrl("");
         setStatus({ uploading: false, processing: false, success: false, error: null, progress: 0 });
         
@@ -223,17 +223,11 @@ const AppetiteGuideUpload = ({ onUploadComplete }: AppetiteGuideUploadProps) => 
         {/* Coverage Category */}
         <div className="space-y-2">
           <Label htmlFor="category">Coverage Category</Label>
-          <Select value={category} onValueChange={(value) => setCategory(value as CoverageCategory)} disabled={isProcessing}>
-            <SelectTrigger id="category">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="tech-life-sciences">Tech and Life Sciences</SelectItem>
-              <SelectItem value="commercial-combined">Commercial Combined</SelectItem>
-              <SelectItem value="cyber">Cyber</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </SelectContent>
-          </Select>
+          <CategoryCombobox
+            value={category}
+            onValueChange={setCategory}
+            disabled={isProcessing}
+          />
         </div>
 
         {/* Logo URL (Optional) */}

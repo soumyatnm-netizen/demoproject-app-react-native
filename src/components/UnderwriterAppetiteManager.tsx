@@ -10,6 +10,7 @@ import { FileText, Upload, Download, Plus, ExternalLink, AlertCircle, CheckCircl
 import { useDropzone } from "react-dropzone";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { CategoryCombobox } from "./broker/CategoryCombobox";
 
 interface UnderwriterAppetite {
   id: string;
@@ -44,7 +45,7 @@ const UnderwriterAppetiteManager = () => {
     documentType: "appetite_guide",
     sourceUrl: "",
     logoUrl: "",
-    coverageCategory: "other" as 'tech-life-sciences' | 'commercial-combined' | 'cyber' | 'other'
+    coverageCategory: "Other"
   });
   const { toast } = useToast();
 
@@ -146,7 +147,7 @@ const UnderwriterAppetiteManager = () => {
       }
 
       // Reset form
-      setNewUnderwriter({ name: "", documentType: "appetite_guide", sourceUrl: "", logoUrl: "", coverageCategory: "other" });
+      setNewUnderwriter({ name: "", documentType: "appetite_guide", sourceUrl: "", logoUrl: "", coverageCategory: "Other" });
       fetchAppetiteData();
 
     } catch (error) {
@@ -213,7 +214,7 @@ const UnderwriterAppetiteManager = () => {
       }
 
       // Reset form
-      setNewUnderwriter({ name: "", documentType: "appetite_guide", sourceUrl: "", logoUrl: "", coverageCategory: "other" });
+      setNewUnderwriter({ name: "", documentType: "appetite_guide", sourceUrl: "", logoUrl: "", coverageCategory: "Other" });
       fetchAppetiteData();
 
     } catch (error) {
@@ -288,20 +289,10 @@ const UnderwriterAppetiteManager = () => {
 
           <div className="space-y-2">
             <Label htmlFor="coverage-category">Coverage Category</Label>
-            <Select 
-              value={newUnderwriter.coverageCategory} 
-              onValueChange={(value) => setNewUnderwriter(prev => ({ ...prev, coverageCategory: value as any }))}
-            >
-              <SelectTrigger id="coverage-category">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tech-life-sciences">Tech and Life Sciences</SelectItem>
-                <SelectItem value="commercial-combined">Commercial Combined</SelectItem>
-                <SelectItem value="cyber">Cyber</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-              </SelectContent>
-            </Select>
+            <CategoryCombobox
+              value={newUnderwriter.coverageCategory}
+              onValueChange={(value) => setNewUnderwriter(prev => ({ ...prev, coverageCategory: value }))}
+            />
           </div>
 
           <div className="space-y-2">

@@ -254,6 +254,41 @@ export type Database = {
         }
         Relationships: []
       }
+      coverage_categories: {
+        Row: {
+          company_id: string | null
+          created_at: string | null
+          created_by: string
+          id: string
+          is_predefined: boolean | null
+          name: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string | null
+          created_by: string
+          id?: string
+          is_predefined?: boolean | null
+          name: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          is_predefined?: boolean | null
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coverage_categories_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "broker_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           created_at: string

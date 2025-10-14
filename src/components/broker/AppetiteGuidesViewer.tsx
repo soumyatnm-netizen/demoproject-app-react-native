@@ -32,18 +32,18 @@ interface AppetiteGuide {
   } | null;
 }
 
-type CoverageCategory = 'all' | 'tech-life-sciences' | 'commercial-combined' | 'cyber';
+type CoverageCategory = 'all' | string;
 
-const COVERAGE_CATEGORIES = [
-  { value: 'all' as const, label: 'All Guides' },
-  { value: 'tech-life-sciences' as const, label: 'Tech and Life Sciences' },
-  { value: 'commercial-combined' as const, label: 'Commercial Combined' },
-  { value: 'cyber' as const, label: 'Cyber' },
-];
+interface Category {
+  id: string;
+  name: string;
+  is_predefined: boolean;
+}
 
 const AppetiteGuidesViewer = () => {
   const [appetiteGuides, setAppetiteGuides] = useState<AppetiteGuide[]>([]);
   const [filteredGuides, setFilteredGuides] = useState<AppetiteGuide[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<CoverageCategory>('all');
@@ -51,7 +51,23 @@ const AppetiteGuidesViewer = () => {
 
   useEffect(() => {
     fetchAppetiteGuides();
+    fetchCategories();
   }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('coverage_categories')
+        .select('id, name, is_predefined')
+        .order('is_predefined', { ascending: false })
+        .order('name');
+
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
 
   useEffect(() => {
     // Filter guides based on search term and category
@@ -67,6 +83,8 @@ const AppetiteGuidesViewer = () => {
         
         // Fallback to keyword matching for guides without explicit category
         const categoryKeywords = getCategoryKeywords(selectedCategory);
+        if (categoryKeywords.length === 0) return false;
+        
         return (
           guide.appetite_data?.target_sectors?.some(sector => 
             categoryKeywords.some(keyword => 
@@ -99,15 +117,16 @@ const AppetiteGuidesViewer = () => {
   }, [searchTerm, selectedCategory, appetiteGuides]);
 
   const getCategoryKeywords = (category: CoverageCategory): string[] => {
+    // Only use keyword matching for predefined categories
     switch (category) {
-      case 'tech-life-sciences':
+      case 'Tech and Life Sciences':
         return ['tech', 'technology', 'life sciences', 'biotech', 'pharma', 'pharmaceutical', 'software', 'saas', 'it'];
-      case 'commercial-combined':
+      case 'Commercial Combined':
         return ['commercial', 'combined', 'package', 'business', 'sme', 'property', 'liability'];
-      case 'cyber':
+      case 'Cyber':
         return ['cyber', 'data', 'privacy', 'breach', 'ransomware', 'information security'];
       default:
-        return [];
+        return []; // For custom categories, rely only on exact match
     }
   };
 
@@ -201,10 +220,11 @@ const AppetiteGuidesViewer = () => {
 
       {/* Category Tabs */}
       <Tabs value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as CoverageCategory)}>
-        <TabsList className="w-full justify-start">
-          {COVERAGE_CATEGORIES.map((category) => (
-            <TabsTrigger key={category.value} value={category.value}>
-              {category.label}
+        <TabsList className="w-full justify-start flex-wrap h-auto">
+          <TabsTrigger value="all">All Guides</TabsTrigger>
+          {categories.map((category) => (
+            <TabsTrigger key={category.id} value={category.name}>
+              {category.name}
             </TabsTrigger>
           ))}
         </TabsList>
