@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import JSZip from "https://esm.sh/jszip@3.10.1";
+import { validateRequest, scanClientDocumentSchema, createErrorResponse } from '../_shared/validation.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -83,10 +84,14 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    const { documentId } = await req.json();
-    
-    if (!documentId) {
-      throw new Error('Document ID is required');
+    // Validate request input with strict schema
+    let documentId: string;
+    try {
+      const validated = await validateRequest(req, scanClientDocumentSchema);
+      documentId = validated.documentId;
+    } catch (validationError: any) {
+      console.error('Validation error:', validationError.message);
+      return createErrorResponse(req, 400, validationError.message, corsHeaders);
     }
 
     // Fetch the document from Supabase

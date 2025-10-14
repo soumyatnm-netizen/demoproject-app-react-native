@@ -2,6 +2,7 @@ console.log("[process-document] boot NO_PDFJS");
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { validateRequest, processDocumentSchema, sanitizeOutput, createErrorResponse } from '../_shared/validation.ts';
 
 // CORS helpers
 function corsHeaders(req: Request) {
@@ -46,24 +47,20 @@ serve(async (req) => {
       return json(req, 500, { ok: false, error: 'OPENAI_API_KEY not configured' });
     }
 
-    let bodyIn: any;
+    // Validate request input with strict schema
+    let documentId: string;
+    let clientName: string;
     try {
-      bodyIn = await req.json();
-    } catch {
-      return json(req, 400, { ok: false, error: 'Invalid JSON body' });
-    }
-    const { documentId, clientName } = bodyIn;
-    requestDocumentId = documentId;
-
-    if (!documentId) {
-      return json(req, 400, { ok: false, error: 'Document ID is required' });
+      const validated = await validateRequest(req, processDocumentSchema);
+      documentId = validated.documentId;
+      clientName = validated.clientName;
+      requestDocumentId = documentId;
+    } catch (validationError: any) {
+      console.error('Validation error:', validationError.message);
+      return createErrorResponse(req, 400, validationError.message, corsHeaders(req));
     }
 
-    if (!clientName) {
-      return json(req, 400, { ok: false, error: 'Client name is required' });
-    }
-
-    console.log('Processing document ID:', documentId, 'for client:', clientName);
+    console.log('Processing document ID:', documentId, 'for client:', sanitizeOutput(clientName));
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 

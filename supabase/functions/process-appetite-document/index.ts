@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { validateRequest, processAppetiteDocumentSchema, createErrorResponse } from '../_shared/validation.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,10 +26,14 @@ serve(async (req) => {
     // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { appetiteDocumentId } = await req.json();
-
-    if (!appetiteDocumentId) {
-      throw new Error('Appetite Document ID is required');
+    // Validate request input with strict schema
+    let appetiteDocumentId: string;
+    try {
+      const validated = await validateRequest(req, processAppetiteDocumentSchema);
+      appetiteDocumentId = validated.appetiteDocumentId;
+    } catch (validationError: any) {
+      console.error('Validation error:', validationError.message);
+      return createErrorResponse(req, 400, validationError.message, corsHeaders);
     }
 
     console.log('Processing appetite document:', appetiteDocumentId);

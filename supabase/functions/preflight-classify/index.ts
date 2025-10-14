@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
+import { validateRequest, preflightClassifySchema, createErrorResponse } from '../_shared/validation.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,7 +13,15 @@ serve(async (req) => {
   }
 
   try {
-    const { documentId } = await req.json();
+    // Validate request input with strict schema
+    let documentId: string;
+    try {
+      const validated = await validateRequest(req, preflightClassifySchema);
+      documentId = validated.documentId;
+    } catch (validationError: any) {
+      console.error('Validation error:', validationError.message);
+      return createErrorResponse(req, 400, validationError.message, corsHeaders);
+    }
     
     console.log(`[Preflight] Starting classification for document: ${documentId}`);
 
