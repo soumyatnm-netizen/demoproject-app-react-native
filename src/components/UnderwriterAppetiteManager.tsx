@@ -98,6 +98,23 @@ const UnderwriterAppetiteManager = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id, is_super_admin')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      const companyId = profile?.company_id ?? null;
+      const isSuperAdmin = profile?.is_super_admin === true;
+      if (!companyId && !isSuperAdmin) {
+        toast({
+          title: 'Company required',
+          description: 'Please create or join a company before uploading appetite guides.',
+          variant: 'destructive',
+        });
+        setUploading(false);
+        return;
+      }
+
       const fileExt = file.name.split('.').pop();
       const fileName = `${newUnderwriter.name.replace(/\s+/g, '_')}_${Date.now()}.${fileExt}`;
       const filePath = `appetite-guides/${fileName}`;
@@ -122,10 +139,11 @@ const UnderwriterAppetiteManager = () => {
           file_size: file.size,
           file_type: file.type,
           uploaded_by: user.id,
-          coverage_category: newUnderwriter.coverageCategory
+          coverage_category: newUnderwriter.coverageCategory,
+          company_id: companyId
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (dbError) throw dbError;
 
@@ -178,6 +196,23 @@ const UnderwriterAppetiteManager = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id, is_super_admin')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      const companyId = profile?.company_id ?? null;
+      const isSuperAdmin = profile?.is_super_admin === true;
+      if (!companyId && !isSuperAdmin) {
+        toast({
+          title: 'Company required',
+          description: 'Please create or join a company before adding URLs.',
+          variant: 'destructive',
+        });
+        setUploading(false);
+        return;
+      }
+
       // Insert record in database with URL
       const { data: appetiteDoc, error: dbError } = await supabase
         .from('underwriter_appetites')
@@ -190,10 +225,11 @@ const UnderwriterAppetiteManager = () => {
           logo_url: newUnderwriter.logoUrl || null,
           file_type: 'web/url',
           uploaded_by: user.id,
-          coverage_category: newUnderwriter.coverageCategory
+          coverage_category: newUnderwriter.coverageCategory,
+          company_id: companyId
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (dbError) throw dbError;
 
