@@ -43,7 +43,8 @@ const UnderwriterAppetiteManager = () => {
     name: "",
     documentType: "appetite_guide",
     sourceUrl: "",
-    logoUrl: ""
+    logoUrl: "",
+    coverageCategory: "other" as 'tech-life-sciences' | 'commercial-combined' | 'cyber' | 'other'
   });
   const { toast } = useToast();
 
@@ -145,7 +146,7 @@ const UnderwriterAppetiteManager = () => {
       }
 
       // Reset form
-      setNewUnderwriter({ name: "", documentType: "appetite_guide", sourceUrl: "", logoUrl: "" });
+      setNewUnderwriter({ name: "", documentType: "appetite_guide", sourceUrl: "", logoUrl: "", coverageCategory: "other" });
       fetchAppetiteData();
 
     } catch (error) {
@@ -212,7 +213,7 @@ const UnderwriterAppetiteManager = () => {
       }
 
       // Reset form
-      setNewUnderwriter({ name: "", documentType: "appetite_guide", sourceUrl: "", logoUrl: "" });
+      setNewUnderwriter({ name: "", documentType: "appetite_guide", sourceUrl: "", logoUrl: "", coverageCategory: "other" });
       fetchAppetiteData();
 
     } catch (error) {
@@ -283,6 +284,24 @@ const UnderwriterAppetiteManager = () => {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="coverage-category">Coverage Category</Label>
+            <Select 
+              value={newUnderwriter.coverageCategory} 
+              onValueChange={(value) => setNewUnderwriter(prev => ({ ...prev, coverageCategory: value as any }))}
+            >
+              <SelectTrigger id="coverage-category">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tech-life-sciences">Tech and Life Sciences</SelectItem>
+                <SelectItem value="commercial-combined">Commercial Combined</SelectItem>
+                <SelectItem value="cyber">Cyber</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
