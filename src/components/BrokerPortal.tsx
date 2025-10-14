@@ -176,16 +176,13 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-10">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="instant-comparison">Instant Comparison</TabsTrigger>
             <TabsTrigger value="clients">Client Management</TabsTrigger>
-            <TabsTrigger value="documents">Documents</TabsTrigger>
-            <TabsTrigger value="appetites">Appetite Guides</TabsTrigger>
-            <TabsTrigger value="categories">Categories</TabsTrigger>
+            <TabsTrigger value="documents-appetites">Documents & Appetites</TabsTrigger>
             <TabsTrigger value="matching">Insurer Matching</TabsTrigger>
             <TabsTrigger value="attack-intel">Attack Intelligence</TabsTrigger>
             <TabsTrigger value="market-intel">Market Intelligence</TabsTrigger>
-            <TabsTrigger value="email">Email Integration</TabsTrigger>
             <TabsTrigger value="profile">My Profile</TabsTrigger>
           </TabsList>
 
@@ -197,16 +194,23 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
             <ClientManagement onStatsUpdate={fetchBrokerStats} />
           </TabsContent>
 
-          <TabsContent value="documents">
-            <DocumentManagement />
-          </TabsContent>
-
-          <TabsContent value="appetites">
-            <AppetiteGuidesViewer />
-          </TabsContent>
-
-          <TabsContent value="categories">
-            <CategoryManager />
+          <TabsContent value="documents-appetites">
+            <Tabs defaultValue="documents" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="documents">Documents</TabsTrigger>
+                <TabsTrigger value="appetites">Appetite Guides</TabsTrigger>
+                <TabsTrigger value="categories">Categories</TabsTrigger>
+              </TabsList>
+              <TabsContent value="documents">
+                <DocumentManagement />
+              </TabsContent>
+              <TabsContent value="appetites">
+                <AppetiteGuidesViewer />
+              </TabsContent>
+              <TabsContent value="categories">
+                <CategoryManager />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           <TabsContent value="matching">
@@ -221,12 +225,19 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
             <MarketIntelligenceDashboard />
           </TabsContent>
 
-          <TabsContent value="email">
-            <EmailIntegration />
-          </TabsContent>
-
           <TabsContent value="profile">
-            <BrokerProfile />
+            <Tabs defaultValue="profile" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="profile">Profile</TabsTrigger>
+                <TabsTrigger value="email">Email Integration</TabsTrigger>
+              </TabsList>
+              <TabsContent value="profile">
+                <BrokerProfile />
+              </TabsContent>
+              <TabsContent value="email">
+                <EmailIntegration />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
         </Tabs>
       </div>
