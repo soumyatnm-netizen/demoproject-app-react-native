@@ -95,7 +95,7 @@ const Index = () => {
                 <Upload className="h-12 w-12 text-primary mx-auto mb-4" />
                 <CardTitle>1. Create Client Profile</CardTitle>
                 <CardDescription>
-                  Set up your client with industry, revenue band, and risk profile to ensure accurate analysis.
+                  Set up your client with industry, revenue band, and risk profile to ensure accurate analysis. CoverCompass Market Intelligence will automatically match potential insurers using live appetite guides and CoverCompass placement data.
                 </CardDescription>
               </CardHeader>
             </Card>
