@@ -351,13 +351,6 @@ export default function GrowthCalculator({ currency = 'GBP' }: GrowthCalculatorP
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex justify-center">
-        <Button onClick={downloadCsv} variant="outline" size="lg">
-          <Download className="h-4 w-4 mr-2" />
-          Download CSV
-        </Button>
-      </div>
     </div>
   );
 }

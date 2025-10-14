@@ -223,21 +223,6 @@ export default function OperationalRoiCalculator({
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex flex-wrap gap-4 justify-center">
-        <Button onClick={downloadCsv} variant="outline" size="lg">
-          <Download className="h-4 w-4 mr-2" />
-          Download CSV
-        </Button>
-        <Button onClick={emailRoi} variant="outline" size="lg">
-          <Mail className="h-4 w-4 mr-2" />
-          Email Me This ROI
-        </Button>
-        <Button size="lg">
-          <Zap className="h-4 w-4 mr-2" />
-          Compare Plans
-        </Button>
-      </div>
     </div>
   );
 }
