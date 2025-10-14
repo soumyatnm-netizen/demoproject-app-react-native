@@ -121,7 +121,8 @@ const UnderwriterAppetiteManager = () => {
           logo_url: newUnderwriter.logoUrl || null,
           file_size: file.size,
           file_type: file.type,
-          uploaded_by: user.id
+          uploaded_by: user.id,
+          coverage_category: newUnderwriter.coverageCategory
         })
         .select()
         .single();
@@ -188,7 +189,8 @@ const UnderwriterAppetiteManager = () => {
           source_url: newUnderwriter.sourceUrl,
           logo_url: newUnderwriter.logoUrl || null,
           file_type: 'web/url',
-          uploaded_by: user.id
+          uploaded_by: user.id,
+          coverage_category: newUnderwriter.coverageCategory
         })
         .select()
         .single();
