@@ -112,7 +112,7 @@ const Index = () => {
             <Card className="text-center">
               <CardHeader>
                 <Download className="h-12 w-12 text-primary mx-auto mb-4" />
-                <CardTitle>3. Instant Rankings</CardTitle>
+                <CardTitle>3. Instant Comparison Reports</CardTitle>
                 <CardDescription>
                   Get quotes ranked from best to worst with highlighted strengths, concerns, and clear recommendations for quick decision-making.
                 </CardDescription>
