@@ -7,9 +7,11 @@ import FileUpload from "@/components/FileUpload";
 import Dashboard from "@/components/Dashboard";
 import AuthWrapper from "@/components/AuthWrapper";
 import RoiCalculator from "@/components/RoiCalculator";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [currentView, setCurrentView] = useState<'landing' | 'dashboard'>('landing');
+  const { toast } = useToast();
 
   useEffect(() => {
     const checkRecovery = () => {
@@ -76,7 +78,14 @@ const Index = () => {
             <Button size="lg" onClick={() => setCurrentView('dashboard')}>
               Start Comparing Quotes
             </Button>
-            <Button size="lg" variant="outline">
+            <Button 
+              size="lg" 
+              variant="outline"
+              onClick={() => toast({
+                title: "Coming Soon",
+                description: "Demo videos will be available shortly.",
+              })}
+            >
               Watch Demo
             </Button>
           </div>
