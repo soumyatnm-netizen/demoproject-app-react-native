@@ -812,7 +812,7 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                   
                   <div className="flex flex-col gap-3">
                     <Button 
-                      onClick={() => window.location.href = 'mailto:info@covercompass.com?subject=Request for Broker Access'}
+                      onClick={() => window.location.href = 'mailto:dan@covercompass.co.uk?subject=Request for Broker Access'}
                       size="lg"
                       className="w-full"
                     >
