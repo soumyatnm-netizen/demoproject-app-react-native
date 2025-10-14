@@ -46,9 +46,17 @@ const Index = () => {
         <div className="flex items-center space-x-2">
           <img src="/lovable-uploads/117007fd-e5c4-4ee6-a580-ee7bde7ad08a.png" alt="CoverCompass" className="h-20" />
         </div>
-          <Button onClick={() => setCurrentView('dashboard')}>
-            Get Started
-          </Button>
+          <div className="flex gap-3">
+            <Button 
+              variant="outline"
+              onClick={() => document.getElementById('roi-calculator')?.scrollIntoView({ behavior: 'smooth' })}
+            >
+              ROI
+            </Button>
+            <Button onClick={() => setCurrentView('dashboard')}>
+              Get Started
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -88,10 +96,10 @@ const Index = () => {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            <Card className="text-center h-full">
-              <CardHeader className="p-8 space-y-6">
+            <Card className="text-center flex flex-col h-full">
+              <CardHeader className="p-8 space-y-6 flex-1 flex flex-col">
                 <Upload className="h-16 w-16 text-primary mx-auto" />
-                <div className="space-y-3">
+                <div className="space-y-3 flex-1 flex flex-col justify-center">
                   <CardTitle className="text-2xl">1. Create Client Profile</CardTitle>
                   <CardDescription className="text-base leading-relaxed">
                     CoverCompass Market Intelligence will automatically match potential insurers using live appetite guides and CoverCompass placement data.
@@ -100,10 +108,10 @@ const Index = () => {
               </CardHeader>
             </Card>
 
-            <Card className="text-center h-full">
-              <CardHeader className="p-8 space-y-6">
+            <Card className="text-center flex flex-col h-full">
+              <CardHeader className="p-8 space-y-6 flex-1 flex flex-col">
                 <Eye className="h-16 w-16 text-primary mx-auto" />
-                <div className="space-y-3">
+                <div className="space-y-3 flex-1 flex flex-col justify-center">
                   <CardTitle className="text-2xl">2. Upload 1-5 Quotes</CardTitle>
                   <CardDescription className="text-base leading-relaxed">
                     Upload PDF quotes from different underwriters. CoverCompassAI analyses schedules, limits, inner limits, exclusions, subjectives, enhancements, and core wording.
@@ -112,10 +120,10 @@ const Index = () => {
               </CardHeader>
             </Card>
 
-            <Card className="text-center h-full">
-              <CardHeader className="p-8 space-y-6">
+            <Card className="text-center flex flex-col h-full">
+              <CardHeader className="p-8 space-y-6 flex-1 flex flex-col">
                 <Download className="h-16 w-16 text-primary mx-auto" />
-                <div className="space-y-3">
+                <div className="space-y-3 flex-1 flex flex-col justify-center">
                   <CardTitle className="text-2xl">3. Instant Comparison Reports</CardTitle>
                   <CardDescription className="text-base leading-relaxed">
                     Get quotes ranked from best to worst with highlighted strengths, concerns, and clear recommendations for quick decision-making.
@@ -189,7 +197,7 @@ const Index = () => {
       </section>
 
       {/* ROI Calculator */}
-      <section className="py-20 bg-background">
+      <section id="roi-calculator" className="py-20 bg-background">
         <div className="container mx-auto px-4">
           <RoiCalculator />
         </div>
