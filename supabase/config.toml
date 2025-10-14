@@ -15,19 +15,19 @@ enabled = true
 enable_signup = true
 
 [functions.process-document]
-verify_jwt = false
+verify_jwt = true
 
 [functions.process-appetite-document]
-verify_jwt = false
+verify_jwt = true
 
 [functions.auth-email]
 verify_jwt = false
 
 [functions.match-underwriters]
-verify_jwt = false
+verify_jwt = true
 
 [functions.intelligent-insurer-matching]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-comparison]
 verify_jwt = true
