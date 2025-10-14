@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Users, Mail, Target, FileText, TrendingUp, BookOpen } from "lucide-react";
+import { ArrowLeft, Users, Mail, Target, FileText, TrendingUp, BookOpen, Sword } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import ClientManagement from "./broker/ClientManagement";
@@ -16,6 +16,7 @@ import AppetiteGuidesViewer from "./broker/AppetiteGuidesViewer";
 import DocumentManagement from "./broker/DocumentManagement";
 import MarketIntelligenceDashboard from "./MarketIntelligenceDashboard";
 import CategoryManager from "./broker/CategoryManager";
+import AttackingBrokerIntelligence from "./AttackingBrokerIntelligence";
 
 interface BrokerPortalProps {
   onBack: () => void;
@@ -175,13 +176,14 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-9">
+          <TabsList className="grid w-full grid-cols-10">
             <TabsTrigger value="instant-comparison">Instant Comparison</TabsTrigger>
             <TabsTrigger value="clients">Client Management</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
             <TabsTrigger value="appetites">Appetite Guides</TabsTrigger>
             <TabsTrigger value="categories">Categories</TabsTrigger>
             <TabsTrigger value="matching">Insurer Matching</TabsTrigger>
+            <TabsTrigger value="attack-intel">Attack Intelligence</TabsTrigger>
             <TabsTrigger value="market-intel">Market Intelligence</TabsTrigger>
             <TabsTrigger value="email">Email Integration</TabsTrigger>
             <TabsTrigger value="profile">My Profile</TabsTrigger>
@@ -209,6 +211,10 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
 
           <TabsContent value="matching">
             <InsurerMatching />
+          </TabsContent>
+
+          <TabsContent value="attack-intel">
+            <AttackingBrokerIntelligence />
           </TabsContent>
 
           <TabsContent value="market-intel">
