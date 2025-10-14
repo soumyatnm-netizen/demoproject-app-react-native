@@ -105,7 +105,7 @@ const Index = () => {
                 <Eye className="h-12 w-12 text-primary mx-auto mb-4" />
                 <CardTitle>2. Upload 1-5 Quotes</CardTitle>
                 <CardDescription>
-                  Upload PDF quotes from different underwriters. CoverCompassAI analyzes schedules, limits, inner limits, exclusions, enhancements, and core wording.
+                  Upload PDF quotes from different underwriters. CoverCompassAI analyzes schedules, limits, inner limits, exclusions, subjectives, enhancements, and core wording.
                 </CardDescription>
               </CardHeader>
             </Card>
