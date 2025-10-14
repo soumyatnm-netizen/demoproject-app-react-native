@@ -63,8 +63,7 @@ const Index = () => {
             <span className="text-primary">coverage instantly</span>
           </h2>
           <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-            Stop spending hours manually comparing insurance quotes. Upload 1-5 quotes from different underwriters 
-            and CoverCompassAI instantly analyzes schedules, limits, clauses, exclusions, and core wording to rank them from best to worst.
+            Stop spending hours manually comparing insurance documents. Upload 1-5 quotes and wordings from different carriers. CoverCompass&apos;s AI analyses schedules, limits, inner limits, exclusions, subjectives, enhancements, and core wording to create rankings and client ready reports.
           </p>
           <div className="flex gap-4 justify-center">
             <Button size="lg" onClick={() => setCurrentView('dashboard')}>
