@@ -4,9 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, BookOpen, DollarSign, MapPin, TrendingUp, AlertCircle, Target } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Search, BookOpen, DollarSign, MapPin, TrendingUp, AlertCircle, Target, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import AppetiteGuideUpload from "./AppetiteGuideUpload";
 
 interface AppetiteGuide {
   id: string;
@@ -15,6 +17,7 @@ interface AppetiteGuide {
   status: string;
   logo_url: string | null;
   created_at: string;
+  coverage_category?: string | null;
   appetite_data: {
     target_sectors: string[];
     financial_ratings: any;
@@ -57,6 +60,12 @@ const AppetiteGuidesViewer = () => {
     // Apply category filter
     if (selectedCategory !== 'all') {
       filtered = filtered.filter(guide => {
+        // First check if guide has a coverage_category that matches
+        if (guide.coverage_category === selectedCategory) {
+          return true;
+        }
+        
+        // Fallback to keyword matching for guides without explicit category
         const categoryKeywords = getCategoryKeywords(selectedCategory);
         return (
           guide.appetite_data?.target_sectors?.some(sector => 
@@ -115,6 +124,7 @@ const AppetiteGuidesViewer = () => {
           status,
           logo_url,
           created_at,
+          coverage_category,
           appetite_data:underwriter_appetite_data(*)
         `)
         .eq('status', 'processed')
@@ -168,9 +178,25 @@ const AppetiteGuidesViewer = () => {
             Browse available underwriter appetites and risk criteria
           </p>
         </div>
-        <Badge variant="secondary">
-          {filteredGuides.length} guides available
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Badge variant="secondary">
+            {filteredGuides.length} guides available
+          </Badge>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button>
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Guide
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Upload Appetite Guide</DialogTitle>
+              </DialogHeader>
+              <AppetiteGuideUpload onUploadComplete={fetchAppetiteGuides} />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Category Tabs */}

@@ -1254,6 +1254,7 @@ export type Database = {
       underwriter_appetites: {
         Row: {
           company_id: string | null
+          coverage_category: string | null
           created_at: string
           document_type: string
           file_size: number | null
@@ -1271,6 +1272,7 @@ export type Database = {
         }
         Insert: {
           company_id?: string | null
+          coverage_category?: string | null
           created_at?: string
           document_type?: string
           file_size?: number | null
@@ -1288,6 +1290,7 @@ export type Database = {
         }
         Update: {
           company_id?: string | null
+          coverage_category?: string | null
           created_at?: string
           document_type?: string
           file_size?: number | null
