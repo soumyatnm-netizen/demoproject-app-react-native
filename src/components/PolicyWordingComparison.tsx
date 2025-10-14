@@ -169,7 +169,7 @@ const PolicyWordingComparison = ({ policyWordingIds }: PolicyWordingComparisonPr
               </div>
             </div>
             <div className="bg-background/50 rounded-lg p-4 border">
-              <div className="text-sm text-muted-foreground mb-1">Policies Analyzed</div>
+              <div className="text-sm text-muted-foreground mb-1">Policies Analysed</div>
               <div className="font-semibold text-lg">{policyWordings.length}</div>
               <div className="text-xs text-muted-foreground mt-1">
                 {policyWordings.map(pw => pw.insurer_name).join(', ')}

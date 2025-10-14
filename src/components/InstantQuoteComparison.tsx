@@ -275,7 +275,7 @@ const InstantQuoteComparison = () => {
         }
 
         // Process with AI
-        setProcessingStep(`Analyzing policy wording ${i + 1} with AI...`);
+        setProcessingStep(`Analysing policy wording ${i + 1} with AI...`);
         const { data: processResult, error: processError } = await supabase.functions
           .invoke('process-policy-wording', {
             body: { documentId: docData.id }
@@ -301,7 +301,7 @@ const InstantQuoteComparison = () => {
       
       toast({
         title: "Analysis Complete!",
-        description: `${processedIds.length} policy wording${processedIds.length !== 1 ? 's' : ''} analyzed successfully`,
+        description: `${processedIds.length} policy wording${processedIds.length !== 1 ? 's' : ''} analysed successfully`,
       });
 
     } catch (error) {
@@ -532,11 +532,11 @@ const InstantQuoteComparison = () => {
 
       let successMessage = "Analysis complete!";
       if (quoteCount > 0 && wordingCount > 0) {
-        successMessage = `Analyzed ${quoteCount} quote${quoteCount !== 1 ? 's' : ''} and ${wordingCount} wording${wordingCount !== 1 ? 's' : ''} in ${Math.round(t_total / 1000)}s`;
+        successMessage = `Analysed ${quoteCount} quote${quoteCount !== 1 ? 's' : ''} and ${wordingCount} wording${wordingCount !== 1 ? 's' : ''} in ${Math.round(t_total / 1000)}s`;
       } else if (quoteCount > 0) {
         successMessage = `Ranked ${quoteCount} quote${quoteCount !== 1 ? 's' : ''} in ${Math.round(t_total / 1000)}s`;
       } else if (wordingCount > 0) {
-        successMessage = `Analyzed ${wordingCount} wording${wordingCount !== 1 ? 's' : ''} in ${Math.round(t_total / 1000)}s`;
+        successMessage = `Analysed ${wordingCount} wording${wordingCount !== 1 ? 's' : ''} in ${Math.round(t_total / 1000)}s`;
       }
 
       toast({
@@ -1071,7 +1071,7 @@ const InstantQuoteComparison = () => {
             </CardTitle>
           </div>
           <CardDescription className="text-lg">
-            Upload quotes and compare coverage instantly. CoverCompassAI analyzes schedules, limits, clauses, and terms to rank quotes from best to worst.
+            Upload quotes and compare coverage instantly. CoverCompassAI analyses schedules, limits, clauses, and terms to rank quotes from best to worst.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -1197,7 +1197,7 @@ const InstantQuoteComparison = () => {
                             <span className="text-sm font-medium">{file.name}</span>
                           </div>
                           <div className="text-xs text-muted-foreground mt-1">
-                            {(file.size / 1024 / 1024).toFixed(2)} MB • Ready to analyze
+                            {(file.size / 1024 / 1024).toFixed(2)} MB • Ready to analyse
                           </div>
                         </div>
                       </div>
@@ -1228,8 +1228,8 @@ const InstantQuoteComparison = () => {
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {uploadedQuotes.length === 1 
-                      ? "CoverCompassAI will analyze your quote for coverage details and recommendations."
-                      : `Click "Compare Quotes Instantly" below to analyze coverage, limits, exclusions, and competitiveness across all ${uploadedQuotes.length} quotes.`
+                      ? "CoverCompassAI will analyse your quote for coverage details and recommendations."
+                      : `Click "Compare Quotes Instantly" below to analyse coverage, limits, exclusions, and competitiveness across all ${uploadedQuotes.length} quotes.`
                     }
                   </p>
                 </div>
@@ -1348,7 +1348,7 @@ const InstantQuoteComparison = () => {
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    These documents will be analyzed alongside quotes for comprehensive coverage comparison.
+                    These documents will be analysed alongside quotes for comprehensive coverage comparison.
                   </p>
                 </div>
               </div>
@@ -1364,7 +1364,7 @@ const InstantQuoteComparison = () => {
             <Shield className="h-5 w-5" />
             <span>Step 3: Instant Analysis</span>
           </CardTitle>
-          <CardDescription>CoverCompassAI will analyze coverage, limits, terms, and competitiveness</CardDescription>
+          <CardDescription>CoverCompassAI will analyse coverage, limits, terms, and competitiveness</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -1383,7 +1383,7 @@ const InstantQuoteComparison = () => {
               {isProcessing ? (
                 <>
                   <div className="animate-spin h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full" />
-                  Analyzing Documents...
+                  Analysing Documents...
                 </>
               ) : (
                 <>
@@ -1392,7 +1392,7 @@ const InstantQuoteComparison = () => {
                     ? "Compare Quotes & Policy Wordings"
                     : uploadedQuotes.length > 0
                     ? "Compare Quotes Instantly"
-                    : "Analyze Policy Wordings"}
+                    : "Analyse Policy Wordings"}
                 </>
               )}
             </Button>
@@ -1418,7 +1418,7 @@ const InstantQuoteComparison = () => {
                 </div>
                 <Progress value={uploadedQuotes.length > 0 ? Math.round((100 / (uploadedQuotes.length + 1)) * (uploadedQuotes.length > 0 ? 1 : 0)) : 33} className="w-full" />
                 <p className="text-xs text-muted-foreground">
-                  Using CoverCompassAI to analyze schedules, limits, exclusions, enhancements, and core policy wording...
+                  Using CoverCompassAI to analyse schedules, limits, exclusions, enhancements, and core policy wording...
                 </p>
                 
                 {/* Status Log */}

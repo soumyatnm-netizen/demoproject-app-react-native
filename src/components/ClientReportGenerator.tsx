@@ -94,7 +94,7 @@ const ClientReportGenerator = () => {
       if (!user) throw new Error('Not authenticated');
 
       // Generate key changes and analysis
-      const keyChanges = analyzeChanges(selectedComparison.comparison_data);
+      const keyChanges = analyseChanges(selectedComparison.comparison_data);
       const recommendations = generateRecommendations(selectedComparison.comparison_data);
 
       // Create client report
@@ -148,8 +148,8 @@ const ClientReportGenerator = () => {
     }
   };
 
-  const analyzeChanges = (comparisonData: any) => {
-    // Analyze comparison data to identify key changes
+  const analyseChanges = (comparisonData: any) => {
+    // Analyse comparison data to identify key changes
     return {
       premium_changes: comparisonData?.premium_comparison || {},
       coverage_improvements: comparisonData?.coverage_analysis?.improvements || [],

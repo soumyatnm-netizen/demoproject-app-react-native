@@ -115,7 +115,7 @@ const InsurerMatching = () => {
       
       toast({
         title: "Enhanced Analysis Complete",
-        description: `Found ${data.matches?.length || 0} matches by analyzing ${data.similar_clients_analyzed || 0} similar clients and ${data.appetite_guides_analyzed || 0} appetite guides`,
+        description: `Found ${data.matches?.length || 0} matches by analysing ${data.similar_clients_analyzed || 0} similar clients and ${data.appetite_guides_analyzed || 0} appetite guides`,
       });
 
     } catch (error) {
@@ -218,7 +218,7 @@ const InsurerMatching = () => {
               {loading ? (
                 <>
                   <Brain className="h-4 w-4 mr-2 animate-pulse" />
-                  Analyzing...
+                  Analysing...
                 </>
               ) : (
                 <>

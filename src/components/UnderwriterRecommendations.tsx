@@ -197,7 +197,7 @@ const UnderwriterRecommendations = ({ quote, onClose }: UnderwriterRecommendatio
       <Card>
         <CardContent className="text-center py-12">
           <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Analyzing underwriter appetites...</p>
+          <p className="text-muted-foreground">Analysing underwriter appetites...</p>
         </CardContent>
       </Card>
     );

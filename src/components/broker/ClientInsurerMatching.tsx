@@ -382,7 +382,7 @@ const ClientInsurerMatching = ({ client }: ClientInsurerMatchingProps) => {
         {loading ? (
           <div className="text-center py-8">
             <Brain className="h-12 w-12 text-primary mx-auto mb-4 animate-pulse" />
-            <p className="text-muted-foreground">Analyzing appetite guides...</p>
+            <p className="text-muted-foreground">Analysing appetite guides...</p>
           </div>
         ) : matches.length === 0 ? (
           <div className="text-center py-8">
@@ -410,7 +410,7 @@ const ClientInsurerMatching = ({ client }: ClientInsurerMatchingProps) => {
                 onClick={() => generateMatches()}
               >
                 <Brain className="h-3 w-3 mr-1" />
-                Re-analyze
+                Re-analyse
               </Button>
             </div>
 

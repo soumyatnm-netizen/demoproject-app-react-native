@@ -82,7 +82,7 @@ const UnderwriterMatchingResults = ({ documentId, documentName, isOpen, onClose 
       if (!data || data.length === 0) {
         toast({
           title: "No matches found",
-          description: "Click 'Analyze Underwriters' to find the best matches for this document.",
+          description: "Click 'Analyse Underwriters' to find the best matches for this document.",
         });
       }
 
@@ -104,7 +104,7 @@ const UnderwriterMatchingResults = ({ documentId, documentName, isOpen, onClose 
       
       toast({
         title: "Analysis Started",
-        description: "AI is analyzing underwriter appetite guides...",
+        description: "AI is analysing underwriter appetite guides...",
       });
 
       const { error } = await supabase.functions.invoke('match-underwriters', {
@@ -125,7 +125,7 @@ const UnderwriterMatchingResults = ({ documentId, documentName, isOpen, onClose 
       console.error('Error triggering analysis:', error);
       toast({
         title: "Analysis Failed",
-        description: "Failed to analyze underwriter matches. Please try again.",
+        description: "Failed to analyse underwriter matches. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -177,12 +177,12 @@ const UnderwriterMatchingResults = ({ documentId, documentName, isOpen, onClose 
               {analyzing ? (
                 <>
                   <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
-                  Analyzing...
+                  Analysing...
                 </>
               ) : (
                 <>
                   <Star className="h-4 w-4" />
-                  {matches.length > 0 ? 'Re-analyze' : 'Analyze Underwriters'}
+                  {matches.length > 0 ? 'Re-analyse' : 'Analyse Underwriters'}
                 </>
               )}
             </Button>
@@ -357,10 +357,10 @@ const UnderwriterMatchingResults = ({ documentId, documentName, isOpen, onClose 
                 <Star className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                 <h3 className="text-lg font-semibold mb-2">No Underwriter Matches Yet</h3>
                 <p className="text-muted-foreground mb-4">
-                  Click "Analyze Underwriters" to find the best matches for this document
+                  Click "Analyse Underwriters" to find the best matches for this document
                 </p>
                 <Button onClick={triggerAnalysis} disabled={analyzing}>
-                  {analyzing ? 'Analyzing...' : 'Start Analysis'}
+                  {analyzing ? 'Analysing...' : 'Start Analysis'}
                 </Button>
               </CardContent>
             </Card>

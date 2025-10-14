@@ -111,10 +111,10 @@ const AttackingBrokerIntelligence = () => {
 
       fetchData();
     } catch (error) {
-      console.error('Error analyzing gaps:', error);
+      console.error('Error analysing gaps:', error);
       toast({
         title: "Error",
-        description: "Failed to analyze gaps",
+        description: "Failed to analyse gaps",
         variant: "destructive",
       });
     } finally {
@@ -131,7 +131,7 @@ const AttackingBrokerIntelligence = () => {
       policy_restrictions: []
     };
 
-    // Analyze coverage gaps
+    // Analyse coverage gaps
     if (incumbent.coverage_limits) {
       if (incumbent.coverage_limits.public_liability < 2000000) {
         gaps.coverage_limitations.push("Public liability limit below market average");
@@ -141,7 +141,7 @@ const AttackingBrokerIntelligence = () => {
       }
     }
 
-    // Analyze pricing
+    // Analyse pricing
     const marketAverage = 5000; // Placeholder
     let pricingScore = 0;
     if (incumbent.premium_amount > marketAverage * 1.2) {
@@ -226,7 +226,7 @@ const AttackingBrokerIntelligence = () => {
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose incumbent to analyze" />
+                  <SelectValue placeholder="Choose incumbent to analyse" />
                 </SelectTrigger>
                 <SelectContent>
                   {quotes.map((quote) => (
@@ -244,7 +244,7 @@ const AttackingBrokerIntelligence = () => {
                 disabled={!selectedIncumbent || analyzingGaps}
                 className="w-full bg-orange-600 hover:bg-orange-700"
               >
-                {analyzingGaps ? "Analyzing..." : "Analyze Gaps & Generate Strategy"}
+                {analyzingGaps ? "Analysing..." : "Analyse Gaps & Generate Strategy"}
               </Button>
             </div>
           </div>
@@ -395,7 +395,7 @@ const AttackingBrokerIntelligence = () => {
               <Sword className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">No Gap Analyses Yet</h3>
               <p className="text-muted-foreground">
-                Analyze incumbent policies to identify attack opportunities and generate winning strategies
+                Analyse incumbent policies to identify attack opportunities and generate winning strategies
               </p>
             </CardContent>
           </Card>
