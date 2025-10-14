@@ -71,7 +71,7 @@ const Index = () => {
           <h2 className="text-5xl font-bold text-foreground mb-6">
             Instant <span className="text-primary">Coverage Comparison</span>
           </h2>
-          <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
+          <p className="text-xl text-muted-foreground mb-12 max-w-3xl mx-auto">
             Stop spending hours manually comparing insurance documents. CoverCompass&apos;s AI analyses schedules, limits, inner limits, exclusions, subjectives, enhancements, and core wording to compare and create client ready reports.
           </p>
           <div className="flex gap-4 justify-center">
