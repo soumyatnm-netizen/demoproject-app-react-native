@@ -61,6 +61,7 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+  const [showAccessGate, setShowAccessGate] = useState(true);
   
   // Admin signup fields
   const [companyName, setCompanyName] = useState("");
@@ -294,6 +295,7 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
     if (inviteCode) {
       const timeoutId = setTimeout(() => {
         validateInviteCode(inviteCode);
+        if (inviteCode.trim()) setShowAccessGate(false);
       }, 500);
       return () => clearTimeout(timeoutId);
     }
@@ -303,6 +305,7 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
     if (companyCode) {
       const timeoutId = setTimeout(() => {
         validateCompanyCode(companyCode);
+        if (companyCode.trim()) setShowAccessGate(false);
       }, 500);
       return () => clearTimeout(timeoutId);
     }
@@ -602,12 +605,19 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
     setSignupType('none');
     setShowForgotPassword(false);
     setForgotPasswordEmail("");
+    setShowAccessGate(true);
   };
 
   const switchTab = (signUp: boolean, admin: boolean) => {
     setIsSignUp(signUp);
     setIsAdminSignUp(admin);
     clearForm();
+    // Always show access gate when switching to signup/admin unless they have a code
+    if ((signUp || admin) && !inviteCode && !companyCode) {
+      setShowAccessGate(true);
+    } else {
+      setShowAccessGate(false);
+    }
   };
 
   if (loading && !isResettingPassword) {
@@ -789,6 +799,45 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                       )}
                     </Button>
                   </form>
+                </div>
+              ) : showAccessGate && (isSignUp || isAdminSignUp) ? (
+                <div className="space-y-6 text-center py-8">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold mb-3">🚀 Ready to Join CoverCompass?</h2>
+                    <div className="space-y-3 text-muted-foreground">
+                      <p>We work exclusively with trusted insurance brokers.</p>
+                      <p>To get started, please contact us for access.</p>
+                      <p className="font-medium">Once approved, we'll send you a <span className="text-primary">Broker Sign-Up Code</span> so you can create your account.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col gap-3">
+                    <Button 
+                      onClick={() => window.location.href = 'mailto:info@covercompass.com?subject=Request for Broker Access'}
+                      size="lg"
+                      className="w-full"
+                    >
+                      👉 Contact Us for Access
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      onClick={() => switchTab(false, false)}
+                      className="w-full"
+                    >
+                      Already have an account? Sign In
+                    </Button>
+                  </div>
+                  
+                  <div className="pt-6 border-t">
+                    <p className="text-sm text-muted-foreground mb-3">Already have a code?</p>
+                    <Button 
+                      variant="secondary"
+                      onClick={() => setShowAccessGate(false)}
+                      className="w-full"
+                    >
+                      Enter Your Code
+                    </Button>
+                  </div>
                 </div>
               ) : (
               <Tabs value={isAdminSignUp ? "admin" : isSignUp ? "signup" : "signin"} className="w-full">
