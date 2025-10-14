@@ -805,7 +805,6 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
                   <div className="mb-6">
                     <h2 className="text-2xl font-bold mb-3">🚀 Ready to Join CoverCompass?</h2>
                     <div className="space-y-3 text-muted-foreground">
-                      <p>We work exclusively with trusted insurance brokers.</p>
                       <p>To get started, please contact us for access.</p>
                       <p className="font-medium">Once approved, we'll send you a <span className="text-primary">Broker Sign-Up Code</span> so you can create your account.</p>
                     </div>
