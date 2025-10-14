@@ -66,6 +66,7 @@ const BrokerManagement = ({ onStatsUpdate }: BrokerManagementProps) => {
       const { data, error } = await supabase
         .from('profiles')
         .select(`
+          id,
           user_id,
           first_name,
           last_name,
@@ -74,8 +75,10 @@ const BrokerManagement = ({ onStatsUpdate }: BrokerManagementProps) => {
           role,
           is_active,
           last_login_at,
+          login_count,
           created_at,
           company_id,
+          company_name,
           subscription_tier
         `)
         .in('role', ['broker', 'company_admin'])
