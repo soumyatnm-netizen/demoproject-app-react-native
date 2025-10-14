@@ -224,9 +224,18 @@ const Index = () => {
         <div className="flex items-center justify-center space-x-2 mb-4">
           <img src="/lovable-uploads/117007fd-e5c4-4ee6-a580-ee7bde7ad08a.png" alt="CoverCompass" className="h-12" />
         </div>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground mb-4">
           Markets Mapped. Cover Unlocked
         </p>
+        <div className="border-t pt-6 mt-6">
+          <h4 className="text-sm font-semibold mb-2">Contact Us</h4>
+          <a 
+            href="mailto:hello@covercompass.co.uk" 
+            className="text-sm text-primary hover:underline"
+          >
+            hello@covercompass.co.uk
+          </a>
+        </div>
         </div>
       </footer>
     </div>
