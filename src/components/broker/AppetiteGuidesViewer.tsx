@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, BookOpen, DollarSign, MapPin, TrendingUp, AlertCircle, Target } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -28,11 +29,21 @@ interface AppetiteGuide {
   } | null;
 }
 
+type CoverageCategory = 'all' | 'tech-life-sciences' | 'commercial-combined' | 'cyber';
+
+const COVERAGE_CATEGORIES = [
+  { value: 'all' as const, label: 'All Guides' },
+  { value: 'tech-life-sciences' as const, label: 'Tech and Life Sciences' },
+  { value: 'commercial-combined' as const, label: 'Commercial Combined' },
+  { value: 'cyber' as const, label: 'Cyber' },
+];
+
 const AppetiteGuidesViewer = () => {
   const [appetiteGuides, setAppetiteGuides] = useState<AppetiteGuide[]>([]);
   const [filteredGuides, setFilteredGuides] = useState<AppetiteGuide[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<CoverageCategory>('all');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -40,18 +51,56 @@ const AppetiteGuidesViewer = () => {
   }, []);
 
   useEffect(() => {
-    // Filter guides based on search term
-    const filtered = appetiteGuides.filter(guide =>
-      guide.underwriter_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      guide.appetite_data?.target_sectors?.some(sector => 
-        sector.toLowerCase().includes(searchTerm.toLowerCase())
-      ) ||
-      guide.appetite_data?.specialty_focus?.some(focus => 
-        focus.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    );
+    // Filter guides based on search term and category
+    let filtered = appetiteGuides;
+
+    // Apply category filter
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(guide => {
+        const categoryKeywords = getCategoryKeywords(selectedCategory);
+        return (
+          guide.appetite_data?.target_sectors?.some(sector => 
+            categoryKeywords.some(keyword => 
+              sector.toLowerCase().includes(keyword.toLowerCase())
+            )
+          ) ||
+          guide.appetite_data?.specialty_focus?.some(focus => 
+            categoryKeywords.some(keyword => 
+              focus.toLowerCase().includes(keyword.toLowerCase())
+            )
+          )
+        );
+      });
+    }
+
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter(guide =>
+        guide.underwriter_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        guide.appetite_data?.target_sectors?.some(sector => 
+          sector.toLowerCase().includes(searchTerm.toLowerCase())
+        ) ||
+        guide.appetite_data?.specialty_focus?.some(focus => 
+          focus.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      );
+    }
+
     setFilteredGuides(filtered);
-  }, [searchTerm, appetiteGuides]);
+  }, [searchTerm, selectedCategory, appetiteGuides]);
+
+  const getCategoryKeywords = (category: CoverageCategory): string[] => {
+    switch (category) {
+      case 'tech-life-sciences':
+        return ['tech', 'technology', 'life sciences', 'biotech', 'pharma', 'pharmaceutical', 'software', 'saas', 'it'];
+      case 'commercial-combined':
+        return ['commercial', 'combined', 'package', 'business', 'sme', 'property', 'liability'];
+      case 'cyber':
+        return ['cyber', 'data', 'privacy', 'breach', 'ransomware', 'information security'];
+      default:
+        return [];
+    }
+  };
 
   const fetchAppetiteGuides = async () => {
     try {
@@ -123,6 +172,17 @@ const AppetiteGuidesViewer = () => {
           {filteredGuides.length} guides available
         </Badge>
       </div>
+
+      {/* Category Tabs */}
+      <Tabs value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as CoverageCategory)}>
+        <TabsList className="w-full justify-start">
+          {COVERAGE_CATEGORIES.map((category) => (
+            <TabsTrigger key={category.value} value={category.value}>
+              {category.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {/* Search */}
       <div className="relative">
@@ -282,15 +342,24 @@ const AppetiteGuidesViewer = () => {
               {searchTerm ? 'No matching appetite guides found' : 'No appetite guides available'}
             </h3>
             <p className="text-muted-foreground mb-4">
-              {searchTerm 
-                ? 'Try adjusting your search terms'
+              {searchTerm || selectedCategory !== 'all'
+                ? 'Try adjusting your search terms or category filter'
                 : 'Appetite guides will appear here once uploaded by administrators'
               }
             </p>
-            {searchTerm && (
-              <Button variant="outline" onClick={() => setSearchTerm('')}>
-                Clear Search
-              </Button>
+            {(searchTerm || selectedCategory !== 'all') && (
+              <div className="flex gap-2 justify-center">
+                {searchTerm && (
+                  <Button variant="outline" onClick={() => setSearchTerm('')}>
+                    Clear Search
+                  </Button>
+                )}
+                {selectedCategory !== 'all' && (
+                  <Button variant="outline" onClick={() => setSelectedCategory('all')}>
+                    View All Categories
+                  </Button>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>
