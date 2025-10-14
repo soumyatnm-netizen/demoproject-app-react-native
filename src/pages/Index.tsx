@@ -63,7 +63,7 @@ const Index = () => {
             <span className="text-primary">coverage instantly</span>
           </h2>
           <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-            Stop spending hours manually comparing insurance documents. CoverCompass&apos;s AI analyses schedules, limits, inner limits, exclusions, subjectives, enhancements, and core wording to create rankings and client ready reports.
+            Stop spending hours manually comparing insurance documents. CoverCompass&apos;s AI analyses schedules, limits, inner limits, exclusions, subjectives, enhancements, and core wording to compare and create client ready reports.
           </p>
           <div className="flex gap-4 justify-center">
             <Button size="lg" onClick={() => setCurrentView('dashboard')}>
