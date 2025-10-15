@@ -276,7 +276,7 @@ DISCLAIMERS:
         model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: masterPrompt },
-          { role: 'user', content: `Analyze these documents:\n\n${JSON.stringify(payload, null, 2)}` }
+          { role: 'user', content: `Analyze these documents and return your response as a JSON object:\n\n${JSON.stringify(payload, null, 2)}` }
         ],
         temperature: 0,
         max_tokens: 2500,
