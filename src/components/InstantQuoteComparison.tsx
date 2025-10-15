@@ -464,6 +464,11 @@ const InstantQuoteComparison = () => {
         throw new Error('No documents extracted successfully');
       }
 
+      // Track failed documents for warnings
+      const failedDocs = classifiedDocs.filter(doc => 
+        !extractedDocs.some(extracted => extracted.documentId === doc.documentId)
+      );
+
       // Track IDs for final summary
       const quoteCount = extractedDocs.filter(d => d.type === 'Quote').length;
       const wordingCount = extractedDocs.filter(d => d.type === 'PolicyWording').length;
@@ -516,8 +521,17 @@ const InstantQuoteComparison = () => {
 
       addStatusLog(`✓ Comparison completed in ${Math.round(t_aggregate)}ms`, 'success');
       
-      // Store the full comparison data for display
-      setComparisonData(comparisonData.analysis);
+      // Store the full comparison data for display, including failed documents
+      const analysisWithWarnings = {
+        ...comparisonData.analysis,
+        failed_documents: failedDocs.map(doc => ({
+          filename: doc.filename,
+          type: doc.type,
+          carrier: doc.classification?.carrier || 'Unknown'
+        }))
+      };
+      
+      setComparisonData(analysisWithWarnings);
       setRankings(comparisonData.analysis.comparison_summary || []);
       setScoredRankings(comparisonData.analysis.comparison_summary || []);
       setAnalysisComplete(true);
@@ -1493,6 +1507,47 @@ const InstantQuoteComparison = () => {
       {/* Coverage Comparison Results */}
       {analysisComplete && comparisonData && (
         <>
+          {/* Document Warnings - Show if any documents failed */}
+          {comparisonData.failed_documents && comparisonData.failed_documents.length > 0 && (
+            <Card className="border-amber-300 bg-amber-50/50">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2 text-amber-900">
+                  <AlertTriangle className="h-5 w-5 text-amber-600" />
+                  <span>Partial Analysis - Some Documents Failed</span>
+                </CardTitle>
+                <CardDescription className="text-amber-800">
+                  The comparison was completed with available data, but some documents could not be processed
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <p className="text-sm text-amber-900 font-medium mb-3">
+                    Failed to extract data from {comparisonData.failed_documents.length} document{comparisonData.failed_documents.length !== 1 ? 's' : ''}:
+                  </p>
+                  <ul className="space-y-2">
+                    {comparisonData.failed_documents.map((doc: any, idx: number) => (
+                      <li key={idx} className="flex items-start space-x-2 text-sm bg-white/60 p-3 rounded border border-amber-200">
+                        <X className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1">
+                          <span className="font-medium text-amber-900">{doc.filename}</span>
+                          <div className="text-xs text-amber-700 mt-1">
+                            Type: {doc.type} • Carrier: {doc.carrier}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-4 p-3 bg-white/80 rounded border border-amber-200">
+                    <p className="text-xs text-amber-800">
+                      <strong>Note:</strong> The comparison below is based on successfully extracted documents only. 
+                      For a complete analysis, please re-upload the failed documents or contact support if the issue persists.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Insurer Cards Grid */}
           {comparisonData.insurers && comparisonData.insurers.length > 0 && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
