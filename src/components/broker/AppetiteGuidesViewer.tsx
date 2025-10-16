@@ -7,7 +7,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, BookOpen, DollarSign, MapPin, TrendingUp, AlertCircle, Target } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { BatchProcessAppetites } from "./BatchProcessAppetites";
 
 interface AppetiteGuide {
   id: string;
@@ -189,9 +188,6 @@ const AppetiteGuidesViewer = () => {
 
   return (
     <div className="space-y-6">
-      {/* AI Batch Processing Section */}
-      <BatchProcessAppetites />
-
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Underwriter Appetite Guides</h2>

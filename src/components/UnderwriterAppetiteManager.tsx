@@ -11,6 +11,7 @@ import { useDropzone } from "react-dropzone";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { CategoryCombobox } from "./broker/CategoryCombobox";
+import { BatchProcessAppetites } from "./broker/BatchProcessAppetites";
 
 interface UnderwriterAppetite {
   id: string;
@@ -285,6 +286,9 @@ const UnderwriterAppetiteManager = () => {
 
   return (
     <div className="space-y-6">
+      {/* AI Batch Processing Scanner */}
+      <BatchProcessAppetites />
+
       {/* Upload New Appetite Document */}
       <Card>
         <CardHeader>
