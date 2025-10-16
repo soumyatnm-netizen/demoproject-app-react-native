@@ -35,8 +35,8 @@ serve(async (req) => {
       );
     }
 
-    // Call Browserless API to generate PDF
-    const pdfResponse = await fetch(`https://chrome.browserless.io/pdf?token=${browserlessApiKey}`, {
+    // Call Browserless API to generate PDF (using updated production endpoint)
+    const pdfResponse = await fetch(`https://production-sfo.browserless.io/pdf?token=${browserlessApiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
