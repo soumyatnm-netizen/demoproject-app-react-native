@@ -1411,77 +1411,82 @@ const InstantQuoteComparison = () => {
             </CardHeader>
             <CardContent>
               <Button 
-                onClick={() => {
-                  const generateHTML = () => {
-                    const date = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-                    
-                    const productSectionsHTML = comparisonData.product_comparisons?.map((product, productIdx) => {
-                      const carriersHTML = product.carriers?.map((carrier, carrierIdx) => {
-                        // Build key terms list from differences
-                        const keyTermsHTML = carrier.differences?.map(diff => {
-                          const isHighlight = diff.standout_point === 'positive' || diff.standout_point === 'negative';
-                          const highlightClass = diff.standout_point === 'positive' ? 'text-green-700' : diff.standout_point === 'negative' ? 'text-red-700' : '';
+                onClick={async () => {
+                  try {
+                    toast({
+                      title: "Generating PDF",
+                      description: "Creating your comparison report...",
+                    });
+
+                    const generateHTML = () => {
+                      const date = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+                      const selectedClientData = clients.find(c => c.id === selectedClient);
+                      const clientName = selectedClientData?.client_name || 'Client';
+                      
+                      const productSectionsHTML = comparisonData.product_comparisons?.map((product, productIdx) => {
+                        const carriersHTML = product.carrier_results?.map((carrier, carrierIdx) => {
+                          // Build key terms list
+                          const keyTermsHTML = carrier.key_terms?.map(term => {
+                            return `<li class="pl-2">· ${term}</li>`;
+                          }).join('') || '';
+
+                          // Build standout points list
+                          const standoutPointsHTML = carrier.standout_points?.map(point => {
+                            const emoji = point.includes('✅') ? '✅' : point.includes('❌') ? '❌' : point.includes('⚠️') ? '⚠️' : '📋';
+                            const color = point.includes('✅') ? 'text-green-600' : point.includes('❌') ? 'text-red-600' : point.includes('⚠️') ? 'text-yellow-600' : 'text-blue-600';
+                            const cleanPoint = point.replace(/^[✅❌⚠️📋]\s*/, '');
+                            return `
+                              <li class="flex items-start">
+                                <span class="${color} text-lg mr-2 inline-block">${emoji}</span>
+                                <span>${cleanPoint}</span>
+                              </li>
+                            `;
+                          }).join('') || '';
+
+                          const isFirstCarrier = carrierIdx === 0;
+                          const carrierColor = isFirstCarrier ? 'text-green-700' : 'text-red-700';
+                          const carrierLabel = isFirstCarrier ? "Broker's Choice" : 'Alternative Quote';
+
                           return `
-                            <li class="pl-2 ${isHighlight ? 'font-bold ' + highlightClass : ''}">
-                              · ${diff.term}: ${diff.attacking_wording || diff.incumbent_wording || 'See policy'}
-                            </li>
+                            <div class="p-6 rounded-xl bg-white comparison-card">
+                              <div class="flex items-center mb-4 border-b pb-3">
+                                <span class="text-xl font-extrabold ${carrierColor} mr-2">${carrier.carrier}</span>
+                                <h3 class="text-lg font-semibold text-gray-700">${carrierLabel}</h3>
+                              </div>
+                              
+                              ${keyTermsHTML ? `
+                                <h4 class="text-base font-bold text-gray-800 mb-2">Key Terms</h4>
+                                <ul class="list-none space-y-2 text-sm text-gray-700 pl-0 mb-4">
+                                  ${keyTermsHTML}
+                                </ul>
+                              ` : ''}
+
+                              ${standoutPointsHTML ? `
+                                <h4 class="text-base font-bold text-gray-800 mt-4 mb-2 border-t pt-3">Standout Points</h4>
+                                <ul class="list-none space-y-2 text-sm text-gray-700 pl-0">
+                                  ${standoutPointsHTML}
+                                </ul>
+                              ` : ''}
+                            </div>
                           `;
                         }).join('') || '';
 
-                        // Build standout points list
-                        const standoutPointsHTML = carrier.differences?.filter(diff => diff.standout_point).map(diff => {
-                          const emoji = diff.standout_point === 'positive' ? '✅' : diff.standout_point === 'negative' ? '❌' : '⚠️';
-                          const color = diff.standout_point === 'positive' ? 'text-green-600' : diff.standout_point === 'negative' ? 'text-red-600' : 'text-yellow-600';
-                          return `
-                            <li class="flex items-start">
-                              <span class="${color} text-lg mr-2 inline-block">${emoji}</span>
-                              <span>**${diff.term}**: ${diff.explanation || diff.attacking_wording || 'Key difference noted'}</span>
-                            </li>
-                          `;
-                        }).join('') || '';
-
-                        const isAttacking = carrierIdx === 0;
-                        const carrierColor = isAttacking ? 'text-green-700' : 'text-red-700';
-                        const carrierLabel = isAttacking ? "Broker's Choice" : 'Alternative Quote';
+                        const summary = product.broker_notes || 'Detailed comparison of policy terms and coverage.';
+                        const pageBreak = productIdx > 0 ? '<div class="page-break"></div>' : '';
 
                         return `
-                          <div class="p-6 rounded-xl bg-white comparison-card">
-                            <div class="flex items-center mb-4 border-b pb-3">
-                              <span class="text-xl font-extrabold ${carrierColor} mr-2">${isAttacking ? carrier.attacking_carrier : carrier.incumbent_carrier}</span>
-                              <h3 class="text-lg font-semibold text-gray-700">${carrierLabel}</h3>
+                          ${pageBreak}
+                          <div class="policy-section mb-12">
+                            <h2 class="text-2xl font-bold text-gray-800 border-b pb-2 mb-4">${product.product}</h2>
+                            <p class="text-sm text-gray-600 mb-6 font-medium">${summary}</p>
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                              ${carriersHTML}
                             </div>
-                            
-                            <h4 class="text-base font-bold text-gray-800 mb-2">Key Terms</h4>
-                            <ul class="list-none space-y-2 text-sm text-gray-700 pl-0">
-                              ${keyTermsHTML}
-                            </ul>
-
-                            ${standoutPointsHTML ? `
-                              <h4 class="text-base font-bold text-gray-800 mt-4 mb-2 border-t pt-3">Standout Points</h4>
-                              <ul class="list-none space-y-2 text-sm text-gray-700 pl-0">
-                                ${standoutPointsHTML}
-                              </ul>
-                            ` : ''}
                           </div>
                         `;
-                      }).join('') || '';
+                      }).join('') || '<p class="text-gray-500">No comparison data available.</p>';
 
-                      const summary = product.carriers?.[0]?.analysis_summary || 'Detailed comparison of policy terms and coverage.';
-                      const pageBreak = productIdx > 0 ? '<div class="page-break"></div>' : '';
-
-                      return `
-                        ${pageBreak}
-                        <div class="policy-section mb-12">
-                          <h2 class="text-2xl font-bold text-gray-800 border-b pb-2 mb-4">${product.product_type}</h2>
-                          <p class="text-sm text-gray-600 mb-6 font-medium">${summary}</p>
-                          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            ${carriersHTML}
-                          </div>
-                        </div>
-                      `;
-                    }).join('') || '<p class="text-gray-500">No comparison data available.</p>';
-
-                    return `<!DOCTYPE html>
+                      return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1521,8 +1526,8 @@ const InstantQuoteComparison = () => {
     <div id="app" class="max-w-6xl mx-auto py-8 px-4 bg-white rounded-xl comparison-card">
         <header class="mb-10 pb-4 border-b border-gray-200">
             <h1 class="text-3xl font-extrabold text-blue-800">Policy Comparison Report</h1>
-            <p class="text-gray-500 mt-1">Generated by Cover Compass | Date: <span id="report-date">${date}</span></p>
-            <p class="text-gray-700 mt-2 font-semibold">Client: ${selectedClient}</p>
+            <p class="text-gray-500 mt-1">Generated by Cover Compass | Date: ${date}</p>
+            <p class="text-gray-700 mt-2 font-semibold">Client: ${clientName}</p>
         </header>
 
         ${productSectionsHTML}
@@ -1534,33 +1539,56 @@ const InstantQuoteComparison = () => {
             </p>
         </footer>
     </div>
-
-    <script>
-        document.getElementById('report-date').textContent = new Date().toLocaleDateString('en-GB', {
-            year: 'numeric', month: 'long', day: 'numeric'
-        });
-    </script>
 </body>
 </html>`;
-                  };
+                    };
 
-                  const htmlContent = generateHTML();
-                  const blob = new Blob([htmlContent], { type: 'text/html' });
-                  const url = URL.createObjectURL(blob);
-                  const link = document.createElement('a');
-                  link.href = url;
-                  link.download = `comparison-${selectedClient}-${new Date().toISOString().split('T')[0]}.html`;
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                  URL.revokeObjectURL(url);
-                  toast({ title: 'Comparison report downloaded - open and print to PDF' });
+                    const htmlContent = generateHTML();
+
+                    // Call edge function to generate PDF
+                    const { data, error } = await supabase.functions.invoke('generate-pdf-report', {
+                      body: { htmlContent }
+                    });
+
+                    if (error) {
+                      throw new Error(error.message || 'Failed to generate PDF');
+                    }
+
+                    // Create blob from response
+                    const blob = new Blob([data], { type: 'application/pdf' });
+                    
+                    // Download the PDF
+                    const selectedClientData = clients.find(c => c.id === selectedClient);
+                    const clientName = selectedClientData?.client_name || 'Client';
+                    const fileName = `${clientName.replace(/[^a-z0-9]/gi, '_')}_Comparison_${new Date().toISOString().split('T')[0]}.pdf`;
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = fileName;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+
+                    toast({
+                      title: "PDF Downloaded",
+                      description: `Report saved as ${fileName}`,
+                    });
+
+                  } catch (error) {
+                    console.error('PDF generation error:', error);
+                    toast({
+                      title: "PDF Generation Failed",
+                      description: error.message || "Could not generate PDF report",
+                      variant: "destructive",
+                    });
+                  }
                 }}
                 size="lg"
                 className="w-full"
               >
                 <Download className="h-4 w-4 mr-2" />
-                Download Comparison Report (HTML)
+                Download Comparison Report (PDF)
               </Button>
             </CardContent>
           </Card>
