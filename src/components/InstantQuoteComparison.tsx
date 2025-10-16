@@ -1516,6 +1516,41 @@ const InstantQuoteComparison = () => {
       {/* Coverage Comparison Results */}
       {analysisComplete && comparisonData && (
         <>
+          {/* Download Comparison Button */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Download className="h-5 w-5" />
+                <span>Download Comparison</span>
+              </CardTitle>
+              <CardDescription>
+                Export this comprehensive comparison to review offline or share with your team
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                onClick={() => {
+                  const dataStr = JSON.stringify(comparisonData, null, 2);
+                  const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                  const url = URL.createObjectURL(dataBlob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `comparison-${selectedClient}-${new Date().toISOString().split('T')[0]}.json`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  URL.revokeObjectURL(url);
+                  toast({ title: 'Comparison downloaded successfully' });
+                }}
+                size="lg"
+                className="w-full"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download Comparison Data (JSON)
+              </Button>
+            </CardContent>
+          </Card>
+
           {/* Document Warnings - Show if any documents failed */}
           {comparisonData.failed_documents && comparisonData.failed_documents.length > 0 && (
             <Card className="border-amber-300 bg-amber-50/50">
