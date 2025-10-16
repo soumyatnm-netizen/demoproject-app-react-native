@@ -521,6 +521,12 @@ const InstantQuoteComparison = () => {
 
       addStatusLog(`✓ Comparison completed in ${Math.round(t_aggregate)}ms`, 'success');
       
+      // Debug log the analysis structure
+      console.log('[DEBUG] Comparison analysis structure:', comparisonData.analysis);
+      console.log('[DEBUG] Analysis keys:', Object.keys(comparisonData.analysis || {}));
+      console.log('[DEBUG] Has insurers?', !!comparisonData.analysis?.insurers);
+      console.log('[DEBUG] Insurers count:', comparisonData.analysis?.insurers?.length || 0);
+      
       // Store the full comparison data for display, including failed documents
       const analysisWithWarnings = {
         ...comparisonData.analysis,
@@ -530,6 +536,9 @@ const InstantQuoteComparison = () => {
           carrier: doc.classification?.carrier || 'Unknown'
         }))
       };
+      
+      console.log('[DEBUG] Final comparison data to display:', analysisWithWarnings);
+      console.log('[DEBUG] Failed documents:', analysisWithWarnings.failed_documents);
       
       setComparisonData(analysisWithWarnings);
       setRankings(comparisonData.analysis.comparison_summary || []);
