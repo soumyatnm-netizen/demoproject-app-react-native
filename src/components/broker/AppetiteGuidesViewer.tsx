@@ -132,6 +132,16 @@ const AppetiteGuidesViewer = () => {
     try {
       setLoading(true);
 
+      // First check all guides (for debugging)
+      const { data: allGuides, error: allError } = await supabase
+        .from('underwriter_appetites')
+        .select('id, underwriter_name, status, company_id');
+
+      console.log('All appetite guides (debug):', allGuides);
+      console.log('Current user company_id:', await supabase.auth.getUser().then(u => 
+        supabase.from('profiles').select('company_id').eq('user_id', u.data.user?.id).single()
+      ));
+
       const { data: guides, error } = await supabase
         .from('underwriter_appetites')
         .select(`
@@ -147,6 +157,7 @@ const AppetiteGuidesViewer = () => {
         .eq('status', 'processed')
         .order('underwriter_name');
 
+      console.log('Processed guides:', guides);
       if (error) throw error;
 
       // Transform the data to match our interface
@@ -155,6 +166,7 @@ const AppetiteGuidesViewer = () => {
         appetite_data: guide.appetite_data?.[0] || null
       })) || [];
 
+      console.log('Transformed guides:', transformedGuides);
       setAppetiteGuides(transformedGuides);
       setFilteredGuides(transformedGuides);
 
