@@ -1531,59 +1531,70 @@ const InstantQuoteComparison = () => {
               <Button 
                 onClick={() => {
                   const generateHTML = () => {
-                    const date = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+                    const date = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
                     
-                    const productComparisonsHTML = comparisonData.product_comparisons?.map((product, idx) => {
-                      const carriersHTML = product.carriers?.map((carrier, cIdx) => {
-                        const differencesHTML = carrier.differences?.map((diff, dIdx) => `
-                          <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-200 break-inside-avoid">
-                            <div class="flex items-start justify-between mb-4">
-                              <h4 class="font-semibold text-gray-900 flex-1">${diff.term || 'Key Term'}</h4>
-                              ${diff.standout_point ? `<span class="ml-2">${diff.standout_point === 'positive' ? '✅' : diff.standout_point === 'negative' ? '❌' : '⚠️'}</span>` : ''}
-                            </div>
-                            ${diff.incumbent_wording ? `
-                              <div class="mb-4">
-                                <p class="text-sm font-medium text-gray-700 mb-1">Current Policy:</p>
-                                <p class="text-sm text-gray-600">${diff.incumbent_wording}</p>
-                              </div>
-                            ` : ''}
-                            ${diff.attacking_wording ? `
-                              <div class="mb-4">
-                                <p class="text-sm font-medium text-gray-700 mb-1">Proposed Policy:</p>
-                                <p class="text-sm text-gray-600">${diff.attacking_wording}</p>
-                              </div>
-                            ` : ''}
-                            ${diff.explanation ? `
-                              <div class="bg-blue-50 rounded p-3">
-                                <p class="text-sm text-gray-700"><strong>Analysis:</strong> ${diff.explanation}</p>
-                              </div>
-                            ` : ''}
-                          </div>
-                        `).join('') || '';
+                    const productSectionsHTML = comparisonData.product_comparisons?.map((product, productIdx) => {
+                      const carriersHTML = product.carriers?.map((carrier, carrierIdx) => {
+                        // Build key terms list from differences
+                        const keyTermsHTML = carrier.differences?.map(diff => {
+                          const isHighlight = diff.standout_point === 'positive' || diff.standout_point === 'negative';
+                          const highlightClass = diff.standout_point === 'positive' ? 'text-green-700' : diff.standout_point === 'negative' ? 'text-red-700' : '';
+                          return `
+                            <li class="pl-2 ${isHighlight ? 'font-bold ' + highlightClass : ''}">
+                              · ${diff.term}: ${diff.attacking_wording || diff.incumbent_wording || 'See policy'}
+                            </li>
+                          `;
+                        }).join('') || '';
+
+                        // Build standout points list
+                        const standoutPointsHTML = carrier.differences?.filter(diff => diff.standout_point).map(diff => {
+                          const emoji = diff.standout_point === 'positive' ? '✅' : diff.standout_point === 'negative' ? '❌' : '⚠️';
+                          const color = diff.standout_point === 'positive' ? 'text-green-600' : diff.standout_point === 'negative' ? 'text-red-600' : 'text-yellow-600';
+                          return `
+                            <li class="flex items-start">
+                              <span class="${color} text-lg mr-2 inline-block">${emoji}</span>
+                              <span>**${diff.term}**: ${diff.explanation || diff.attacking_wording || 'Key difference noted'}</span>
+                            </li>
+                          `;
+                        }).join('') || '';
+
+                        const isAttacking = carrierIdx === 0;
+                        const carrierColor = isAttacking ? 'text-green-700' : 'text-red-700';
+                        const carrierLabel = isAttacking ? "Broker's Choice" : 'Alternative Quote';
 
                         return `
-                          <div class="mb-8 break-inside-avoid">
-                            <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded-t-lg">
-                              <h3 class="text-xl font-bold">${carrier.attacking_carrier || 'Proposed Carrier'} vs ${carrier.incumbent_carrier || 'Current Carrier'}</h3>
+                          <div class="p-6 rounded-xl bg-white comparison-card">
+                            <div class="flex items-center mb-4 border-b pb-3">
+                              <span class="text-xl font-extrabold ${carrierColor} mr-2">${isAttacking ? carrier.attacking_carrier : carrier.incumbent_carrier}</span>
+                              <h3 class="text-lg font-semibold text-gray-700">${carrierLabel}</h3>
                             </div>
-                            ${carrier.analysis_summary ? `
-                              <div class="bg-blue-50 border-l-4 border-blue-600 p-4 mb-4">
-                                <p class="text-sm text-gray-700"><strong>Key Insight:</strong> ${carrier.analysis_summary}</p>
-                              </div>
+                            
+                            <h4 class="text-base font-bold text-gray-800 mb-2">Key Terms</h4>
+                            <ul class="list-none space-y-2 text-sm text-gray-700 pl-0">
+                              ${keyTermsHTML}
+                            </ul>
+
+                            ${standoutPointsHTML ? `
+                              <h4 class="text-base font-bold text-gray-800 mt-4 mb-2 border-t pt-3">Standout Points</h4>
+                              <ul class="list-none space-y-2 text-sm text-gray-700 pl-0">
+                                ${standoutPointsHTML}
+                              </ul>
                             ` : ''}
-                            <div class="grid gap-4">
-                              ${differencesHTML}
-                            </div>
                           </div>
                         `;
                       }).join('') || '';
 
+                      const summary = product.carriers?.[0]?.analysis_summary || 'Detailed comparison of policy terms and coverage.';
+                      const pageBreak = productIdx > 0 ? '<div class="page-break"></div>' : '';
+
                       return `
-                        <div class="mb-12 break-inside-avoid">
-                          <div class="bg-gray-100 p-4 rounded-lg mb-6">
-                            <h2 class="text-2xl font-bold text-gray-900">${product.product_type || 'Product Comparison'}</h2>
+                        ${pageBreak}
+                        <div class="policy-section mb-12">
+                          <h2 class="text-2xl font-bold text-gray-800 border-b pb-2 mb-4">${product.product_type}</h2>
+                          <p class="text-sm text-gray-600 mb-6 font-medium">${summary}</p>
+                          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            ${carriersHTML}
                           </div>
-                          ${carriersHTML}
                         </div>
                       `;
                     }).join('') || '<p class="text-gray-500">No comparison data available.</p>';
@@ -1591,42 +1602,62 @@ const InstantQuoteComparison = () => {
                     return `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Insurance Policy Comparison - ${selectedClient}</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    @media print {
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .break-inside-avoid { break-inside: avoid; page-break-inside: avoid; }
-      @page { margin: 1cm; }
-    }
-    body { font-family: system-ui, -apple-system, sans-serif; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cover Compass - Policy Comparison Report</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f7;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+        .comparison-card {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid #e5e7eb;
+        }
+        @media print {
+            body {
+                background-color: white !important;
+                margin: 0;
+                padding: 0;
+            }
+            .comparison-card {
+                box-shadow: none !important;
+                border: 1px solid #ccc !important;
+            }
+            .page-break {
+                page-break-before: always;
+            }
+        }
+    </style>
 </head>
-<body class="bg-gray-50 p-8">
-  <div class="max-w-5xl mx-auto">
-    <!-- Header -->
-    <div class="bg-gradient-to-r from-blue-700 to-blue-900 text-white p-8 rounded-lg mb-8 break-inside-avoid">
-      <h1 class="text-4xl font-bold mb-2">CoverCompass</h1>
-      <p class="text-xl">Insurance Policy Comparison Report</p>
-      <div class="mt-4 text-sm">
-        <p><strong>Client:</strong> ${selectedClient}</p>
-        <p><strong>Date:</strong> ${date}</p>
-      </div>
+<body class="bg-gray-100">
+    <div id="app" class="max-w-6xl mx-auto py-8 px-4 bg-white rounded-xl comparison-card">
+        <header class="mb-10 pb-4 border-b border-gray-200">
+            <h1 class="text-3xl font-extrabold text-blue-800">Policy Comparison Report</h1>
+            <p class="text-gray-500 mt-1">Generated by Cover Compass | Date: <span id="report-date">${date}</span></p>
+            <p class="text-gray-700 mt-2 font-semibold">Client: ${selectedClient}</p>
+        </header>
+
+        ${productSectionsHTML}
+
+        <footer class="mt-12 pt-6 border-t border-gray-200">
+            <h3 class="text-lg font-bold text-gray-800 mb-2">Disclaimer & Next Steps</h3>
+            <p class="text-xs text-gray-500">
+                This report is for comparison purposes only. Brokers must always refer to the full policy wording and schedule provided by the insurer.
+            </p>
+        </footer>
     </div>
 
-    <!-- Main Content -->
-    <div class="space-y-8">
-      ${productComparisonsHTML}
-    </div>
-
-    <!-- Footer -->
-    <div class="mt-12 pt-6 border-t border-gray-300 text-center text-sm text-gray-600 break-inside-avoid">
-      <p>Generated by CoverCompass • ${date}</p>
-      <p class="mt-2">This report is for informational purposes only. Please verify all policy details with your insurer.</p>
-    </div>
-  </div>
+    <script>
+        document.getElementById('report-date').textContent = new Date().toLocaleDateString('en-GB', {
+            year: 'numeric', month: 'long', day: 'numeric'
+        });
+    </script>
 </body>
 </html>`;
                   };
