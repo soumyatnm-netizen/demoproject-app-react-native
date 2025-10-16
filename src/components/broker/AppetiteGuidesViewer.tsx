@@ -4,11 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Search, BookOpen, DollarSign, MapPin, TrendingUp, AlertCircle, Target, Upload } from "lucide-react";
+import { Search, BookOpen, DollarSign, MapPin, TrendingUp, AlertCircle, Target } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
-import AppetiteGuideUpload from "./AppetiteGuideUpload";
+import { useToast } from "@/hooks/use-toast";
 
 interface AppetiteGuide {
   id: string;
@@ -201,20 +199,9 @@ const AppetiteGuidesViewer = () => {
           <Badge variant="secondary">
             {filteredGuides.length} guides available
           </Badge>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button>
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Guide
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Upload Appetite Guide</DialogTitle>
-              </DialogHeader>
-              <AppetiteGuideUpload onUploadComplete={fetchAppetiteGuides} />
-            </DialogContent>
-          </Dialog>
+          <div className="text-xs text-muted-foreground">
+            Contact your administrator to upload new guides
+          </div>
         </div>
       </div>
 
