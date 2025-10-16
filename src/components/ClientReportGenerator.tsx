@@ -33,6 +33,8 @@ interface ClientReport {
 const ClientReportGenerator = () => {
   const [comparisons, setComparisons] = useState<ComparisonData[]>([]);
   const [clientReports, setClientReports] = useState<ClientReport[]>([]);
+  const [selectedClient, setSelectedClient] = useState<string>("");
+  const [clientComparisons, setClientComparisons] = useState<ComparisonData[]>([]);
   const [selectedComparison, setSelectedComparison] = useState<ComparisonData | null>(null);
   const [reportForm, setReportForm] = useState({
     title: "",
@@ -44,9 +46,22 @@ const ClientReportGenerator = () => {
   const [generating, setGenerating] = useState(false);
   const { toast } = useToast();
 
+  // Get unique client names from comparisons
+  const uniqueClients = Array.from(new Set(comparisons.map(c => c.client_name).filter(Boolean)));
+
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (selectedClient) {
+      const filtered = comparisons.filter(c => c.client_name === selectedClient);
+      setClientComparisons(filtered);
+      setSelectedComparison(null);
+    } else {
+      setClientComparisons([]);
+    }
+  }, [selectedClient, comparisons]);
 
   const fetchData = async () => {
     try {
@@ -133,6 +148,7 @@ const ClientReportGenerator = () => {
         executiveSummary: "",
         customRecommendations: ""
       });
+      setSelectedClient("");
       setSelectedComparison(null);
       fetchData();
 
@@ -194,28 +210,48 @@ const ClientReportGenerator = () => {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="comparison-select">Select Comparison *</Label>
+              <Label htmlFor="client-select">1. Select Client *</Label>
               <Select 
-                value={selectedComparison?.id || ""} 
+                value={selectedClient} 
                 onValueChange={(value) => {
-                  const comp = comparisons.find(c => c.id === value);
-                  setSelectedComparison(comp || null);
-                  if (comp) {
-                    setReportForm(prev => ({
-                      ...prev,
-                      clientName: comp.client_name || "",
-                      title: `${comp.client_name || 'Client'} Insurance Review`
-                    }));
-                  }
+                  setSelectedClient(value);
+                  setReportForm(prev => ({
+                    ...prev,
+                    clientName: value,
+                    title: `${value} Insurance Review ${new Date().getFullYear()}`
+                  }));
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose a comparison to report on" />
+                  <SelectValue placeholder="Choose a client" />
                 </SelectTrigger>
                 <SelectContent>
-                  {comparisons.map((comp) => (
+                  {uniqueClients.map((client) => (
+                    <SelectItem key={client} value={client}>
+                      {client}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="comparison-select">2. Select Comparison *</Label>
+              <Select 
+                value={selectedComparison?.id || ""} 
+                onValueChange={(value) => {
+                  const comp = clientComparisons.find(c => c.id === value);
+                  setSelectedComparison(comp || null);
+                }}
+                disabled={!selectedClient}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={selectedClient ? "Choose a comparison" : "Select client first"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {clientComparisons.map((comp) => (
                     <SelectItem key={comp.id} value={comp.id}>
-                      {comp.name} - {comp.client_name || 'Unnamed Client'}
+                      {comp.name} ({new Date(comp.created_at).toLocaleDateString()})
                     </SelectItem>
                   ))}
                 </SelectContent>
