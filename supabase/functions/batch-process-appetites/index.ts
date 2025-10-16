@@ -69,52 +69,50 @@ serve(async (req) => {
           .update({ status: 'processing' })
           .eq('id', guide.id);
 
-        // Call the process-appetite-document function with correct parameter
-        const { data: processResult, error: processError } = await supabase.functions.invoke(
-          'process-appetite-document',
-          { body: { underwriterName: guide.underwriter_name, appetiteDocumentId: guide.id } }
-        );
+        // Retry with exponential backoff to handle OpenAI 429s
+        let success = false;
+        let lastErrMsg = '';
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          const { data: processResult, error: processError } = await supabase.functions.invoke(
+            'process-appetite-document',
+            { body: { appetiteDocumentId: guide.id } }
+          );
 
-        if (processError) {
-          console.error(`Failed to process ${guide.underwriter_name}:`, processError);
-          
+          if (!processError) {
+            success = true;
+            break;
+          }
+
+          lastErrMsg = processError.message || 'Unknown error';
+          console.warn(`Attempt ${attempt} failed for ${guide.underwriter_name}: ${lastErrMsg}`);
+          if (attempt < 3) {
+            const waitMs = attempt * 10000; // 10s, 20s
+            console.log(`Backing off for ${waitMs}ms before retry...`);
+            await new Promise((r) => setTimeout(r, waitMs));
+          }
+        }
+
+        if (!success) {
           await supabase
             .from('underwriter_appetites')
-            .update({ 
-              status: 'error',
-              processing_error: processError.message 
-            })
+            .update({ status: 'error', processing_error: lastErrMsg })
             .eq('id', guide.id);
-          
+
           failed++;
-          results.push({
-            id: guide.id,
-            underwriter_name: guide.underwriter_name,
-            status: 'failed',
-            error: processError.message
-          });
+          results.push({ id: guide.id, underwriter_name: guide.underwriter_name, status: 'failed', error: lastErrMsg });
         } else {
           console.log(`Successfully processed ${guide.underwriter_name}`);
           processed++;
-          results.push({
-            id: guide.id,
-            underwriter_name: guide.underwriter_name,
-            status: 'success'
-          });
+          results.push({ id: guide.id, underwriter_name: guide.underwriter_name, status: 'success' });
         }
 
-        // Add a small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Spread calls to respect TPM limits
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
       } catch (error) {
         console.error(`Error processing guide ${guide.id}:`, error);
         failed++;
-        results.push({
-          id: guide.id,
-          underwriter_name: guide.underwriter_name,
-          status: 'failed',
-          error: (error as Error).message
-        });
+        results.push({ id: guide.id, underwriter_name: guide.underwriter_name, status: 'failed', error: (error as Error).message });
       }
     }
 

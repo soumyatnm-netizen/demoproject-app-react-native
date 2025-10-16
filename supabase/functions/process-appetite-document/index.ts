@@ -27,7 +27,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Validate request input with strict schema
-    let appetiteDocumentId: string;
+    let appetiteDocumentId: string | null = null;
     try {
       const validated = await validateRequest(req, processAppetiteDocumentSchema);
       appetiteDocumentId = validated.appetiteDocumentId;
@@ -189,8 +189,7 @@ Extract as much relevant information as possible. If a field cannot be determine
             content: prompt
           }
         ],
-        max_completion_tokens: 3000,
-        temperature: 0.1
+        max_completion_tokens: 3000
       }),
     });
 
@@ -282,8 +281,6 @@ Extract as much relevant information as possible. If a field cannot be determine
     
     // Update appetite document status to error if we have appetiteDocumentId
     try {
-      const requestData = await req.json();
-      const { appetiteDocumentId } = requestData;
       if (appetiteDocumentId) {
         const supabase = createClient(
           Deno.env.get('SUPABASE_URL')!,
@@ -302,7 +299,7 @@ Extract as much relevant information as possible. If a field cannot be determine
     }
 
     return new Response(JSON.stringify({ error: (error as any).message }), {
-      status: 500,
+      status: (String((error as any).message).includes('429') ? 429 : 500),
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
