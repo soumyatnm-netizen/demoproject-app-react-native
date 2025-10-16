@@ -14,6 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      appetite_match_results: {
+        Row: {
+          capacity_fit_diff: number | null
+          carrier_id: string | null
+          client_document_id: string | null
+          confidence_score: number
+          coverage_fit: string | null
+          created_at: string | null
+          exclusions_hit: string[] | null
+          explanation: string | null
+          id: string
+          industry_fit: string | null
+          jurisdiction_fit: boolean | null
+          matched_at: string | null
+          primary_reasons: string[] | null
+          score_breakdown: Json | null
+        }
+        Insert: {
+          capacity_fit_diff?: number | null
+          carrier_id?: string | null
+          client_document_id?: string | null
+          confidence_score: number
+          coverage_fit?: string | null
+          created_at?: string | null
+          exclusions_hit?: string[] | null
+          explanation?: string | null
+          id?: string
+          industry_fit?: string | null
+          jurisdiction_fit?: boolean | null
+          matched_at?: string | null
+          primary_reasons?: string[] | null
+          score_breakdown?: Json | null
+        }
+        Update: {
+          capacity_fit_diff?: number | null
+          carrier_id?: string | null
+          client_document_id?: string | null
+          confidence_score?: number
+          coverage_fit?: string | null
+          created_at?: string | null
+          exclusions_hit?: string[] | null
+          explanation?: string | null
+          id?: string
+          industry_fit?: string | null
+          jurisdiction_fit?: boolean | null
+          matched_at?: string | null
+          primary_reasons?: string[] | null
+          score_breakdown?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appetite_match_results_carrier_id_fkey"
+            columns: ["carrier_id"]
+            isOneToOne: false
+            referencedRelation: "underwriter_appetites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appetite_match_results_client_document_id_fkey"
+            columns: ["client_document_id"]
+            isOneToOne: false
+            referencedRelation: "structured_quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       broker_companies: {
         Row: {
           address: string | null
@@ -1223,17 +1289,30 @@ export type Database = {
           additional_products: string[] | null
           appetite_document_id: string
           broker_features: Json | null
+          coverage_amount_max: number | null
+          coverage_amount_min: number | null
           coverage_limits: Json | null
           created_at: string
+          distribution_type: string | null
+          employee_range_max: number | null
+          employee_range_min: number | null
           exclusions: string[] | null
           financial_ratings: Json | null
           geographic_coverage: string[] | null
           id: string
+          industry_classes: string[] | null
+          jurisdictions: string[] | null
           logo_url: string | null
           maximum_premium: number | null
           minimum_premium: number | null
+          placement_notes: string | null
           policy_features: Json | null
+          product_type: string | null
+          revenue_range_max: number | null
+          revenue_range_min: number | null
           risk_appetite: string | null
+          security_requirements: string[] | null
+          segments: string[] | null
           specialty_focus: string[] | null
           target_sectors: string[] | null
           underwriter_name: string
@@ -1243,17 +1322,30 @@ export type Database = {
           additional_products?: string[] | null
           appetite_document_id: string
           broker_features?: Json | null
+          coverage_amount_max?: number | null
+          coverage_amount_min?: number | null
           coverage_limits?: Json | null
           created_at?: string
+          distribution_type?: string | null
+          employee_range_max?: number | null
+          employee_range_min?: number | null
           exclusions?: string[] | null
           financial_ratings?: Json | null
           geographic_coverage?: string[] | null
           id?: string
+          industry_classes?: string[] | null
+          jurisdictions?: string[] | null
           logo_url?: string | null
           maximum_premium?: number | null
           minimum_premium?: number | null
+          placement_notes?: string | null
           policy_features?: Json | null
+          product_type?: string | null
+          revenue_range_max?: number | null
+          revenue_range_min?: number | null
           risk_appetite?: string | null
+          security_requirements?: string[] | null
+          segments?: string[] | null
           specialty_focus?: string[] | null
           target_sectors?: string[] | null
           underwriter_name: string
@@ -1263,17 +1355,30 @@ export type Database = {
           additional_products?: string[] | null
           appetite_document_id?: string
           broker_features?: Json | null
+          coverage_amount_max?: number | null
+          coverage_amount_min?: number | null
           coverage_limits?: Json | null
           created_at?: string
+          distribution_type?: string | null
+          employee_range_max?: number | null
+          employee_range_min?: number | null
           exclusions?: string[] | null
           financial_ratings?: Json | null
           geographic_coverage?: string[] | null
           id?: string
+          industry_classes?: string[] | null
+          jurisdictions?: string[] | null
           logo_url?: string | null
           maximum_premium?: number | null
           minimum_premium?: number | null
+          placement_notes?: string | null
           policy_features?: Json | null
+          product_type?: string | null
+          revenue_range_max?: number | null
+          revenue_range_min?: number | null
           risk_appetite?: string | null
+          security_requirements?: string[] | null
+          segments?: string[] | null
           specialty_focus?: string[] | null
           target_sectors?: string[] | null
           underwriter_name?: string

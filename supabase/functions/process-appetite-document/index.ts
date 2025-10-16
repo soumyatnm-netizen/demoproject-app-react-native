@@ -88,66 +88,85 @@ serve(async (req) => {
       documentContent = `Document: ${appetiteDoc.filename}`;
     }
 
-    // Prepare OpenAI prompt for appetite document processing
-    const prompt = `You are an expert insurance underwriter appetite analyzer. Extract structured data from this underwriter appetite document.
+    // Prepare comprehensive OpenAI prompt for appetite document processing
+    const prompt = `You are an expert insurance underwriter appetite analyzer. Extract comprehensive structured data from this underwriter appetite document for carrier matching.
 
-Please extract and return a JSON object with the following structure:
+CRITICAL: Extract ALL appetite criteria in detail. Look for:
+1. Insurance products offered (Cyber, Tech E&O, D&O, PI, Property, GL, etc.)
+2. Coverage amount ranges (min/max per product)
+3. Jurisdictions and geographies (normalize to ISO codes where possible)
+4. Industry classes and sectors
+5. Revenue and employee ranges
+6. Security/eligibility requirements
+7. Explicit exclusions and declines
+8. Distribution/placement notes
+
+Return a JSON object with this structure:
 {
-  "underwriter_name": "string (e.g., 'Tokio Marine HCC', 'Lloyd's of London')",
+  "underwriter_name": "string",
+  "product_type": "string (primary product: Cyber, PI, D&O, Property, etc.)",
+  "segments": ["array: SME, Mid-Market, Enterprise, etc."],
+  "coverage_amount_min": number (in GBP/USD),
+  "coverage_amount_max": number,
+  "jurisdictions": ["array: GB, US, GB-ENG, US-CA, etc. - normalize to ISO 3166"],
+  "geographic_coverage": ["array: UK, Europe, Worldwide, North America"],
+  "industry_classes": ["array: Healthcare, Financial Services, Technology, etc."],
+  "target_sectors": ["array: more specific sectors"],
+  "revenue_range_min": number,
+  "revenue_range_max": number,
+  "employee_range_min": number,
+  "employee_range_max": number,
+  "security_requirements": ["array: MFA, EDR, Backups, SIEM, etc."],
+  "exclusions": ["array: explicit exclusions like 'Crypto exchanges', 'Adult content'"],
+  "placement_notes": "string (wholesale only, minimum premium, broker authority, etc.)",
+  "minimum_premium": number,
+  "maximum_premium": number,
+  "distribution_type": "string (wholesale, retail, both)",
   "financial_ratings": {
-    "sp": "string (S&P rating like 'A+', 'AA-')",
-    "am_best": "string (A.M. Best rating like 'A++', 'A+')",
-    "fitch": "string (Fitch rating like 'AA-', 'A+')",
-    "moodys": "string (Moody's rating if available)"
+    "sp": "string",
+    "am_best": "string",
+    "fitch": "string",
+    "moodys": "string"
   },
   "coverage_limits": {
-    "professional_indemnity_min": number,
-    "professional_indemnity_max": number,
-    "public_liability_max": number,
-    "employers_liability_max": number,
-    "management_liability_max": number,
-    "cyber_liability_max": number
+    "cyber_min": number,
+    "cyber_max": number,
+    "pi_min": number,
+    "pi_max": number,
+    "do_max": number,
+    "property_max": number
   },
-  "target_sectors": ["array of target industries/sectors like 'IT', 'Media', 'Consultants', 'Estate Agents'"],
-  "geographic_coverage": ["array like 'UK', 'Europe', 'Worldwide', 'North America'"],
   "policy_features": {
     "nil_excess_available": boolean,
     "worldwide_coverage": boolean,
-    "annual_policies": boolean,
-    "interest_free_payment": boolean,
     "online_portal": boolean,
-    "quick_quotes": boolean,
-    "bespoke_products": boolean
+    "quick_quotes": boolean
   },
-  "exclusions": ["array of common exclusions or restrictions"],
-  "minimum_premium": number,
-  "maximum_premium": number,
-  "specialty_focus": ["array like 'SME', 'Large Corporate', 'Specialty Risks'"],
+  "specialty_focus": ["array"],
   "broker_features": {
-    "portal_name": "string (if they have an online portal)",
-    "quote_turnaround": "string (e.g., 'within minutes', '24 hours')",
-    "mta_support": boolean,
-    "renewal_support": boolean
+    "portal_name": "string",
+    "quote_turnaround": "string",
+    "mta_support": boolean
   },
   "risk_appetite": "conservative | moderate | aggressive",
-  "additional_products": ["array of other products they offer like 'Cyber', 'D&O', 'Construction'"]
+  "additional_products": ["array"]
 }
 
-Key information to look for:
-- Company name and financial strength ratings
-- Coverage limits and product offerings
-- Target professional sectors and industries
-- Geographic coverage areas
-- Special features like nil excess, worldwide coverage
-- Broker-friendly features like online portals
-- Risk appetite indicators
-- Minimum/maximum premiums or revenue bands
+IMPORTANT EXTRACTION RULES:
+- For coverage amounts, look for patterns like "up to £10m", "£1m-£5m", "minimum £500k"
+- Normalize currencies to GBP (store original if different)
+- Extract jurisdictions as ISO codes: GB (UK), US (USA), GB-ENG (England), US-CA (California)
+- Map region names: DACH → DE/AT/CH, Nordics → DK/NO/SE/FI
+- Identify exclusions from phrases like "we do not cover", "excluded", "not accepted"
+- Extract security requirements from cyber insurance sections
+- Revenue/employee ranges from phrases like "turnover up to £50m", "10-500 employees"
 
 Document Content:
 ${documentContent}
 
 Underwriter Name: ${appetiteDoc.underwriter_name}
 Document Type: ${appetiteDoc.document_type}
+Coverage Category: ${appetiteDoc.coverage_category || 'Unknown'}
 
 Extract as much relevant information as possible. If a field cannot be determined, use null or an empty array as appropriate.`;
 

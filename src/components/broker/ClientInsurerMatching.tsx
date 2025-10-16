@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Target, Building2, Brain, BarChart3, Award, Clock, AlertTriangle, CheckCircle2, TrendingUp, Eye, ExternalLink } from "lucide-react";
+import { Target, Building2, Brain, BarChart3, Award, Clock, AlertTriangle, CheckCircle2, TrendingUp, Eye, ExternalLink, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
+import { AppetiteMatchingResults } from "./AppetiteMatchingResults";
 
 interface ClientData {
   id: string;
