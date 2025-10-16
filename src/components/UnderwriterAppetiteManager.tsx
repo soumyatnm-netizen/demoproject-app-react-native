@@ -6,12 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Upload, Download, Plus, ExternalLink, AlertCircle, CheckCircle, Building2 } from "lucide-react";
+import { FileText, Upload, Download, Plus, ExternalLink, AlertCircle, CheckCircle, Building2, Brain, Loader2 } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { CategoryCombobox } from "./broker/CategoryCombobox";
-import { BatchProcessAppetites } from "./broker/BatchProcessAppetites";
 
 interface UnderwriterAppetite {
   id: string;
@@ -286,9 +285,6 @@ const UnderwriterAppetiteManager = () => {
 
   return (
     <div className="space-y-6">
-      {/* AI Batch Processing Scanner */}
-      <BatchProcessAppetites />
-
       {/* Upload New Appetite Document */}
       <Card>
         <CardHeader>
@@ -401,18 +397,51 @@ const UnderwriterAppetiteManager = () => {
         <CardHeader>
           <CardTitle>Underwriter Appetite Documents</CardTitle>
           <CardDescription>
-            Manage uploaded appetite guides and their processed data
+            Manage uploaded appetite guides and scan them individually to extract intelligence
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {appetiteDocuments.map((doc) => {
               const processedData = appetiteData.find(data => data.id === doc.id);
+              const [processing, setProcessing] = useState(false);
+              
+              const handleScanDocument = async (docId: string, docName: string) => {
+                try {
+                  setProcessing(true);
+                  toast({
+                    title: "Processing Started",
+                    description: `Scanning ${docName} with AI...`,
+                  });
+
+                  const { error } = await supabase.functions.invoke('process-appetite-document', {
+                    body: { appetiteDocumentId: docId }
+                  });
+
+                  if (error) throw error;
+
+                  toast({
+                    title: "Success",
+                    description: `${docName} has been processed successfully`,
+                  });
+
+                  fetchAppetiteData();
+                } catch (error) {
+                  console.error('Processing error:', error);
+                  toast({
+                    title: "Error",
+                    description: (error as Error).message || "Failed to process document",
+                    variant: "destructive",
+                  });
+                } finally {
+                  setProcessing(false);
+                }
+              };
               
               return (
                 <div key={doc.id} className="border rounded-lg p-4">
                 <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-start space-x-3">
+                  <div className="flex items-start space-x-3 flex-1">
                     {doc.logo_url ? (
                       <img 
                         src={doc.logo_url} 
@@ -425,7 +454,7 @@ const UnderwriterAppetiteManager = () => {
                     ) : (
                       <Building2 className="h-12 w-12 text-muted-foreground mt-0.5 p-2 bg-muted rounded border" />
                     )}
-                    <div>
+                    <div className="flex-1">
                       <h4 className="font-medium">{doc.underwriter_name}</h4>
                       <p className="text-sm text-muted-foreground">{doc.filename}</p>
                       <div className="flex items-center gap-2 mt-1">
@@ -446,6 +475,7 @@ const UnderwriterAppetiteManager = () => {
                       </div>
                     </div>
                   </div>
+                  <div className="flex items-center gap-2">
                     <Badge 
                       variant={
                         doc.status === 'processed' ? 'default' : 
@@ -458,6 +488,27 @@ const UnderwriterAppetiteManager = () => {
                       {doc.status === 'error' && <AlertCircle className="h-3 w-3" />}
                       {doc.status}
                     </Badge>
+                    {doc.status !== 'processing' && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleScanDocument(doc.id, doc.underwriter_name)}
+                        disabled={processing}
+                        variant={doc.status === 'processed' ? 'outline' : 'default'}
+                      >
+                        {processing ? (
+                          <>
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            Scanning...
+                          </>
+                        ) : (
+                          <>
+                            <Brain className="h-3 w-3 mr-1" />
+                            {doc.status === 'processed' ? 'Re-scan' : 'Scan'}
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
                   </div>
                   
                   {doc.processing_error && (
