@@ -270,12 +270,12 @@ const InsurerMatching = () => {
                         </div>
                       </div>
                       
-                      <div className="text-right space-y-2">
+                      <div className="text-right">
                         <div className={`text-2xl font-bold px-3 py-1 rounded ${getScoreColor(match.match_score)}`}>
                           {match.match_score}%
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {match.estimated_win_probability}% win probability
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Match
                         </div>
                       </div>
                     </div>
