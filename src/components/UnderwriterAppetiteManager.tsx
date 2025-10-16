@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Upload, Download, Plus, ExternalLink, AlertCircle, CheckCircle, Building2, Brain, Loader2, Eye, FileDown, ChevronDown, ChevronUp } from "lucide-react";
+import { FileText, Upload, Download, Plus, ExternalLink, AlertCircle, CheckCircle, Building2, Brain, Loader2, FileDown, ChevronDown, ChevronUp } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -448,31 +448,6 @@ const UnderwriterAppetiteManager = () => {
                 }
               };
 
-              const handleViewDocument = async () => {
-                if (doc.source_url) {
-                  // Open source URL in new tab
-                  window.open(doc.source_url, '_blank');
-                } else if (doc.storage_path) {
-                  // Get signed URL for stored document
-                  try {
-                    const { data, error } = await supabase.storage
-                      .from('documents')
-                      .createSignedUrl(doc.storage_path, 3600); // 1 hour expiry
-
-                    if (error) throw error;
-                    if (data?.signedUrl) {
-                      window.open(data.signedUrl, '_blank');
-                    }
-                  } catch (error) {
-                    console.error('Failed to get document URL:', error);
-                    toast({
-                      title: "Error",
-                      description: "Failed to open document",
-                      variant: "destructive",
-                    });
-                  }
-                }
-              };
 
               const handleDownloadDocument = async () => {
                 if (doc.source_url) {
@@ -557,15 +532,6 @@ const UnderwriterAppetiteManager = () => {
                     </Badge>
                     
                     {/* Document action buttons */}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleViewDocument}
-                      title="View document"
-                    >
-                      <Eye className="h-3 w-3 mr-1" />
-                      View
-                    </Button>
                     
                     <Button
                       size="sm"
