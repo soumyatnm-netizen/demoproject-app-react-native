@@ -35,7 +35,7 @@ serve(async (req) => {
       );
     }
 
-    // Call Browserless API to generate PDF with proper wait for styles
+    // Call Browserless API to generate PDF using production endpoint
     const pdfResponse = await fetch(`https://production-sfo.browserless.io/pdf?token=${browserlessApiKey}`, {
       method: 'POST',
       headers: {
@@ -43,7 +43,6 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         html: htmlContent,
-        waitFor: 2000, // Wait 2 seconds for Tailwind to load and process
         options: {
           displayHeaderFooter: false,
           printBackground: true,
@@ -54,7 +53,7 @@ serve(async (req) => {
             bottom: '16mm',
             left: '12mm'
           },
-          preferCSSPageSize: false,
+          preferCSSPageSize: false
         }
       })
     });

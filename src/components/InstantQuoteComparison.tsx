@@ -800,20 +800,23 @@ const InstantQuoteComparison = () => {
       const htmlContent = generateFullHTMLReport(selectedClientData, comparisonData);
 
       // Call edge function to generate PDF
-      const { data, error } = await supabase.functions.invoke('generate-pdf-report', {
-        body: { htmlContent }
+      const { data, error } = await (supabase.functions as any).invoke('generate-pdf-report', {
+        body: { htmlContent },
+        noResolveJson: true
       });
 
       if (error) {
         throw new Error(error.message || 'Failed to generate PDF');
       }
 
-      if (!data || !(data instanceof ArrayBuffer || data instanceof Blob)) {
-        throw new Error('Invalid PDF response from server');
+      const response: Response = data as Response;
+      if (!response || !response.ok) {
+        const text = await response?.text?.();
+        throw new Error(text || 'Invalid PDF response from server');
       }
 
-      // Create blob from response
-      const blob = data instanceof Blob ? data : new Blob([data], { type: 'application/pdf' });
+      const arrayBuffer = await response.arrayBuffer();
+      const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
       
       // Download the PDF
       const fileName = `${selectedClientData.client_name.replace(/[^a-z0-9]/gi, '_')}_Quote_Comparison_${new Date().toISOString().split('T')[0]}.pdf`;
@@ -1546,16 +1549,23 @@ const InstantQuoteComparison = () => {
                     const htmlContent = generateHTML();
 
                     // Call edge function to generate PDF
-                    const { data, error } = await supabase.functions.invoke('generate-pdf-report', {
-                      body: { htmlContent }
+                    const { data, error } = await (supabase.functions as any).invoke('generate-pdf-report', {
+                      body: { htmlContent },
+                      noResolveJson: true
                     });
 
                     if (error) {
                       throw new Error(error.message || 'Failed to generate PDF');
                     }
 
-                    // Create blob from response
-                    const blob = new Blob([data], { type: 'application/pdf' });
+                    const response: Response = data as Response;
+                    if (!response || !response.ok) {
+                      const text = await response?.text?.();
+                      throw new Error(text || 'Invalid PDF response from server');
+                    }
+
+                    const arrayBuffer = await response.arrayBuffer();
+                    const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
                     
                     // Download the PDF
                     const selectedClientData = clients.find(c => c.id === selectedClient);
