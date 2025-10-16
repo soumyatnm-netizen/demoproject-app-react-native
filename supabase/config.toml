@@ -55,3 +55,9 @@ verify_jwt = true
 
 [functions.extract-wording]
 verify_jwt = true
+
+[functions.compare-insurance-docs]
+verify_jwt = true
+
+[functions.scan-client-document]
+verify_jwt = true
