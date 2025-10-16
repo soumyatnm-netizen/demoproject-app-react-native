@@ -52,7 +52,7 @@ serve(async (req) => {
     // Update status to processing
     await supabase
       .from('underwriter_appetites')
-      .update({ status: 'processing' })
+      .update({ status: 'processing', processing_error: null })
       .eq('id', appetiteDocumentId);
 
     let documentContent = '';
@@ -263,7 +263,7 @@ Extract as much relevant information as possible. If a field cannot be determine
     // Update appetite document status to processed
     await supabase
       .from('underwriter_appetites')
-      .update({ status: 'processed' })
+      .update({ status: 'processed', processing_error: null })
       .eq('id', appetiteDocumentId);
 
     console.log('Appetite document processed successfully:', appetiteDocumentId);

@@ -600,7 +600,7 @@ const UnderwriterAppetiteManager = () => {
                   </div>
                   </div>
                   
-                  {doc.processing_error && (
+                  {doc.status === 'error' && doc.processing_error && (
                     <div className="bg-destructive/10 border border-destructive/20 rounded p-2 mb-3">
                       <p className="text-sm text-destructive">{doc.processing_error}</p>
                     </div>
