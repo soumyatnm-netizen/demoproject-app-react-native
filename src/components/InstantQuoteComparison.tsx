@@ -1557,8 +1557,86 @@ const InstantQuoteComparison = () => {
             </Card>
           )}
 
-          {/* Insurer Cards Grid */}
-          {comparisonData.insurers && comparisonData.insurers.length > 0 && (
+          {/* Product Comparisons */}
+          {comparisonData.product_comparisons && comparisonData.product_comparisons.length > 0 && (
+            <div className="space-y-6">
+              {comparisonData.product_comparisons.map((product: any, productIdx: number) => (
+                <Card key={productIdx} className="border-2">
+                  <CardHeader className="bg-gradient-to-r from-primary/5 to-background">
+                    <CardTitle className="text-xl">{product.product}</CardTitle>
+                    {product.broker_notes && (
+                      <CardDescription className="mt-2 text-base">
+                        {product.broker_notes}
+                      </CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {product.carrier_results?.map((carrier: any, carrierIdx: number) => (
+                        <Card key={carrierIdx} className="border">
+                          <CardHeader className="pb-4">
+                            <CardTitle className="flex items-center space-x-3">
+                              {(() => {
+                                const insurerInfo = getInsurerInfo(carrier.carrier);
+                                return insurerInfo.logo ? (
+                                  <img 
+                                    src={insurerInfo.logo} 
+                                    alt={insurerInfo.altText}
+                                    className="h-8 w-8 object-contain"
+                                  />
+                                ) : (
+                                  <div className="h-8 w-8 bg-primary/10 rounded flex items-center justify-center">
+                                    <span className="text-sm font-medium text-primary">
+                                      {carrier.carrier.substring(0, 2).toUpperCase()}
+                                    </span>
+                                  </div>
+                                );
+                              })()}
+                              <span>{carrier.carrier}</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            {/* Key Terms */}
+                            {carrier.key_terms && carrier.key_terms.length > 0 && (
+                              <div>
+                                <h5 className="text-sm font-semibold mb-2">Key Terms</h5>
+                                <ul className="space-y-1">
+                                  {carrier.key_terms.map((term: string, idx: number) => (
+                                    <li key={idx} className="text-sm flex items-start">
+                                      <span className="mr-2">•</span>
+                                      <span className="flex-1">{term}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            
+                            {/* Standout Points */}
+                            {carrier.standout_points && carrier.standout_points.length > 0 && (
+                              <div>
+                                <h5 className="text-sm font-semibold mb-2">Standout Points</h5>
+                                <ul className="space-y-2">
+                                  {carrier.standout_points.map((point: string, idx: number) => (
+                                    <li key={idx} className="text-sm flex items-start">
+                                      <span className="mr-2">{point.includes('✅') ? '✅' : point.includes('❌') ? '❌' : point.includes('⚠️') ? '⚠️' : '📋'}</span>
+                                      <span className="flex-1">{point.replace(/^[✅❌⚠️📋]\s*/, '')}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {/* Legacy Insurer Cards - kept for backward compatibility */}
+          {comparisonData.insurers && comparisonData.insurers.length > 0 && !(comparisonData.product_comparisons) && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {comparisonData.insurers.map((insurer: any, index: number) => (
                 <Card key={index} className="hover:shadow-xl transition-all duration-300 border-2">
