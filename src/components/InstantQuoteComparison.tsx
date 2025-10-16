@@ -930,6 +930,7 @@ const InstantQuoteComparison = () => {
                   const carrierName = carrier.carrier_name || 'Unknown Carrier';
                   const isRecommended = carrierIdx === 0;
                   const keyTerms = carrier.key_terms || [];
+                  const subjectivities = carrier.subjectivities || [];
                   const standoutPoints = carrier.standout_points || [];
 
                   return `
@@ -945,6 +946,26 @@ const InstantQuoteComparison = () => {
                               ${keyTerms.map((term: string) => `<li class="pl-2">· ${term}</li>`).join('')}
                           </ul>
                         ` : ''}
+
+                        <div class="bg-amber-50 border-2 border-amber-300 rounded-lg p-4 mb-4">
+                          <h4 class="text-base font-bold text-amber-900 mb-2 flex items-center">
+                            <span class="mr-2">⚠️</span> Subjectivities (Pre-Binding)
+                          </h4>
+                          ${subjectivities.length > 0 ? `
+                            <ul class="list-none space-y-1.5 text-sm text-amber-900 pl-0">
+                                ${subjectivities.map((subj: string) => `
+                                  <li class="flex items-start">
+                                      <span class="text-amber-600 mr-2 font-bold">⚠</span>
+                                      <span class="flex-1">${subj}</span>
+                                  </li>
+                                `).join('')}
+                            </ul>
+                          ` : `
+                            <p class="text-sm text-green-700 flex items-center">
+                              <span class="mr-2">✓</span> None - Quote is firm
+                            </p>
+                          `}
+                        </div>
 
                         ${standoutPoints.length > 0 ? `
                           <h4 class="text-base font-bold text-gray-800 mt-4 mb-2 border-t pt-3">Standout Points</h4>
@@ -1701,6 +1722,31 @@ const InstantQuoteComparison = () => {
                                     </li>
                                   ))}
                                 </ul>
+                              </div>
+                            )}
+                            
+                            {/* Subjectivities - NEW SECTION */}
+                            {carrier.subjectivities !== undefined && (
+                              <div className="bg-amber-50 border-2 border-amber-200 rounded-lg p-4">
+                                <h5 className="text-sm font-semibold mb-2 text-amber-900 flex items-center">
+                                  <AlertTriangle className="h-4 w-4 mr-2" />
+                                  Subjectivities (Pre-Binding)
+                                </h5>
+                                {carrier.subjectivities && carrier.subjectivities.length > 0 ? (
+                                  <ul className="space-y-1.5">
+                                    {carrier.subjectivities.map((subj: string, idx: number) => (
+                                      <li key={idx} className="text-sm flex items-start text-amber-900">
+                                        <span className="text-amber-600 mr-2 font-bold">⚠</span>
+                                        <span className="flex-1">{subj}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <p className="text-sm text-green-700 flex items-center">
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    None - Quote is firm
+                                  </p>
+                                )}
                               </div>
                             )}
                             

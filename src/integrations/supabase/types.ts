@@ -1156,6 +1156,7 @@ export type Database = {
           quote_date: string | null
           quote_status: string | null
           revenue_band: string | null
+          subjectivities: string[] | null
           updated_at: string
           user_id: string
         }
@@ -1179,6 +1180,7 @@ export type Database = {
           quote_date?: string | null
           quote_status?: string | null
           revenue_band?: string | null
+          subjectivities?: string[] | null
           updated_at?: string
           user_id: string
         }
@@ -1202,6 +1204,7 @@ export type Database = {
           quote_date?: string | null
           quote_status?: string | null
           revenue_band?: string | null
+          subjectivities?: string[] | null
           updated_at?: string
           user_id?: string
         }

@@ -93,13 +93,14 @@ RULES:
 
 3. For each product line, extract and compare the following:
 
-### Professional Indemnity
+###  Professional Indemnity
 - Limit of indemnity and basis (aggregate vs any one claim)
 - Costs inclusive vs costs exclusive
 - Excess and basis (per claim, costs-inclusive, etc.)
 - Geographical and jurisdictional limits (highlight if USA excluded when client has US exposure)
 - Exclusions or amendments that limit or broaden cover
 - Subsidiary cover (are all subsidiaries included?)
+- **Subjectivities**: Pre-binding conditions that must be satisfied before the quote is bindable (e.g., "subject to survey", "subject to confirmation of client turnover", "subject to satisfactory references"). These are NOT policy conditions or exclusions.
 
 ### Cyber & Data
 - Limit and basis
@@ -114,15 +115,18 @@ RULES:
 - Cyber crime cover (excess, limit, basis)
 - Additional covers in the core wording not offered elsewhere (e.g. lost or missed bids under BI)
 - Minimum security conditions (highlight as potential claim declinature risk)
+- **Subjectivities**: Conditions precedent to binding (e.g., "subject to completion of security questionnaire", "subject to penetration test results")
 - IMPORTANT: Weight the Business Interruption coverage higher in the comparison, as volatile claims are most likely to fall here
 
 ### Property
 - General scope of cover — note any major discrepancies between wordings
 - Restrictive conditions or warranties the client must comply with for cover to remain valid
+- **Subjectivities**: Any pre-binding requirements (e.g., "subject to site inspection", "subject to review of fire protection systems")
 
 ### Liability (if present)
 - Note that Employers' Liability is statutory and usually non-differentiated
 - Only highlight unusual exclusions, conditions, or jurisdictional limitations
+- **Subjectivities**: Any conditions that must be met before binding
 
 OUTPUT FORMAT:
 {
@@ -139,10 +143,14 @@ OUTPUT FORMAT:
             "Territory: Worldwide excluding USA/Canada",
             "Subsidiaries: All owned subsidiaries automatically included"
           ],
+          "subjectivities": [
+            "Subject to satisfactory underwriting questionnaire completion",
+            "Subject to confirmation of revenue split (UK: 80%, EU: 15%, RoW: 5%)"
+          ],
           "standout_points": [
             "✅ Defence costs outside limit provides greater protection",
             "⚠️ USA/Canada excluded - confirm client has no US exposure",
-            "📋 Retroactive date: 2018-01-01"
+            "⚠️ Two subjectivities must be satisfied within 14 days of inception"
           ]
         },
         {
@@ -154,15 +162,16 @@ OUTPUT FORMAT:
             "Territory: UK only",
             "Subsidiaries: Named subsidiaries only"
           ],
+          "subjectivities": [],
           "standout_points": [
             "❌ Defence costs inside limit reduces available coverage",
             "⚠️ Geographic restriction to UK only",
-            "❌ Only named subsidiaries covered - list must be maintained"
+            "✅ No subjectivities - quote is firm"
           ]
         }
       ],
-      "broker_notes": "CFC offers broader territorial coverage and defence costs outside the limit, providing better protection. Hiscox is more restrictive with UK-only territory and costs inside the limit. If client has international operations, CFC is stronger. Confirm subsidiary list with Hiscox."
-    },
+      "broker_notes": "CFC offers broader territorial coverage and defence costs outside the limit, providing better protection. Hiscox is more restrictive with UK-only territory and costs inside the limit. If client has international operations, CFC is stronger. **CFC has 2 pre-binding subjectivities vs Hiscox none**. Confirm subsidiary list with Hiscox."
+    }
     {
       "product": "Cyber & Data",
       "carrier_results": [
@@ -235,12 +244,12 @@ OUTPUT FORMAT:
     }
   ],
   "overall_findings": [
-    "Subjectivities across all quotes: Risk survey required within 30 days (both carriers)",
+    "**Subjectivities Summary**: CFC has 3 pre-binding subjectivities across products (PI questionnaire, revenue confirmation, cyber security audit). Hiscox has none - all quotes firm.",
     "Key Advantage - CFC: Superior Cyber BI coverage (365d vs 90d), defence costs outside limit on PI",
-    "Key Advantage - Hiscox: Lower PI excess (£10k vs £5k) but costs are inside limit",
+    "Key Advantage - Hiscox: No subjectivities, lower PI excess but costs inside limit",
     "Key Risk - Hiscox: Condition precedent on security requirements (both Cyber MFA and Property alarm)",
-    "Key Risk - CFC: USA/Canada exclusion on PI - confirm no US operations",
-    "Broker Summary: For tech clients, CFC provides materially better Cyber coverage. Hiscox requires careful management of security conditions to avoid coverage gaps."
+    "Key Risk - CFC: USA/Canada exclusion on PI + 3 subjectivities to satisfy pre-binding",
+    "Broker Summary: For tech clients, CFC provides materially better Cyber coverage but requires satisfying subjectivities. Hiscox offers simpler binding process but requires careful management of security conditions to avoid coverage gaps."
   ]
 }
 
