@@ -29,9 +29,6 @@ import { useToast } from "@/components/ui/use-toast";
 import CoverageComparisonTable from "./CoverageComparisonTable";
 import PolicyWordingComparison from "./PolicyWordingComparison";
 import { getInsurerInfo } from "@/lib/insurers";
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-import coverCompassLogo from "@/assets/covercompass-logo-new.png";
 
 interface QuoteRanking {
   quote_id: string;
