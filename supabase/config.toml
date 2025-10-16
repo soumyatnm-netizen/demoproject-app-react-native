@@ -67,3 +67,6 @@ verify_jwt = true
 
 [functions.appetite-matching]
 verify_jwt = true
+
+[functions.batch-process-appetites]
+verify_jwt = true
