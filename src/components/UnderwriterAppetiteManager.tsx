@@ -6,11 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Upload, Download, Plus, ExternalLink, AlertCircle, CheckCircle, Building2, Brain, Loader2 } from "lucide-react";
+import { FileText, Upload, Download, Plus, ExternalLink, AlertCircle, CheckCircle, Building2, Brain, Loader2, Eye, FileDown, ChevronDown, ChevronUp } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { CategoryCombobox } from "./broker/CategoryCombobox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface UnderwriterAppetite {
   id: string;
@@ -21,11 +22,13 @@ interface UnderwriterAppetite {
   status: string;
   processing_error?: string;
   logo_url?: string;
+  storage_path?: string;
   created_at: string;
 }
 
 interface UnderwriterAppetiteData {
   id: string;
+  appetite_document_id: string;
   underwriter_name: string;
   financial_ratings: any;
   coverage_limits: any;
@@ -34,6 +37,10 @@ interface UnderwriterAppetiteData {
   policy_features: any;
   specialty_focus: string[];
   risk_appetite: string;
+  minimum_premium?: number;
+  maximum_premium?: number;
+  exclusions?: string[];
+  additional_products?: string[];
 }
 
 const UnderwriterAppetiteManager = () => {
@@ -404,8 +411,9 @@ const UnderwriterAppetiteManager = () => {
         <CardContent>
           <div className="space-y-4">
             {appetiteDocuments.map((doc) => {
-              const processedData = appetiteData.find(data => data.id === doc.id);
+              const processedData = appetiteData.find(data => data.appetite_document_id === doc.id);
               const isProcessing = processingDocs[doc.id] || false;
+              const [showDetails, setShowDetails] = useState(false);
               
               const handleScanDocument = async (docId: string, docName: string) => {
                 try {
@@ -436,6 +444,63 @@ const UnderwriterAppetiteManager = () => {
                   });
                 } finally {
                   setProcessingDocs(prev => ({ ...prev, [docId]: false }));
+                }
+              };
+
+              const handleViewDocument = async () => {
+                if (doc.source_url) {
+                  // Open source URL in new tab
+                  window.open(doc.source_url, '_blank');
+                } else if (doc.storage_path) {
+                  // Get signed URL for stored document
+                  try {
+                    const { data, error } = await supabase.storage
+                      .from('documents')
+                      .createSignedUrl(doc.storage_path, 3600); // 1 hour expiry
+
+                    if (error) throw error;
+                    if (data?.signedUrl) {
+                      window.open(data.signedUrl, '_blank');
+                    }
+                  } catch (error) {
+                    console.error('Failed to get document URL:', error);
+                    toast({
+                      title: "Error",
+                      description: "Failed to open document",
+                      variant: "destructive",
+                    });
+                  }
+                }
+              };
+
+              const handleDownloadDocument = async () => {
+                if (doc.source_url) {
+                  window.open(doc.source_url, '_blank');
+                } else if (doc.storage_path) {
+                  try {
+                    const { data, error } = await supabase.storage
+                      .from('documents')
+                      .download(doc.storage_path);
+
+                    if (error) throw error;
+                    if (data) {
+                      const url = URL.createObjectURL(data);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = doc.filename;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    }
+                  } catch (error) {
+                    console.error('Download error:', error);
+                    toast({
+                      title: "Error",
+                      description: "Failed to download document",
+                      variant: "destructive",
+                    });
+                  }
                 }
               };
               
@@ -489,6 +554,28 @@ const UnderwriterAppetiteManager = () => {
                       {doc.status === 'error' && <AlertCircle className="h-3 w-3" />}
                       {doc.status}
                     </Badge>
+                    
+                    {/* Document action buttons */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleViewDocument}
+                      title="View document"
+                    >
+                      <Eye className="h-3 w-3 mr-1" />
+                      View
+                    </Button>
+                    
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleDownloadDocument}
+                      title="Download document"
+                    >
+                      <FileDown className="h-3 w-3 mr-1" />
+                      Download
+                    </Button>
+                    
                     {doc.status !== 'processing' && (
                       <Button
                         size="sm"
@@ -519,55 +606,201 @@ const UnderwriterAppetiteManager = () => {
                   )}
                   
                   {processedData && (
-                    <div className="bg-muted/50 rounded p-3 space-y-2">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        {processedData.target_sectors && processedData.target_sectors.length > 0 && (
-                          <div>
-                            <span className="font-medium">Target Sectors:</span>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {processedData.target_sectors.slice(0, 3).map((sector, i) => (
-                                <Badge key={i} variant="secondary" className="text-xs">
-                                  {sector}
-                                </Badge>
-                              ))}
-                              {processedData.target_sectors.length > 3 && (
-                                <Badge variant="secondary" className="text-xs">
-                                  +{processedData.target_sectors.length - 3} more
-                                </Badge>
+                    <Collapsible open={showDetails} onOpenChange={setShowDetails}>
+                      <div className="bg-muted/50 rounded p-3 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h5 className="font-medium text-sm">AI-Extracted Intelligence</h5>
+                          <CollapsibleTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              {showDetails ? (
+                                <>
+                                  <ChevronUp className="h-4 w-4 mr-1" />
+                                  Hide Details
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown className="h-4 w-4 mr-1" />
+                                  Show Details
+                                </>
                               )}
-                            </div>
-                          </div>
-                        )}
+                            </Button>
+                          </CollapsibleTrigger>
+                        </div>
                         
-                        {processedData.specialty_focus && processedData.specialty_focus.length > 0 && (
-                          <div>
-                            <span className="font-medium">Specialty Focus:</span>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {processedData.specialty_focus.map((focus, i) => (
-                                <Badge key={i} variant="outline" className="text-xs">
-                                  {focus}
-                                </Badge>
-                              ))}
+                        {/* Quick Summary - Always visible */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                          {processedData.target_sectors && processedData.target_sectors.length > 0 && (
+                            <div>
+                              <span className="font-medium">Target Sectors:</span>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {processedData.target_sectors.slice(0, 3).map((sector, i) => (
+                                  <Badge key={i} variant="secondary" className="text-xs">
+                                    {sector}
+                                  </Badge>
+                                ))}
+                                {processedData.target_sectors.length > 3 && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    +{processedData.target_sectors.length - 3} more
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
+                          )}
+                          
+                          {processedData.specialty_focus && processedData.specialty_focus.length > 0 && (
+                            <div>
+                              <span className="font-medium">Specialty Focus:</span>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {processedData.specialty_focus.slice(0, 2).map((focus, i) => (
+                                  <Badge key={i} variant="outline" className="text-xs">
+                                    {focus}
+                                  </Badge>
+                                ))}
+                                {processedData.specialty_focus.length > 2 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    +{processedData.specialty_focus.length - 2}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {processedData.risk_appetite && (
+                            <div>
+                              <span className="font-medium">Risk Appetite:</span>
+                              <Badge 
+                                variant={
+                                  processedData.risk_appetite === 'aggressive' ? 'destructive' :
+                                  processedData.risk_appetite === 'moderate' ? 'default' : 'secondary'
+                                } 
+                                className="ml-2 text-xs"
+                              >
+                                {processedData.risk_appetite}
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Detailed Information - Collapsible */}
+                        <CollapsibleContent className="space-y-4">
+                          <div className="border-t pt-3 space-y-3">
+                            {/* Coverage Information */}
+                            {(processedData.coverage_limits || processedData.minimum_premium || processedData.maximum_premium) && (
+                              <div className="bg-background/50 rounded p-3">
+                                <h6 className="font-medium text-sm mb-2">Coverage & Pricing</h6>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                  {processedData.coverage_limits && (
+                                    <>
+                                      {(processedData.coverage_limits as any).cyber_min && (
+                                        <div>
+                                          <span className="text-muted-foreground">Cyber Limits:</span>
+                                          <span className="ml-2 font-medium">
+                                            £{((processedData.coverage_limits as any).cyber_min / 1000000).toFixed(1)}m - 
+                                            £{((processedData.coverage_limits as any).cyber_max / 1000000).toFixed(1)}m
+                                          </span>
+                                        </div>
+                                      )}
+                                      {(processedData.coverage_limits as any).pi_min && (
+                                        <div>
+                                          <span className="text-muted-foreground">PI Limits:</span>
+                                          <span className="ml-2 font-medium">
+                                            £{((processedData.coverage_limits as any).pi_min / 1000000).toFixed(1)}m - 
+                                            £{((processedData.coverage_limits as any).pi_max / 1000000).toFixed(1)}m
+                                          </span>
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                  {processedData.minimum_premium && (
+                                    <div>
+                                      <span className="text-muted-foreground">Min Premium:</span>
+                                      <span className="ml-2 font-medium">£{processedData.minimum_premium}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Geographic Coverage */}
+                            {processedData.geographic_coverage && processedData.geographic_coverage.length > 0 && (
+                              <div className="bg-background/50 rounded p-3">
+                                <h6 className="font-medium text-sm mb-2">Geographic Coverage</h6>
+                                <div className="flex flex-wrap gap-1">
+                                  {processedData.geographic_coverage.map((geo, i) => (
+                                    <Badge key={i} variant="outline" className="text-xs">
+                                      {geo}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Industry Classes */}
+                            {(processedData as any).industry_classes && (processedData as any).industry_classes.length > 0 && (
+                              <div className="bg-background/50 rounded p-3">
+                                <h6 className="font-medium text-sm mb-2">Industry Classes</h6>
+                                <div className="flex flex-wrap gap-1">
+                                  {(processedData as any).industry_classes.map((industry: string, i: number) => (
+                                    <Badge key={i} variant="secondary" className="text-xs">
+                                      {industry}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Exclusions */}
+                            {processedData.exclusions && processedData.exclusions.length > 0 && (
+                              <div className="bg-destructive/10 rounded p-3">
+                                <h6 className="font-medium text-sm mb-2 text-destructive">Exclusions</h6>
+                                <div className="flex flex-wrap gap-1">
+                                  {processedData.exclusions.map((exclusion, i) => (
+                                    <Badge key={i} variant="destructive" className="text-xs">
+                                      {exclusion}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Additional Products */}
+                            {processedData.additional_products && processedData.additional_products.length > 0 && (
+                              <div className="bg-background/50 rounded p-3">
+                                <h6 className="font-medium text-sm mb-2">Additional Products</h6>
+                                <div className="flex flex-wrap gap-1">
+                                  {processedData.additional_products.map((product, i) => (
+                                    <Badge key={i} variant="outline" className="text-xs">
+                                      {product}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Financial Ratings */}
+                            {processedData.financial_ratings && Object.keys(processedData.financial_ratings).some(k => (processedData.financial_ratings as any)[k]) && (
+                              <div className="bg-background/50 rounded p-3">
+                                <h6 className="font-medium text-sm mb-2">Financial Ratings</h6>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                  {(processedData.financial_ratings as any).sp && (
+                                    <div>
+                                      <span className="text-muted-foreground">S&P:</span>
+                                      <span className="ml-2 font-medium">{(processedData.financial_ratings as any).sp}</span>
+                                    </div>
+                                  )}
+                                  {(processedData.financial_ratings as any).am_best && (
+                                    <div>
+                                      <span className="text-muted-foreground">AM Best:</span>
+                                      <span className="ml-2 font-medium">{(processedData.financial_ratings as any).am_best}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        )}
-                        
-                        {processedData.risk_appetite && (
-                          <div>
-                            <span className="font-medium">Risk Appetite:</span>
-                            <Badge 
-                              variant={
-                                processedData.risk_appetite === 'aggressive' ? 'destructive' :
-                                processedData.risk_appetite === 'moderate' ? 'default' : 'secondary'
-                              } 
-                              className="ml-2 text-xs"
-                            >
-                              {processedData.risk_appetite}
-                            </Badge>
-                          </div>
-                        )}
+                        </CollapsibleContent>
                       </div>
-                    </div>
+                    </Collapsible>
                   )}
                   
                   <div className="flex justify-between items-center mt-3 text-xs text-muted-foreground">
