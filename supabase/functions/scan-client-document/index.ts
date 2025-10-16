@@ -439,6 +439,35 @@ serve(async (req) => {
       .update({ status: 'processed', processing_error: null })
       .eq('id', documentId);
 
+    // Trigger appetite matching after successful extraction
+    console.log('[appetite-matching] Starting appetite matching for client document...');
+    
+    // Prepare client profile for matching
+    const clientProfile = {
+      document_id: documentId,
+      insurance_product: extractedData["Coverage Requirements"]?.[0] || extractedData["Industry"] || "Unknown",
+      industry: extractedData["Industry"] || "Unknown",
+      revenue: parseFloat(String(extractedData["Revenue Band"] || "0").replace(/[^0-9.]/g, '')) || 0,
+      jurisdiction: extractedData["jurisdiction"] || "UK",
+      security_requirements: extractedData["security_requirements"] || [],
+      requested_coverage_amount: parseFloat(String(extractedData["requested_coverage"] || "0").replace(/[^0-9.]/g, '')) || 0
+    };
+
+    console.log('[appetite-matching] Client profile prepared:', JSON.stringify(clientProfile, null, 2));
+
+    // Call appetite matching function asynchronously (don't block response)
+    supabase.functions.invoke('appetite-matching', { 
+      body: { client_profile: clientProfile } 
+    }).then(({ data: matchingResult, error: matchingError }) => {
+      if (matchingError) {
+        console.error('[appetite-matching] Error:', matchingError);
+      } else {
+        console.log('[appetite-matching] Success:', matchingResult?.top_matches?.length || 0, 'matches found');
+      }
+    }).catch(matchError => {
+      console.error('[appetite-matching] Exception:', matchError);
+    });
+
     return new Response(
       JSON.stringify({ success: true, extractedData, documentId }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }

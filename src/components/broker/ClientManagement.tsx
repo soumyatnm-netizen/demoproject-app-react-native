@@ -19,6 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Check, ChevronDown, CalendarIcon } from "lucide-react";
 import ClientInsurerMatching from "./ClientInsurerMatching";
+import { AppetiteMatchingResultsWidget } from "./AppetiteMatchingResultsWidget";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -1501,9 +1502,12 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                 </CardContent>
               </Card>
 
-              {/* Insurer Matching Section */}
-              {!isEditingClient && (
-                <ClientInsurerMatching client={selectedClient} />
+              {/* Appetite-Based Carrier Matches */}
+              {!isEditingClient && selectedClient && (
+                <>
+                  <AppetiteMatchingResultsWidget clientData={selectedClient} />
+                  <ClientInsurerMatching client={selectedClient} />
+                </>
               )}
             </div>
           )}

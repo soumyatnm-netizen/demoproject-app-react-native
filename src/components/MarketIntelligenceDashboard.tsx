@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { CheckCircle2 } from "lucide-react";
 
 interface MarketIntelligence {
   underwriter_name: string;
@@ -263,10 +264,11 @@ const MarketIntelligenceDashboard = () => {
       </Card>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Market Overview</TabsTrigger>
           <TabsTrigger value="policy-types">By Policy Type</TabsTrigger>
           <TabsTrigger value="top-performers">Top Performers</TabsTrigger>
+          <TabsTrigger value="appetite-insights">Appetite Insights</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
