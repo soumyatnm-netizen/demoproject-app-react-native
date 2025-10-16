@@ -46,8 +46,11 @@ const ClientReportGenerator = () => {
   const [generating, setGenerating] = useState(false);
   const { toast } = useToast();
 
-  // Get unique client names from comparisons
-  const uniqueClients = Array.from(new Set(comparisons.map(c => c.client_name).filter(Boolean)));
+  // Get unique client names from both comparisons and existing reports
+  const uniqueClients = Array.from(new Set([
+    ...comparisons.map(c => c.client_name).filter(Boolean),
+    ...clientReports.map(r => r.client_name).filter(Boolean)
+  ])).sort();
 
   useEffect(() => {
     fetchData();
