@@ -69,10 +69,10 @@ serve(async (req) => {
           .update({ status: 'processing' })
           .eq('id', guide.id);
 
-        // Call the process-appetite-document function
+        // Call the process-appetite-document function with correct parameter
         const { data: processResult, error: processError } = await supabase.functions.invoke(
           'process-appetite-document',
-          { body: { appetiteDocumentId: guide.id } }
+          { body: { underwriterName: guide.underwriter_name, appetiteDocumentId: guide.id } }
         );
 
         if (processError) {
