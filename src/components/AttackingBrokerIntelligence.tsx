@@ -12,7 +12,9 @@ import { useToast } from "@/hooks/use-toast";
 interface StructuredQuote {
   id: string;
   insurer_name: string;
+  client_name: string;
   product_type: string;
+  industry: string;
   premium_amount: number;
   coverage_limits: any;
   inclusions: string[];
@@ -30,20 +32,45 @@ interface GapAnalysis {
   competitive_advantages: string[];
   switch_evidence: any;
   attack_strategy: string;
+  recommended_carriers: any[];
   created_at: string;
+}
+
+interface RecommendedCarrier {
+  name: string;
+  matchScore: number;
+  winRate: number;
+  avgPremium: number;
+  reasons: string[];
+  dataSource: string;
 }
 
 const AttackingBrokerIntelligence = () => {
   const [quotes, setQuotes] = useState<StructuredQuote[]>([]);
   const [gapAnalyses, setGapAnalyses] = useState<GapAnalysis[]>([]);
+  const [selectedClient, setSelectedClient] = useState<string>("");
+  const [clientQuotes, setClientQuotes] = useState<StructuredQuote[]>([]);
   const [selectedIncumbent, setSelectedIncumbent] = useState<StructuredQuote | null>(null);
   const [analyzingGaps, setAnalyzingGaps] = useState(false);
   const [customStrategy, setCustomStrategy] = useState("");
   const { toast } = useToast();
 
+  // Get unique client names
+  const uniqueClients = Array.from(new Set(quotes.map(q => q.client_name).filter(Boolean)));
+
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (selectedClient) {
+      const filtered = quotes.filter(q => q.client_name === selectedClient);
+      setClientQuotes(filtered);
+      setSelectedIncumbent(null);
+    } else {
+      setClientQuotes([]);
+    }
+  }, [selectedClient, quotes]);
 
   const fetchData = async () => {
     try {
@@ -64,7 +91,11 @@ const AttackingBrokerIntelligence = () => {
       if (gapError) throw gapError;
 
       setQuotes(quotesData || []);
-      setGapAnalyses(gapData || []);
+      // Map to handle potentially missing recommended_carriers field
+      setGapAnalyses((gapData || []).map((gap: any) => ({
+        ...gap,
+        recommended_carriers: gap.recommended_carriers || []
+      })) as GapAnalysis[]);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
@@ -97,7 +128,8 @@ const AttackingBrokerIntelligence = () => {
           key_weaknesses: gapAnalysis.weaknesses,
           competitive_advantages: gapAnalysis.advantages,
           switch_evidence: gapAnalysis.evidence,
-          attack_strategy: gapAnalysis.strategy
+          attack_strategy: gapAnalysis.strategy,
+          recommended_carriers: gapAnalysis.recommendedCarriers
         })
         .select()
         .single();
@@ -123,70 +155,208 @@ const AttackingBrokerIntelligence = () => {
   };
 
   const generateGapAnalysis = async (incumbent: StructuredQuote) => {
-    // Simulate AI analysis of incumbent weaknesses
-    const gaps = {
-      coverage_limitations: [],
-      pricing_issues: [],
-      service_gaps: [],
-      policy_restrictions: []
-    };
+    try {
+      // Fetch real market data for comprehensive analysis
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
 
-    // Analyse coverage gaps
-    if (incumbent.coverage_limits) {
-      if (incumbent.coverage_limits.public_liability < 2000000) {
-        gaps.coverage_limitations.push("Public liability limit below market average");
+      // Fetch placement outcomes for this product type and industry
+      const { data: placements } = await supabase
+        .from('placement_outcomes')
+        .select('*')
+        .eq('product_type', incumbent.product_type)
+        .eq('industry', incumbent.industry)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      // Fetch underwriter appetite data
+      const { data: appetiteData } = await supabase
+        .from('underwriter_appetite_data')
+        .select('*, underwriter_appetites!inner(*)')
+        .eq('product_type', incumbent.product_type)
+        .limit(10);
+
+      // Fetch market intelligence
+      const { data: marketIntel } = await supabase
+        .from('market_intelligence_aggregated')
+        .select('*')
+        .eq('product_type', incumbent.product_type)
+        .eq('industry', incumbent.industry)
+        .order('win_rate_percentage', { ascending: false })
+        .limit(5);
+
+      // Analyze coverage gaps
+      const gaps: any = {
+        coverage_limitations: [],
+        pricing_issues: [],
+        service_gaps: [],
+        policy_restrictions: []
+      };
+
+      if (incumbent.coverage_limits) {
+        if (incumbent.coverage_limits.public_liability < 2000000) {
+          gaps.coverage_limitations.push("Public liability limit below market average of £2M");
+        }
+        if (incumbent.coverage_limits.professional_indemnity < 1000000) {
+          gaps.coverage_limitations.push("Professional indemnity coverage insufficient for sector");
+        }
       }
-      if (incumbent.coverage_limits.professional_indemnity < 1000000) {
-        gaps.coverage_limitations.push("Professional indemnity coverage insufficient");
+
+      // Analyze pricing based on market intelligence
+      let marketAverage = 5000;
+      if (marketIntel && marketIntel.length > 0) {
+        const avgPremiums = marketIntel.map((m: any) => m.avg_premium).filter(Boolean);
+        if (avgPremiums.length > 0) {
+          marketAverage = avgPremiums.reduce((a: number, b: number) => a + b, 0) / avgPremiums.length;
+        }
       }
+
+      let pricingScore = 0;
+      if (incumbent.premium_amount > marketAverage * 1.15) {
+        gaps.pricing_issues.push(`Premium ${Math.round(((incumbent.premium_amount / marketAverage) - 1) * 100)}% above market rate`);
+        pricingScore += 30;
+      }
+
+      // Analyze exclusions
+      if (incumbent.exclusions && incumbent.exclusions.length > 5) {
+        gaps.policy_restrictions.push(`${incumbent.exclusions.length} exclusions limit coverage scope`);
+      }
+
+      // Generate recommended carriers based on real data
+      const recommendedCarriers: RecommendedCarrier[] = [];
+
+      // From market intelligence (highest win rates)
+      if (marketIntel) {
+        marketIntel.slice(0, 3).forEach((intel: any) => {
+          if (intel.underwriter_name !== incumbent.insurer_name) {
+            recommendedCarriers.push({
+              name: intel.underwriter_name,
+              matchScore: Math.round(intel.win_rate_percentage * 0.7 + intel.quote_rate_percentage * 0.3),
+              winRate: intel.win_rate_percentage,
+              avgPremium: intel.avg_premium,
+              reasons: [
+                `${intel.win_rate_percentage}% win rate in ${incumbent.industry}`,
+                `£${intel.avg_premium?.toLocaleString()} average premium`,
+                `${intel.total_placements} successful placements`
+              ],
+              dataSource: 'Market Intelligence'
+            });
+          }
+        });
+      }
+
+      // From appetite guides
+      if (appetiteData) {
+        appetiteData.slice(0, 2).forEach((appetite: any) => {
+          if (appetite.underwriter_name !== incumbent.insurer_name && 
+              !recommendedCarriers.find(c => c.name === appetite.underwriter_name)) {
+            const reasons = [];
+            if (appetite.target_sectors?.includes(incumbent.industry)) {
+              reasons.push(`Strong appetite for ${incumbent.industry} sector`);
+            }
+            if (appetite.specialty_focus?.includes(incumbent.product_type)) {
+              reasons.push(`Specializes in ${incumbent.product_type}`);
+            }
+            if (appetite.jurisdictions?.length > 0) {
+              reasons.push(`Active in ${appetite.jurisdictions.length} jurisdictions`);
+            }
+
+            recommendedCarriers.push({
+              name: appetite.underwriter_name,
+              matchScore: 75,
+              winRate: 0,
+              avgPremium: appetite.minimum_premium || 0,
+              reasons,
+              dataSource: 'Appetite Guide'
+            });
+          }
+        });
+      }
+
+      // From placement tracking
+      if (placements) {
+        const winningCarriers = placements
+          .filter((p: any) => p.outcome === 'won')
+          .reduce((acc: any, p: any) => {
+            if (!acc[p.underwriter_name]) {
+              acc[p.underwriter_name] = { count: 0, totalPremium: 0 };
+            }
+            acc[p.underwriter_name].count++;
+            acc[p.underwriter_name].totalPremium += p.premium_amount || 0;
+            return acc;
+          }, {});
+
+        Object.entries(winningCarriers).forEach(([name, data]: [string, any]) => {
+          if (name !== incumbent.insurer_name && 
+              !recommendedCarriers.find(c => c.name === name) &&
+              recommendedCarriers.length < 5) {
+            recommendedCarriers.push({
+              name,
+              matchScore: Math.min(95, 60 + (data.count * 5)),
+              winRate: 0,
+              avgPremium: data.totalPremium / data.count,
+              reasons: [
+                `${data.count} successful placements tracked`,
+                `Proven track record in ${incumbent.product_type}`,
+                `£${Math.round(data.totalPremium / data.count).toLocaleString()} average premium`
+              ],
+              dataSource: 'Placement History'
+            });
+          }
+        });
+      }
+
+      // Generate opportunity score
+      const opportunityScore = Math.min(
+        50 + pricingScore + 
+        (gaps.coverage_limitations.length * 10) +
+        (gaps.policy_restrictions.length * 8) +
+        (recommendedCarriers.length * 5),
+        95
+      );
+
+      const weaknesses = [
+        ...gaps.coverage_limitations,
+        ...gaps.pricing_issues,
+        ...gaps.policy_restrictions,
+        incumbent.exclusions && incumbent.exclusions.length > 3 
+          ? `${incumbent.exclusions.length} exclusions vs market average of 2-3`
+          : null,
+      ].filter(Boolean);
+
+      const advantages = [
+        recommendedCarriers.length > 0 ? `${recommendedCarriers.length} better-suited carriers identified` : null,
+        marketAverage < incumbent.premium_amount ? `Potential savings of £${Math.round(incumbent.premium_amount - marketAverage).toLocaleString()}` : null,
+        "Enhanced coverage limits available",
+        "Improved claims service capabilities"
+      ].filter(Boolean);
+
+      const evidence = {
+        premium_comparison: `Current premium £${incumbent.premium_amount?.toLocaleString()} vs market average £${Math.round(marketAverage).toLocaleString()}`,
+        coverage_improvements: gaps.coverage_limitations,
+        carrier_alternatives: recommendedCarriers.length,
+        market_data_points: (placements?.length || 0) + (marketIntel?.length || 0)
+      };
+
+      const strategy = customStrategy || 
+        `Leverage the ${weaknesses.length} identified weaknesses in the current policy. ` +
+        `Present ${recommendedCarriers.length} alternative carriers with proven track records. ` +
+        `${marketAverage < incumbent.premium_amount ? `Emphasize potential savings of £${Math.round(incumbent.premium_amount - marketAverage).toLocaleString()}.` : ''} ` +
+        `Focus on improved coverage and service capabilities backed by market intelligence data.`;
+
+      return {
+        gaps,
+        opportunityScore,
+        weaknesses: weaknesses.slice(0, 6),
+        advantages: advantages.slice(0, 4),
+        evidence,
+        strategy,
+        recommendedCarriers: recommendedCarriers.slice(0, 5)
+      };
+    } catch (error) {
+      console.error('Error generating gap analysis:', error);
+      throw error;
     }
-
-    // Analyse pricing
-    const marketAverage = 5000; // Placeholder
-    let pricingScore = 0;
-    if (incumbent.premium_amount > marketAverage * 1.2) {
-      gaps.pricing_issues.push("Premium 20%+ above market rate");
-      pricingScore += 30;
-    }
-
-    // Generate opportunity score
-    const opportunityScore = Math.min(
-      50 + pricingScore + 
-      (gaps.coverage_limitations.length * 10) +
-      (incumbent.exclusions?.length > 5 ? 20 : 0), 
-      95
-    );
-
-    const weaknesses = [
-      ...gaps.coverage_limitations,
-      ...gaps.pricing_issues,
-      "Limited digital service capabilities",
-      "Restrictive claims handling"
-    ].filter(Boolean);
-
-    const advantages = [
-      "More competitive pricing available",
-      "Better coverage limits in market",
-      "Enhanced digital service platform",
-      "Faster claims processing"
-    ];
-
-    const evidence = {
-      premium_comparison: `Current premium £${incumbent.premium_amount?.toLocaleString()} vs market average £${marketAverage.toLocaleString()}`,
-      coverage_improvements: gaps.coverage_limitations,
-      service_enhancements: ["24/7 online portal", "Mobile claims app", "Dedicated account manager"]
-    };
-
-    const strategy = customStrategy || `Target the client's concerns about ${weaknesses[0] || 'coverage gaps'}. Emphasize our competitive advantage in ${advantages[0] || 'pricing'}. Present clear evidence of ${evidence.coverage_improvements.length > 0 ? 'coverage improvements' : 'service enhancements'}.`;
-
-    return {
-      gaps,
-      opportunityScore,
-      weaknesses: weaknesses.slice(0, 5),
-      advantages: advantages.slice(0, 4),
-      evidence,
-      strategy
-    };
   };
 
   const getOpportunityScoreColor = (score: number) => {
@@ -215,21 +385,41 @@ const AttackingBrokerIntelligence = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Select Incumbent Policy</label>
+              <label className="text-sm font-medium">1. Select Client</label>
+              <Select 
+                value={selectedClient} 
+                onValueChange={setSelectedClient}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose client" />
+                </SelectTrigger>
+                <SelectContent>
+                  {uniqueClients.map((client) => (
+                    <SelectItem key={client} value={client}>
+                      {client}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">2. Select Incumbent Policy</label>
               <Select 
                 value={selectedIncumbent?.id || ""} 
                 onValueChange={(value) => {
-                  const quote = quotes.find(q => q.id === value);
+                  const quote = clientQuotes.find(q => q.id === value);
                   setSelectedIncumbent(quote || null);
                 }}
+                disabled={!selectedClient}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose incumbent to analyse" />
+                  <SelectValue placeholder={selectedClient ? "Choose policy" : "Select client first"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {quotes.map((quote) => (
+                  {clientQuotes.map((quote) => (
                     <SelectItem key={quote.id} value={quote.id}>
                       {quote.insurer_name} - £{quote.premium_amount?.toLocaleString()} ({quote.product_type})
                     </SelectItem>
@@ -244,7 +434,7 @@ const AttackingBrokerIntelligence = () => {
                 disabled={!selectedIncumbent || analyzingGaps}
                 className="w-full bg-orange-600 hover:bg-orange-700"
               >
-                {analyzingGaps ? "Analysing..." : "Analyse Gaps & Generate Strategy"}
+                {analyzingGaps ? "Analysing..." : "Analyse & Generate"}
               </Button>
             </div>
           </div>
@@ -358,6 +548,48 @@ const AttackingBrokerIntelligence = () => {
                           </ul>
                         </div>
                       )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Recommended Carriers */}
+                {analysis.recommended_carriers && analysis.recommended_carriers.length > 0 && (
+                  <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                    <h4 className="font-medium mb-3 flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-purple-600" />
+                      Recommended Carriers to Approach
+                    </h4>
+                    <div className="space-y-3">
+                      {analysis.recommended_carriers.map((carrier: RecommendedCarrier, i: number) => (
+                        <div key={i} className="bg-white p-3 rounded border border-purple-100">
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <h5 className="font-semibold text-sm">{carrier.name}</h5>
+                              <Badge variant="outline" className="text-xs mt-1">
+                                {carrier.dataSource}
+                              </Badge>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-lg font-bold text-purple-600">
+                                {carrier.matchScore}%
+                              </div>
+                              {carrier.winRate > 0 && (
+                                <div className="text-xs text-muted-foreground">
+                                  {carrier.winRate}% win rate
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <ul className="text-xs text-muted-foreground space-y-1">
+                            {carrier.reasons.map((reason, j) => (
+                              <li key={j} className="flex items-start gap-1">
+                                <span className="text-purple-500 mt-0.5">•</span>
+                                <span>{reason}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
