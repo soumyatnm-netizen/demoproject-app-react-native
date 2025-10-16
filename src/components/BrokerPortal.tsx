@@ -12,7 +12,6 @@ import EmailIntegration from "./broker/EmailIntegration";
 import BrokerProfile from "./broker/BrokerProfile";
 import QuoteComparison from "./broker/QuoteComparison";
 import InstantQuoteComparison from "./InstantQuoteComparison";
-import ClientReportGenerator from "./ClientReportGenerator";
 import AppetiteGuidesViewer from "./broker/AppetiteGuidesViewer";
 import DocumentManagement from "./broker/DocumentManagement";
 import MarketIntelligenceDashboard from "./MarketIntelligenceDashboard";
@@ -38,7 +37,7 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
     emailsSent: 0
   });
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("client-management");
+  const [activeTab, setActiveTab] = useState("instant-comparison");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -122,7 +121,7 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
       <div className="container mx-auto px-4 py-8">
         {/* Broker Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setActiveTab("client-management")}>
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setActiveTab("clients")}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">My Clients</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
@@ -177,8 +176,9 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="client-management">Client Management</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="instant-comparison">Instant Comparison</TabsTrigger>
+            <TabsTrigger value="clients">Client Management</TabsTrigger>
             <TabsTrigger value="documents-appetites">Documents & Appetites</TabsTrigger>
             <TabsTrigger value="matching">Insurer Matching</TabsTrigger>
             <TabsTrigger value="attack-intel">Attack Intelligence</TabsTrigger>
@@ -186,19 +186,12 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
             <TabsTrigger value="profile">My Profile</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="client-management">
-            <Tabs defaultValue="quotes" className="space-y-4">
-              <TabsList>
-                <TabsTrigger value="quotes">Quote Comparison</TabsTrigger>
-                <TabsTrigger value="reports">Client Reports</TabsTrigger>
-              </TabsList>
-              <TabsContent value="quotes">
-                <InstantQuoteComparison />
-              </TabsContent>
-              <TabsContent value="reports">
-                <ClientReportGenerator />
-              </TabsContent>
-            </Tabs>
+          <TabsContent value="instant-comparison">
+            <InstantQuoteComparison />
+          </TabsContent>
+
+          <TabsContent value="clients">
+            <ClientManagement onStatsUpdate={fetchBrokerStats} />
           </TabsContent>
 
           <TabsContent value="documents-appetites">
