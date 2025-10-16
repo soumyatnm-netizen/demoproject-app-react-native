@@ -62,9 +62,9 @@ export const processDocumentSchema = z.object({
 export const processAppetiteDocumentSchema = z.object({
   appetiteDocumentId: uuidSchema,
   underwriterName: z.string()
-    .min(1)
     .max(200)
-    .regex(/^[a-zA-Z0-9\s\-&'.,()]+$/, 'Invalid underwriter name'),
+    .regex(/^[a-zA-Z0-9\s\-&'.,()]+$/, 'Invalid underwriter name')
+    .optional(),
   sourceUrl: urlSchema.optional(),
 });
 
