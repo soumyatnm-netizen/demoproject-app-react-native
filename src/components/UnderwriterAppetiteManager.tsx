@@ -48,6 +48,7 @@ const UnderwriterAppetiteManager = () => {
   const [appetiteData, setAppetiteData] = useState<UnderwriterAppetiteData[]>([]);
   const [uploading, setUploading] = useState(false);
   const [processingDocs, setProcessingDocs] = useState<Record<string, boolean>>({});
+  const [expandedDocs, setExpandedDocs] = useState<Record<string, boolean>>({});
   const [newUnderwriter, setNewUnderwriter] = useState({
     name: "",
     documentType: "appetite_guide",
@@ -413,7 +414,7 @@ const UnderwriterAppetiteManager = () => {
             {appetiteDocuments.map((doc) => {
               const processedData = appetiteData.find(data => data.appetite_document_id === doc.id);
               const isProcessing = processingDocs[doc.id] || false;
-              const [showDetails, setShowDetails] = useState(false);
+              const showDetails = expandedDocs[doc.id] || false;
               
               const handleScanDocument = async (docId: string, docName: string) => {
                 try {
@@ -606,7 +607,7 @@ const UnderwriterAppetiteManager = () => {
                   )}
                   
                   {processedData && (
-                    <Collapsible open={showDetails} onOpenChange={setShowDetails}>
+                    <Collapsible open={showDetails} onOpenChange={(open) => setExpandedDocs(prev => ({ ...prev, [doc.id]: open }))}>
                       <div className="bg-muted/50 rounded p-3 space-y-3">
                         <div className="flex items-center justify-between">
                           <h5 className="font-medium text-sm">AI-Extracted Intelligence</h5>
