@@ -799,19 +799,22 @@ const InstantQuoteComparison = () => {
       // Build complete HTML document with embedded styles
       const htmlContent = generateFullHTMLReport(selectedClientData, comparisonData);
 
-      // Call edge function to generate PDF
-      const { data, error } = await (supabase.functions as any).invoke('generate-pdf-report', {
-        body: { htmlContent },
-        noResolveJson: true
+      // Call edge function directly to get binary PDF
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+
+      const response = await fetch('https://ijhiavpjobzfxoirhnux.supabase.co/functions/v1/generate-pdf-report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlqaGlhdnBqb2J6ZnhvaXJobnV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2OTg0ODgsImV4cCI6MjA3MTI3NDQ4OH0.eRjLwH8fCkqaMNnW0R248u213qcBRBLYrc9ZGiAm2Z4'
+        },
+        body: JSON.stringify({ htmlContent })
       });
 
-      if (error) {
-        throw new Error(error.message || 'Failed to generate PDF');
-      }
-
-      const response: Response = data as Response;
-      if (!response || !response.ok) {
-        const text = await response?.text?.();
+      if (!response.ok) {
+        const text = await response.text();
         throw new Error(text || 'Invalid PDF response from server');
       }
 
@@ -1548,19 +1551,22 @@ const InstantQuoteComparison = () => {
 
                     const htmlContent = generateHTML();
 
-                    // Call edge function to generate PDF
-                    const { data, error } = await (supabase.functions as any).invoke('generate-pdf-report', {
-                      body: { htmlContent },
-                      noResolveJson: true
+                    // Call edge function directly to get binary PDF
+                    const { data: sessionData } = await supabase.auth.getSession();
+                    const accessToken = sessionData?.session?.access_token;
+
+                    const response = await fetch('https://ijhiavpjobzfxoirhnux.supabase.co/functions/v1/generate-pdf-report', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
+                        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlqaGlhdnBqb2J6ZnhvaXJobnV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2OTg0ODgsImV4cCI6MjA3MTI3NDQ4OH0.eRjLwH8fCkqaMNnW0R248u213qcBRBLYrc9ZGiAm2Z4'
+                      },
+                      body: JSON.stringify({ htmlContent })
                     });
 
-                    if (error) {
-                      throw new Error(error.message || 'Failed to generate PDF');
-                    }
-
-                    const response: Response = data as Response;
-                    if (!response || !response.ok) {
-                      const text = await response?.text?.();
+                    if (!response.ok) {
+                      const text = await response.text();
                       throw new Error(text || 'Invalid PDF response from server');
                     }
 
