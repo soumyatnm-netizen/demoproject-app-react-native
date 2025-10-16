@@ -1530,23 +1530,124 @@ const InstantQuoteComparison = () => {
             <CardContent>
               <Button 
                 onClick={() => {
-                  const dataStr = JSON.stringify(comparisonData, null, 2);
-                  const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                  const url = URL.createObjectURL(dataBlob);
+                  const generateHTML = () => {
+                    const date = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+                    
+                    const productComparisonsHTML = comparisonData.product_comparisons?.map((product, idx) => {
+                      const carriersHTML = product.carriers?.map((carrier, cIdx) => {
+                        const differencesHTML = carrier.differences?.map((diff, dIdx) => `
+                          <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-200 break-inside-avoid">
+                            <div class="flex items-start justify-between mb-4">
+                              <h4 class="font-semibold text-gray-900 flex-1">${diff.term || 'Key Term'}</h4>
+                              ${diff.standout_point ? `<span class="ml-2">${diff.standout_point === 'positive' ? '✅' : diff.standout_point === 'negative' ? '❌' : '⚠️'}</span>` : ''}
+                            </div>
+                            ${diff.incumbent_wording ? `
+                              <div class="mb-4">
+                                <p class="text-sm font-medium text-gray-700 mb-1">Current Policy:</p>
+                                <p class="text-sm text-gray-600">${diff.incumbent_wording}</p>
+                              </div>
+                            ` : ''}
+                            ${diff.attacking_wording ? `
+                              <div class="mb-4">
+                                <p class="text-sm font-medium text-gray-700 mb-1">Proposed Policy:</p>
+                                <p class="text-sm text-gray-600">${diff.attacking_wording}</p>
+                              </div>
+                            ` : ''}
+                            ${diff.explanation ? `
+                              <div class="bg-blue-50 rounded p-3">
+                                <p class="text-sm text-gray-700"><strong>Analysis:</strong> ${diff.explanation}</p>
+                              </div>
+                            ` : ''}
+                          </div>
+                        `).join('') || '';
+
+                        return `
+                          <div class="mb-8 break-inside-avoid">
+                            <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded-t-lg">
+                              <h3 class="text-xl font-bold">${carrier.attacking_carrier || 'Proposed Carrier'} vs ${carrier.incumbent_carrier || 'Current Carrier'}</h3>
+                            </div>
+                            ${carrier.analysis_summary ? `
+                              <div class="bg-blue-50 border-l-4 border-blue-600 p-4 mb-4">
+                                <p class="text-sm text-gray-700"><strong>Key Insight:</strong> ${carrier.analysis_summary}</p>
+                              </div>
+                            ` : ''}
+                            <div class="grid gap-4">
+                              ${differencesHTML}
+                            </div>
+                          </div>
+                        `;
+                      }).join('') || '';
+
+                      return `
+                        <div class="mb-12 break-inside-avoid">
+                          <div class="bg-gray-100 p-4 rounded-lg mb-6">
+                            <h2 class="text-2xl font-bold text-gray-900">${product.product_type || 'Product Comparison'}</h2>
+                          </div>
+                          ${carriersHTML}
+                        </div>
+                      `;
+                    }).join('') || '<p class="text-gray-500">No comparison data available.</p>';
+
+                    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Insurance Policy Comparison - ${selectedClient}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .break-inside-avoid { break-inside: avoid; page-break-inside: avoid; }
+      @page { margin: 1cm; }
+    }
+    body { font-family: system-ui, -apple-system, sans-serif; }
+  </style>
+</head>
+<body class="bg-gray-50 p-8">
+  <div class="max-w-5xl mx-auto">
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-blue-700 to-blue-900 text-white p-8 rounded-lg mb-8 break-inside-avoid">
+      <h1 class="text-4xl font-bold mb-2">CoverCompass</h1>
+      <p class="text-xl">Insurance Policy Comparison Report</p>
+      <div class="mt-4 text-sm">
+        <p><strong>Client:</strong> ${selectedClient}</p>
+        <p><strong>Date:</strong> ${date}</p>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="space-y-8">
+      ${productComparisonsHTML}
+    </div>
+
+    <!-- Footer -->
+    <div class="mt-12 pt-6 border-t border-gray-300 text-center text-sm text-gray-600 break-inside-avoid">
+      <p>Generated by CoverCompass • ${date}</p>
+      <p class="mt-2">This report is for informational purposes only. Please verify all policy details with your insurer.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+                  };
+
+                  const htmlContent = generateHTML();
+                  const blob = new Blob([htmlContent], { type: 'text/html' });
+                  const url = URL.createObjectURL(blob);
                   const link = document.createElement('a');
                   link.href = url;
-                  link.download = `comparison-${selectedClient}-${new Date().toISOString().split('T')[0]}.json`;
+                  link.download = `comparison-${selectedClient}-${new Date().toISOString().split('T')[0]}.html`;
                   document.body.appendChild(link);
                   link.click();
                   document.body.removeChild(link);
                   URL.revokeObjectURL(url);
-                  toast({ title: 'Comparison downloaded successfully' });
+                  toast({ title: 'Comparison report downloaded - open and print to PDF' });
                 }}
                 size="lg"
                 className="w-full"
               >
                 <Download className="h-4 w-4 mr-2" />
-                Download Comparison Data (JSON)
+                Download Comparison Report (HTML)
               </Button>
             </CardContent>
           </Card>
