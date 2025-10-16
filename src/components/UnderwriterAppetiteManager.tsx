@@ -40,6 +40,7 @@ const UnderwriterAppetiteManager = () => {
   const [appetiteDocuments, setAppetiteDocuments] = useState<UnderwriterAppetite[]>([]);
   const [appetiteData, setAppetiteData] = useState<UnderwriterAppetiteData[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [processingDocs, setProcessingDocs] = useState<Record<string, boolean>>({});
   const [newUnderwriter, setNewUnderwriter] = useState({
     name: "",
     documentType: "appetite_guide",
@@ -404,11 +405,11 @@ const UnderwriterAppetiteManager = () => {
           <div className="space-y-4">
             {appetiteDocuments.map((doc) => {
               const processedData = appetiteData.find(data => data.id === doc.id);
-              const [processing, setProcessing] = useState(false);
+              const isProcessing = processingDocs[doc.id] || false;
               
               const handleScanDocument = async (docId: string, docName: string) => {
                 try {
-                  setProcessing(true);
+                  setProcessingDocs(prev => ({ ...prev, [docId]: true }));
                   toast({
                     title: "Processing Started",
                     description: `Scanning ${docName} with AI...`,
@@ -434,7 +435,7 @@ const UnderwriterAppetiteManager = () => {
                     variant: "destructive",
                   });
                 } finally {
-                  setProcessing(false);
+                  setProcessingDocs(prev => ({ ...prev, [docId]: false }));
                 }
               };
               
@@ -492,10 +493,10 @@ const UnderwriterAppetiteManager = () => {
                       <Button
                         size="sm"
                         onClick={() => handleScanDocument(doc.id, doc.underwriter_name)}
-                        disabled={processing}
+                        disabled={isProcessing}
                         variant={doc.status === 'processed' ? 'outline' : 'default'}
                       >
-                        {processing ? (
+                        {isProcessing ? (
                           <>
                             <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                             Scanning...
