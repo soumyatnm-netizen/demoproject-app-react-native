@@ -11,6 +11,7 @@ import qbeLogo from "@/assets/insurers/qbe-logo.png";
 import markelLogo from "@/assets/insurers/markel-logo.png";
 import libertyLogo from "@/assets/insurers/liberty-logo.png";
 import travelersLogo from "@/assets/insurers/travelers-logo.png";
+import hartfordLogo from "@/assets/insurers/hartford-logo.png";
 
 // Placeholder function to generate logo URL from insurer name
 const generateLogoPlaceholder = (name: string) => {
@@ -147,7 +148,7 @@ export const insurerMapping: Record<string, InsurerInfo> = {
   },
   "Hartford": {
     name: "Hartford",
-    logo: generateLogoPlaceholder("Hartford"),
+    logo: hartfordLogo,
     altText: "Hartford logo"
   },
   "Ecclesiastical": {
