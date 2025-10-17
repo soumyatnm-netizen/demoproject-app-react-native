@@ -1247,9 +1247,9 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
   return (
     <>
       {children}
-      {/* Add sign out option in a corner */}
-      <div className="fixed top-4 right-4 z-50">
-        <Button variant="ghost" size="sm" onClick={handleSignOut}>
+      {/* Add sign out option in a corner - positioned to avoid header buttons */}
+      <div className="fixed bottom-4 right-4 z-50">
+        <Button variant="outline" size="sm" onClick={handleSignOut} className="shadow-lg">
           Sign Out
         </Button>
       </div>
