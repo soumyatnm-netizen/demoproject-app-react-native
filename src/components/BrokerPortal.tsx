@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Users, Mail, Target, FileText, TrendingUp, BookOpen, Sword } from "lucide-react";
+import { ArrowLeft, Users, Mail, Target, FileText, TrendingUp, BookOpen, Sword, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import ClientManagement from "./broker/ClientManagement";
@@ -114,7 +114,17 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
             </Button>
             <h1 className="text-2xl font-bold text-foreground">Broker Portal</h1>
           </div>
-          <Badge variant="default">CoverCompass Broker</Badge>
+          <div className="flex items-center space-x-4">
+            <Badge variant="default">CoverCompass Broker</Badge>
+            <Button 
+              variant={activeTab === "profile" ? "default" : "outline"} 
+              size="sm"
+              onClick={() => setActiveTab("profile")}
+            >
+              <User className="h-4 w-4 mr-2" />
+              My Profile
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -176,14 +186,13 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="instant-comparison">Instant Comparison</TabsTrigger>
             <TabsTrigger value="clients">Client Management</TabsTrigger>
             <TabsTrigger value="documents-appetites">Documents & Appetites</TabsTrigger>
             <TabsTrigger value="matching">Insurer Matching</TabsTrigger>
             <TabsTrigger value="attack-intel">Attack Intelligence</TabsTrigger>
             <TabsTrigger value="market-intel">Market Intelligence</TabsTrigger>
-            <TabsTrigger value="profile">My Profile</TabsTrigger>
           </TabsList>
 
           <TabsContent value="instant-comparison">
