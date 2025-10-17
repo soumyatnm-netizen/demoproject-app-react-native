@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Users, Mail, Target, FileText, TrendingUp, BookOpen, Sword, User } from "lucide-react";
+import { ArrowLeft, Users, Mail, Target, FileText, TrendingUp, BookOpen, Sword, User, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import ClientManagement from "./broker/ClientManagement";
@@ -43,6 +43,23 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
   useEffect(() => {
     fetchBrokerStats();
   }, []);
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast({
+        title: "Signed out",
+        description: "You have been signed out successfully",
+      });
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast({
+        title: "Error",
+        description: "Failed to sign out",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchBrokerStats = async () => {
     try {
@@ -124,6 +141,15 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
             >
               <User className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">My Profile</span>
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={handleSignOut}
+              className="flex-shrink-0"
+            >
+              <LogOut className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Sign Out</span>
             </Button>
           </div>
         </div>
