@@ -187,7 +187,7 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="instant-comparison">Instant Comparison</TabsTrigger>
             <TabsTrigger value="clients">Client Management</TabsTrigger>
             <TabsTrigger value="documents-appetites">Documents & Appetites</TabsTrigger>
