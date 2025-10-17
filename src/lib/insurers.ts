@@ -13,6 +13,7 @@ import libertyLogo from "@/assets/insurers/liberty-logo.png";
 import travelersLogo from "@/assets/insurers/travelers-logo.png";
 import hartfordLogo from "@/assets/insurers/hartford-logo.png";
 import penLogo from "@/assets/insurers/pen-logo.png";
+import jenstenLogo from "@/assets/insurers/jensten-logo.webp";
 
 // Placeholder function to generate logo URL from insurer name
 const generateLogoPlaceholder = (name: string) => {
@@ -169,7 +170,7 @@ export const insurerMapping: Record<string, InsurerInfo> = {
   },
   "Jensten": {
     name: "Jensten",
-    logo: generateLogoPlaceholder("Jensten"),
+    logo: jenstenLogo,
     altText: "Jensten logo"
   }
 };
