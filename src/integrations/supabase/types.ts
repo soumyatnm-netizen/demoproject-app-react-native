@@ -496,6 +496,36 @@ export type Database = {
           },
         ]
       }
+      insurer_matching_cache: {
+        Row: {
+          analysis_timestamp: string
+          client_report_id: string
+          created_at: string
+          id: string
+          matches: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          analysis_timestamp?: string
+          client_report_id: string
+          created_at?: string
+          id?: string
+          matches?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          analysis_timestamp?: string
+          client_report_id?: string
+          created_at?: string
+          id?: string
+          matches?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       login_audit: {
         Row: {
           failure_reason: string | null

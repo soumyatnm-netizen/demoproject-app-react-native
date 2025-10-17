@@ -55,11 +55,21 @@ const InsurerMatching = () => {
   const [matches, setMatches] = useState<EnhancedMatch[]>([]);
   const [loading, setLoading] = useState(false);
   const [analysisTimestamp, setAnalysisTimestamp] = useState<string>("");
+  const [isFromCache, setIsFromCache] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchClientQuotes();
   }, []);
+
+  useEffect(() => {
+    if (selectedQuote) {
+      fetchCachedMatches(selectedQuote);
+    } else {
+      setMatches([]);
+      setIsFromCache(false);
+    }
+  }, [selectedQuote]);
 
   const fetchClientQuotes = async () => {
     try {
@@ -95,8 +105,40 @@ const InsurerMatching = () => {
     }
   };
 
-  const generateMatches = async (quoteId: string) => {
+  const fetchCachedMatches = async (quoteId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('insurer_matching_cache')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('client_report_id', quoteId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data && data.matches) {
+        setMatches(data.matches as unknown as EnhancedMatch[]);
+        setAnalysisTimestamp(data.analysis_timestamp);
+        setIsFromCache(true);
+      } else {
+        setMatches([]);
+        setIsFromCache(false);
+      }
+    } catch (error) {
+      console.error('Error fetching cached matches:', error);
+      setMatches([]);
+      setIsFromCache(false);
+    }
+  };
+
+  const generateMatches = async (quoteId: string, forceRefresh = false) => {
     setLoading(true);
+    setIsFromCache(false);
     try {
       console.log('Generating enhanced insurer matches for quote:', quoteId);
       
@@ -110,12 +152,18 @@ const InsurerMatching = () => {
 
       console.log('Received enhanced matching results:', data);
       
-      setMatches(data.matches || []);
-      setAnalysisTimestamp(data.analysis_timestamp || new Date().toISOString());
+      const newMatches = data.matches || [];
+      const timestamp = data.analysis_timestamp || new Date().toISOString();
+      
+      setMatches(newMatches);
+      setAnalysisTimestamp(timestamp);
+      
+      // Save to cache
+      await saveToCache(quoteId, newMatches, timestamp);
       
       toast({
-        title: "Enhanced Analysis Complete",
-        description: `Found ${data.matches?.length || 0} matches by analysing ${data.similar_clients_analyzed || 0} similar clients and ${data.appetite_guides_analyzed || 0} appetite guides`,
+        title: forceRefresh ? "Analysis Refreshed" : "Enhanced Analysis Complete",
+        description: `Found ${newMatches.length} matches by analysing ${data.similar_clients_analyzed || 0} similar clients and ${data.appetite_guides_analyzed || 0} appetite guides`,
       });
 
     } catch (error) {
@@ -128,6 +176,46 @@ const InsurerMatching = () => {
       setMatches([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveToCache = async (quoteId: string, matches: EnhancedMatch[], timestamp: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Check if cache exists for this quote
+      const { data: existing } = await supabase
+        .from('insurer_matching_cache')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('client_report_id', quoteId)
+        .maybeSingle();
+
+      if (existing) {
+        // Update existing cache
+        await supabase
+          .from('insurer_matching_cache')
+          .update({
+            matches: matches as any,
+            analysis_timestamp: timestamp,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existing.id);
+      } else {
+        // Insert new cache
+        await supabase
+          .from('insurer_matching_cache')
+          .insert({
+            user_id: user.id,
+            client_report_id: quoteId,
+            matches: matches as any,
+            analysis_timestamp: timestamp
+          });
+      }
+    } catch (error) {
+      console.error('Error saving to cache:', error);
+      // Don't show error to user as this is a background operation
     }
   };
 
@@ -178,10 +266,17 @@ const InsurerMatching = () => {
             <p className="text-muted-foreground">Intelligent analysis using appetite guides, market data, and placement history</p>
           </div>
           {analysisTimestamp && (
-            <Badge variant="outline" className="text-xs">
-              <Clock className="h-3 w-3 mr-1" />
-              {new Date(analysisTimestamp).toLocaleTimeString()}
-            </Badge>
+            <div className="flex items-center space-x-2">
+              {isFromCache && (
+                <Badge variant="secondary" className="text-xs">
+                  Cached Results
+                </Badge>
+              )}
+              <Badge variant="outline" className="text-xs">
+                <Clock className="h-3 w-3 mr-1" />
+                {new Date(analysisTimestamp).toLocaleTimeString()}
+              </Badge>
+            </div>
           )}
         </div>
       </div>
@@ -210,23 +305,45 @@ const InsurerMatching = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Button 
-              onClick={() => generateMatches(selectedQuote)}
-              disabled={!selectedQuote || loading}
-              className="min-w-[140px]"
-            >
-              {loading ? (
-                <>
-                  <Brain className="h-4 w-4 mr-2 animate-pulse" />
-                  Analysing...
-                </>
-              ) : (
-                <>
-                  <Target className="h-4 w-4 mr-2" />
-                  Find Matches
-                </>
-              )}
-            </Button>
+            {!isFromCache && (
+              <Button 
+                onClick={() => generateMatches(selectedQuote)}
+                disabled={!selectedQuote || loading}
+                className="min-w-[140px]"
+              >
+                {loading ? (
+                  <>
+                    <Brain className="h-4 w-4 mr-2 animate-pulse" />
+                    Analysing...
+                  </>
+                ) : (
+                  <>
+                    <Target className="h-4 w-4 mr-2" />
+                    Find Matches
+                  </>
+                )}
+              </Button>
+            )}
+            {isFromCache && matches.length > 0 && (
+              <Button 
+                onClick={() => generateMatches(selectedQuote, true)}
+                disabled={loading}
+                variant="outline"
+                className="min-w-[140px]"
+              >
+                {loading ? (
+                  <>
+                    <Brain className="h-4 w-4 mr-2 animate-pulse" />
+                    Refreshing...
+                  </>
+                ) : (
+                  <>
+                    <Brain className="h-4 w-4 mr-2" />
+                    Refresh Analysis
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
