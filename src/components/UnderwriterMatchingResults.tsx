@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { AlertCircle, CheckCircle2, Star, TrendingUp, DollarSign, Shield, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { getInsurerInfo } from "@/lib/insurers";
 
 interface UnderwriterMatch {
   id: string;
@@ -206,6 +207,16 @@ const UnderwriterMatchingResults = ({ documentId, documentName, isOpen, onClose 
                         <Badge className={getRankBadgeColor(match.match_rank)}>
                           #{match.match_rank}
                         </Badge>
+                        {(() => {
+                          const insurerInfo = getInsurerInfo(match.underwriter_name);
+                          return insurerInfo.logo ? (
+                            <img 
+                              src={insurerInfo.logo} 
+                              alt={match.underwriter_name}
+                              className="w-10 h-10 object-contain rounded"
+                            />
+                          ) : null;
+                        })()}
                         <div>
                           <CardTitle className="text-xl">{match.underwriter_name}</CardTitle>
                           <CardDescription>{match.match_reasoning.summary}</CardDescription>

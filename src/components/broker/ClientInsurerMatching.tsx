@@ -8,6 +8,7 @@ import { Target, Building2, Brain, BarChart3, Award, Clock, AlertTriangle, Check
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AppetiteMatchingResults } from "./AppetiteMatchingResults";
+import { getInsurerInfo } from "@/lib/insurers";
 
 interface ClientData {
   id: string;
@@ -423,9 +424,20 @@ const ClientInsurerMatching = ({ client }: ClientInsurerMatchingProps) => {
                       {/* Header */}
                       <div className="flex items-start justify-between">
                         <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg flex items-center justify-center">
-                            <Building2 className="h-5 w-5 text-primary" />
-                          </div>
+                          {(() => {
+                            const insurerInfo = getInsurerInfo(match.underwriter_name);
+                            return match.logo_url || insurerInfo.logo ? (
+                              <img 
+                                src={match.logo_url || insurerInfo.logo} 
+                                alt={match.underwriter_name}
+                                className="w-10 h-10 object-contain rounded"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg flex items-center justify-center">
+                                <Building2 className="h-5 w-5 text-primary" />
+                              </div>
+                            );
+                          })()}
                           <div>
                             <h4 className="font-semibold">{match.underwriter_name}</h4>
                             <Badge className={getConfidenceColor(match.confidence_level)} variant="outline">

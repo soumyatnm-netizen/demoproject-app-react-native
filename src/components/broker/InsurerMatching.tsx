@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Target, TrendingUp, AlertCircle, CheckCircle2, Mail, Building2, Brain, BarChart3, Award, Clock, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { getInsurerInfo } from "@/lib/insurers";
 
 interface ClientQuote {
   id: string;
@@ -371,9 +372,20 @@ const InsurerMatching = () => {
                     {/* Header Section */}
                     <div className="flex items-start justify-between">
                       <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg flex items-center justify-center">
-                          <Building2 className="h-6 w-6 text-primary" />
-                        </div>
+                        {(() => {
+                          const insurerInfo = getInsurerInfo(match.underwriter_name);
+                          return insurerInfo.logo ? (
+                            <img 
+                              src={insurerInfo.logo} 
+                              alt={match.underwriter_name}
+                              className="w-12 h-12 object-contain rounded"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg flex items-center justify-center">
+                              <Building2 className="h-6 w-6 text-primary" />
+                            </div>
+                          );
+                        })()}
                         <div>
                           <h4 className="font-semibold text-lg">{match.underwriter_name}</h4>
                           <div className="flex items-center space-x-2 mt-1">

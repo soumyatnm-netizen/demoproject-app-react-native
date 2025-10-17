@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, BookOpen, DollarSign, MapPin, TrendingUp, AlertCircle, Target } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getInsurerInfo } from "@/lib/insurers";
 
 interface AppetiteGuide {
   id: string;
@@ -247,17 +248,21 @@ const AppetiteGuidesViewer = () => {
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                  {guide.logo_url ? (
-                    <img 
-                      src={guide.logo_url} 
-                      alt={`${guide.underwriter_name} logo`}
-                      className="h-10 w-10 object-contain"
-                    />
-                  ) : (
-                    <div className="h-10 w-10 bg-muted rounded-lg flex items-center justify-center">
-                      <BookOpen className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                  )}
+                  {(() => {
+                    const insurerInfo = getInsurerInfo(guide.underwriter_name);
+                    const logoSrc = guide.logo_url || insurerInfo.logo;
+                    return logoSrc ? (
+                      <img 
+                        src={logoSrc} 
+                        alt={`${guide.underwriter_name} logo`}
+                        className="h-10 w-10 object-contain rounded"
+                      />
+                    ) : (
+                      <div className="h-10 w-10 bg-muted rounded-lg flex items-center justify-center">
+                        <BookOpen className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                    );
+                  })()}
                   <div>
                     <CardTitle className="text-lg">{guide.underwriter_name}</CardTitle>
                     <CardDescription>
