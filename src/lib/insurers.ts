@@ -155,6 +155,21 @@ export const insurerMapping: Record<string, InsurerInfo> = {
     name: "Ecclesiastical",
     logo: generateLogoPlaceholder("Ecclesiastical"),
     altText: "Ecclesiastical logo"
+  },
+  "Pen Underwriting": {
+    name: "Pen Underwriting",
+    logo: generateLogoPlaceholder("Pen"),
+    altText: "Pen Underwriting logo"
+  },
+  "Pen": {
+    name: "Pen",
+    logo: generateLogoPlaceholder("Pen"),
+    altText: "Pen logo"
+  },
+  "Jensten": {
+    name: "Jensten",
+    logo: generateLogoPlaceholder("Jensten"),
+    altText: "Jensten logo"
   }
 };
 
@@ -217,6 +232,12 @@ export const getInsurerInfo = (insurerName: string): InsurerInfo => {
   }
   if (lowerName.includes('ecclesiastical')) {
     return insurerMapping["Ecclesiastical"];
+  }
+  if (lowerName.includes('pen')) {
+    return insurerMapping["Pen"];
+  }
+  if (lowerName.includes('jensten')) {
+    return insurerMapping["Jensten"];
   }
 
   // Default fallback - generate placeholder logo
