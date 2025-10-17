@@ -14,6 +14,7 @@ import travelersLogo from "@/assets/insurers/travelers-logo.png";
 import hartfordLogo from "@/assets/insurers/hartford-logo.png";
 import penLogo from "@/assets/insurers/pen-logo.png";
 import jenstenLogo from "@/assets/insurers/jensten-logo.webp";
+import doaLogo from "@/assets/insurers/doa-logo.png";
 
 // Placeholder function to generate logo URL from insurer name
 const generateLogoPlaceholder = (name: string) => {
@@ -172,6 +173,11 @@ export const insurerMapping: Record<string, InsurerInfo> = {
     name: "Jensten",
     logo: jenstenLogo,
     altText: "Jensten logo"
+  },
+  "DOA": {
+    name: "DOA",
+    logo: doaLogo,
+    altText: "DOA logo"
   }
 };
 
@@ -240,6 +246,9 @@ export const getInsurerInfo = (insurerName: string): InsurerInfo => {
   }
   if (lowerName.includes('jensten')) {
     return insurerMapping["Jensten"];
+  }
+  if (lowerName.includes('doa')) {
+    return insurerMapping["DOA"];
   }
 
   // Default fallback - generate placeholder logo
