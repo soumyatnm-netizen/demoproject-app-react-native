@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { CategoryCombobox } from "./broker/CategoryCombobox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { getInsurerInfo } from "@/lib/insurers";
 
 interface UnderwriterAppetite {
   id: string;
@@ -484,18 +485,25 @@ const UnderwriterAppetiteManager = () => {
                 <div key={doc.id} className="border rounded-lg p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-start space-x-3 flex-1">
-                    {doc.logo_url ? (
-                      <img 
-                        src={doc.logo_url} 
-                        alt={`${doc.underwriter_name} logo`}
-                        className="w-12 h-12 object-contain bg-white rounded border p-1"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <Building2 className="h-12 w-12 text-muted-foreground mt-0.5 p-2 bg-muted rounded border" />
-                    )}
+                    {(() => {
+                      const insurerInfo = getInsurerInfo(doc.underwriter_name);
+                      const logoSrc = doc.logo_url || insurerInfo.logo;
+                      return (
+                        <img 
+                          src={logoSrc} 
+                          alt={`${doc.underwriter_name} logo`}
+                          className="w-12 h-12 object-contain bg-white rounded border p-1"
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            target.style.display = 'none';
+                            const placeholder = document.createElement('div');
+                            placeholder.className = 'h-12 w-12 text-muted-foreground mt-0.5 p-2 bg-muted rounded border flex items-center justify-center';
+                            placeholder.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"/><path d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9"/><path d="M12 3v6"/></svg>';
+                            target.parentNode?.appendChild(placeholder);
+                          }}
+                        />
+                      );
+                    })()}
                     <div className="flex-1">
                       <h4 className="font-medium">{doc.underwriter_name}</h4>
                       <p className="text-sm text-muted-foreground">{doc.filename}</p>
