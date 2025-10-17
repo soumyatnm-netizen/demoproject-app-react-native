@@ -8,6 +8,7 @@ import hiscoxLogo from "@/assets/insurers/hiscox-logo.png";
 import cfcLogo from "@/assets/insurers/cfc-logo.png";
 import avivaLogo from "@/assets/insurers/aviva-logo.svg";
 import qbeLogo from "@/assets/insurers/qbe-logo.png";
+import markelLogo from "@/assets/insurers/markel-logo.png";
 
 // Placeholder function to generate logo URL from insurer name
 const generateLogoPlaceholder = (name: string) => {
@@ -114,12 +115,12 @@ export const insurerMapping: Record<string, InsurerInfo> = {
   },
   "Markel": {
     name: "Markel",
-    logo: generateLogoPlaceholder("Markel"),
+    logo: markelLogo,
     altText: "Markel logo"
   },
   "Markel International": {
     name: "Markel International",
-    logo: generateLogoPlaceholder("Markel"),
+    logo: markelLogo,
     altText: "Markel International logo"
   },
   "Liberty Mutual": {
