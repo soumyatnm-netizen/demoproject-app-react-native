@@ -106,23 +106,24 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" onClick={onBack}>
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center space-x-4 min-w-0 flex-1">
+            <Button variant="ghost" size="sm" onClick={onBack} className="flex-shrink-0">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
-            <h1 className="text-2xl font-bold text-foreground">Broker Portal</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-foreground truncate">Broker Portal</h1>
           </div>
-          <div className="flex items-center space-x-4">
-            <Badge variant="default">CoverCompass Broker</Badge>
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <Badge variant="default" className="hidden sm:flex">CoverCompass Broker</Badge>
             <Button 
               variant={activeTab === "profile" ? "default" : "outline"} 
               size="sm"
               onClick={() => setActiveTab("profile")}
+              className="flex-shrink-0"
             >
-              <User className="h-4 w-4 mr-2" />
-              My Profile
+              <User className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">My Profile</span>
             </Button>
           </div>
         </div>
