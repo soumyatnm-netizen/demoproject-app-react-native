@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Users, FileText, Database, BarChart3, Settings, Upload, BookOpen } from "lucide-react";
+import { ArrowLeft, Users, FileText, Database, BarChart3, Settings, Upload, BookOpen, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import BrokerManagement from "./admin/BrokerManagement";
@@ -89,6 +89,24 @@ const AdminPortal = ({ onBack }: AdminPortalProps) => {
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast({
+        title: "Signed out",
+        description: "You have been signed out successfully",
+      });
+      onBack();
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast({
+        title: "Error",
+        description: "Failed to sign out",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -112,7 +130,13 @@ const AdminPortal = ({ onBack }: AdminPortalProps) => {
             </Button>
             <h1 className="text-2xl font-bold text-foreground">Admin Portal</h1>
           </div>
-          <Badge variant="default">CoverCompass Admin</Badge>
+          <div className="flex items-center space-x-3">
+            <Badge variant="default">CoverCompass Admin</Badge>
+            <Button variant="ghost" size="sm" onClick={handleSignOut}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
       </header>
 

@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, FileText, BarChart3, TrendingUp, Upload, Users, Building2, Target, Star } from "lucide-react";
+import { ArrowLeft, FileText, BarChart3, TrendingUp, Upload, Users, Building2, Target, Star, LogOut } from "lucide-react";
 import FileUpload from "./FileUpload";
 import ComparisonView from "./ComparisonView";
 import CompanyManagement from "./CompanyManagement";
@@ -178,6 +178,24 @@ const Dashboard = ({ onBack }: DashboardProps) => {
   }
 
   // Show different views based on currentView
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast({
+        title: "Signed out",
+        description: "You have been signed out successfully",
+      });
+      onBack();
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast({
+        title: "Error",
+        description: "Failed to sign out",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (currentView === 'broker-portal') {
     return <BrokerPortal onBack={() => setCurrentView('dashboard')} />;
   }
@@ -234,8 +252,12 @@ const Dashboard = ({ onBack }: DashboardProps) => {
                 <h1 className="text-2xl font-bold text-foreground">CoverCompass Dashboard</h1>
               </div>
             </div>
-            <div className="flex items-center space-x-6 mr-20">
+            <div className="flex items-center space-x-3">
               <Badge variant="secondary">Beta</Badge>
+              <Button variant="ghost" size="sm" onClick={handleSignOut}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </Button>
             </div>
         </div>
       </header>
