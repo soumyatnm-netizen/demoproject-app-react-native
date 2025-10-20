@@ -96,15 +96,20 @@ INPUTS: filename="${doc.filename}"
 
 OUTPUT:
 { "carrier": "", "doc_type": "Quote|PolicyWording|Unknown",
+  "document_type_detected": "Quote|PolicyWording|Unknown",
   "wording_version": "", "purchased_sections": [], "warnings": [] }
 
 RULES:
-- Detect by content, not filename.
-- Normalize carriers: "Hiscox Insurance"→"Hiscox", "CFC Underwriting"→"CFC".
-- If mismatch filename↔content, push warning.
-- For Quotes: list purchased sections.
-- For Wordings: extract wording/form code.
-- Use "Unknown" when absent.`;
+- Detect by content analysis, not just filename
+- Normalize carrier names: "Hiscox Insurance"→"Hiscox", "CFC Underwriting"→"CFC"
+- For Quotes: look for premium amounts, client names, quote dates. Set doc_type="Quote"
+- For Policy Wordings: look for policy form codes, coverage definitions, insuring clauses. Set doc_type="PolicyWording"
+- Only add warnings for CLEAR mismatches (e.g., filename says "quote" but document is clearly a wording form)
+- If document contains quote details (premium, client, dates), it's a Quote regardless of exact filename format
+- If unsure, set doc_type to most likely type based on content
+- For Quotes: list main coverage sections purchased
+- For Wordings: extract wording/form code if present
+- Use "Unknown" only when content is genuinely unclear`;
 
     // Call OpenAI with file
     const completionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
