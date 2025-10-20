@@ -1302,7 +1302,7 @@ const InstantQuoteComparison = () => {
           <div className="space-y-4">
             <div className="bg-muted/50 border border-border rounded-lg p-3 mb-4">
               <p className="text-xs text-muted-foreground">
-                Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail.
+                Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail. Brokers must always refer to the full policy wording and schedule provided by the insurer.
               </p>
             </div>
             
@@ -1575,7 +1575,7 @@ const InstantQuoteComparison = () => {
 
         <div class="mb-6 p-4 bg-blue-50 border-l-4 border-blue-600 rounded">
             <p class="text-xs text-gray-700 text-center">
-                <strong>Important Notice:</strong> Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail.
+                <strong>Important Notice:</strong> Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail. Brokers must always refer to the full policy wording and schedule provided by the insurer.
             </p>
         </div>
 
@@ -1583,7 +1583,7 @@ const InstantQuoteComparison = () => {
 
         <div class="mt-6 mb-12 p-4 bg-blue-50 border-l-4 border-blue-600 rounded">
             <p class="text-xs text-gray-700 text-center">
-                <strong>Important Notice:</strong> Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail.
+                <strong>Important Notice:</strong> Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail. Brokers must always refer to the full policy wording and schedule provided by the insurer.
             </p>
         </div>
 
@@ -1704,7 +1704,7 @@ const InstantQuoteComparison = () => {
             <Card className="border-2 border-primary/20 bg-muted/30">
               <CardContent className="p-4">
                 <p className="text-xs text-muted-foreground text-center">
-                  Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail.
+                  Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail. Brokers must always refer to the full policy wording and schedule provided by the insurer.
                 </p>
               </CardContent>
             </Card>
@@ -2094,7 +2094,7 @@ const InstantQuoteComparison = () => {
         <Card className="border-2 border-primary/20 bg-muted/30">
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground text-center">
-              Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail.
+              Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail. Brokers must always refer to the full policy wording and schedule provided by the insurer.
             </p>
           </CardContent>
         </Card>
@@ -2107,7 +2107,7 @@ const InstantQuoteComparison = () => {
           <Card className="border-2 border-primary/20 bg-muted/30">
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground text-center">
-                Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail.
+                Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail. Brokers must always refer to the full policy wording and schedule provided by the insurer.
               </p>
             </CardContent>
           </Card>
@@ -2269,7 +2269,7 @@ const InstantQuoteComparison = () => {
         <Card className="border-2 border-primary/20 bg-muted/30">
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground text-center">
-              Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail.
+              Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail. Brokers must always refer to the full policy wording and schedule provided by the insurer.
             </p>
           </CardContent>
         </Card>
@@ -2284,7 +2284,7 @@ const InstantQuoteComparison = () => {
           <Card className="border-2 border-primary/20 bg-muted/30">
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground text-center">
-                Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail.
+                Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail. Brokers must always refer to the full policy wording and schedule provided by the insurer.
               </p>
             </CardContent>
           </Card>
