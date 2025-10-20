@@ -1,17 +1,52 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileUp, BarChart3, Users, Shield, Upload, Eye, Download } from "lucide-react";
-import FileUpload from "@/components/FileUpload";
-import Dashboard from "@/components/Dashboard";
+import { supabase } from "@/integrations/supabase/client";
 import AuthWrapper from "@/components/AuthWrapper";
 import RoiCalculator from "@/components/RoiCalculator";
 import { useToast } from "@/hooks/use-toast";
+import { useRole } from "@/hooks/useRole";
 
 const Index = () => {
   const [currentView, setCurrentView] = useState<'landing' | 'dashboard'>('landing');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { toast } = useToast();
+  const { role, loading: roleLoading, isAdmin, isBroker, isStaff } = useRole();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setIsAuthenticated(!!user);
+    };
+
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Redirect authenticated users to appropriate portal
+  useEffect(() => {
+    if (!isAuthenticated || roleLoading) return;
+
+    if (isStaff) {
+      navigate('/cc');
+    } else if (isAdmin) {
+      navigate('/admin');
+    } else if (isBroker) {
+      navigate('/app');
+    } else {
+      // User is authenticated but has no role assigned
+      setCurrentView('dashboard');
+    }
+  }, [isAuthenticated, role, roleLoading, isAdmin, isBroker, isStaff, navigate]);
 
   useEffect(() => {
     const checkRecovery = () => {
@@ -35,7 +70,20 @@ const Index = () => {
   if (currentView === 'dashboard') {
     return (
       <AuthWrapper onBack={() => setCurrentView('landing')}>
-        <Dashboard onBack={() => setCurrentView('landing')} />
+        <div className="container mx-auto px-4 py-8">
+          <div className="rounded-lg border bg-card p-6">
+            <h2 className="text-2xl font-bold mb-4">Getting Started</h2>
+            <p className="text-muted-foreground mb-4">
+              Welcome to CoverCompass! To get started, you need to be assigned a role and organization.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Contact your administrator or CoverCompass support at{' '}
+              <a href="mailto:hello@covercompass.co.uk" className="text-primary hover:underline">
+                hello@covercompass.co.uk
+              </a>
+            </p>
+          </div>
+        </div>
       </AuthWrapper>
     );
   }
