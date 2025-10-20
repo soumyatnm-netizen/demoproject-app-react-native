@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Users, FileText, Database, BarChart3, Settings, Upload, BookOpen } from "lucide-react";
+import { ArrowLeft, Users, FileText, Database, BarChart3, Settings, Upload, BookOpen, Briefcase } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { useRole } from "@/hooks/useRole";
 import BrokerManagement from "./admin/BrokerManagement";
 import ClientOverview from "./admin/ClientOverview";
 import PDFManagement from "./admin/PDFManagement";
@@ -39,6 +41,8 @@ const AdminPortal = ({ onBack }: AdminPortalProps) => {
   });
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { role } = useRole();
 
   useEffect(() => {
     fetchAdminStats();
@@ -112,7 +116,17 @@ const AdminPortal = ({ onBack }: AdminPortalProps) => {
             </Button>
             <h1 className="text-2xl font-bold text-foreground">Admin Portal</h1>
           </div>
-          <Badge variant="default">CoverCompass Admin</Badge>
+          <div className="flex items-center gap-3">
+            <Badge variant="default">Admin</Badge>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => navigate('/app')}
+            >
+              <Briefcase className="h-4 w-4 mr-2" />
+              Broker Dashboard
+            </Button>
+          </div>
         </div>
       </header>
 

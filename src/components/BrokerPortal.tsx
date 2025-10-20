@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Users, Mail, Target, FileText, TrendingUp, BookOpen, Sword, User, LogOut } from "lucide-react";
+import { ArrowLeft, Users, Mail, Target, FileText, TrendingUp, BookOpen, Sword, User, LogOut, Settings } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { useRole } from "@/hooks/useRole";
 import ClientManagement from "./broker/ClientManagement";
 import InsurerMatching from "./broker/InsurerMatching";
 import EmailIntegration from "./broker/EmailIntegration";
@@ -39,6 +41,8 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("instant-comparison");
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { isAdmin, role } = useRole();
 
   useEffect(() => {
     fetchBrokerStats();
@@ -129,10 +133,23 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
-            <h1 className="text-xl md:text-2xl font-bold text-foreground truncate">Broker Portal</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-foreground truncate">Broker Dashboard</h1>
           </div>
           <div className="flex items-center gap-3 flex-shrink-0">
-            <Badge variant="default" className="hidden sm:flex">CoverCompass Broker</Badge>
+            <Badge variant={isAdmin ? "default" : "secondary"} className="hidden sm:flex">
+              {isAdmin ? "Admin" : "Broker"}
+            </Badge>
+            {isAdmin && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => navigate('/admin')}
+                className="flex-shrink-0"
+              >
+                <Settings className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Admin Portal</span>
+              </Button>
+            )}
             <Button 
               variant={activeTab === "profile" ? "default" : "outline"} 
               size="sm"
