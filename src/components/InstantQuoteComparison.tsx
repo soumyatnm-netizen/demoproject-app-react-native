@@ -1566,9 +1566,21 @@ const InstantQuoteComparison = () => {
             <p class="text-gray-700 mt-2 font-semibold">Client: ${clientName}</p>
         </header>
 
+        <div class="mb-6 p-4 bg-blue-50 border-l-4 border-blue-600 rounded">
+            <p class="text-xs text-gray-700 text-center">
+                <strong>Important Notice:</strong> Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail.
+            </p>
+        </div>
+
         ${productSectionsHTML}
 
-        <footer class="mt-12 pt-6 border-t border-gray-200">
+        <div class="mt-6 mb-12 p-4 bg-blue-50 border-l-4 border-blue-600 rounded">
+            <p class="text-xs text-gray-700 text-center">
+                <strong>Important Notice:</strong> Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail.
+            </p>
+        </div>
+
+        <footer class="mt-6 pt-6 border-t border-gray-200">
             <h3 class="text-lg font-bold text-gray-800 mb-2">Disclaimer & Next Steps</h3>
             <p class="text-xs text-gray-500">
                 This report is for comparison purposes only. Brokers must always refer to the full policy wording and schedule provided by the insurer.
@@ -1676,6 +1688,17 @@ const InstantQuoteComparison = () => {
                     </p>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Disclaimer - Top of Product Comparisons */}
+          {comparisonData.product_comparisons && comparisonData.product_comparisons.length > 0 && (
+            <Card className="border-2 border-primary/20 bg-muted/30">
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground text-center">
+                  Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail.
+                </p>
               </CardContent>
             </Card>
           )}
@@ -2056,9 +2079,29 @@ const InstantQuoteComparison = () => {
         </>
       )}
 
+      {/* Disclaimer - Bottom of New Comparison Format */}
+      {analysisComplete && comparisonData && comparisonData.product_comparisons && (
+        <Card className="border-2 border-primary/20 bg-muted/30">
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground text-center">
+              Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Legacy Coverage Comparison Results */}
       {analysisComplete && !comparisonData && rankings.length > 0 && (
         <>
+          {/* Disclaimer - Top of Legacy Format */}
+          <Card className="border-2 border-primary/20 bg-muted/30">
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground text-center">
+                Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail.
+              </p>
+            </CardContent>
+          </Card>
+
           {/* Coverage Highlights */}
           <Card data-section="coverage-highlights">
             <CardHeader>
@@ -2211,9 +2254,31 @@ const InstantQuoteComparison = () => {
         </>
       )}
 
+      {/* Disclaimer - Bottom of Legacy Format */}
+      {analysisComplete && !comparisonData && rankings.length > 0 && (
+        <Card className="border-2 border-primary/20 bg-muted/30">
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground text-center">
+              Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Policy Wording Comparison Results */}
       {policyWordingIds.length > 0 && (
-        <PolicyWordingComparison policyWordingIds={policyWordingIds} />
+        <>
+          <PolicyWordingComparison policyWordingIds={policyWordingIds} />
+          
+          {/* Disclaimer - Bottom of Policy Wording Comparison */}
+          <Card className="border-2 border-primary/20 bg-muted/30">
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground text-center">
+                Produced by CoverCompass AI for comparison purposes only. Not advice or a recommendation. Always verify against original insurer documentation; the original documents prevail.
+              </p>
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   );

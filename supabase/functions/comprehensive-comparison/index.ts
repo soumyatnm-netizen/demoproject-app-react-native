@@ -120,8 +120,13 @@ RULES:
 
 ### Property
 - General scope of cover — note any major discrepancies between wordings
-- Restrictive conditions or warranties the client must comply with for cover to remain valid
-- **Subjectivities**: Any pre-binding requirements (e.g., "subject to site inspection", "subject to review of fire protection systems")
+- **Security requirements**: Highlight any security warranties (e.g., alarm requirements, key-holding, security patrols) that could void cover if breached
+- **Unoccupied property**: Note any exclusions for unoccupied or vacant premises (e.g., 30-day, 60-day limits)
+- **Perils covered**: Any unusual exclusions or extensions to standard all-risks cover
+- **Valuation basis**: Reinstatement, indemnity, or first-loss basis
+- **Property away from premises**: Any restrictions on portable equipment, goods in transit
+- **Restrictive conditions or warranties** the client must comply with for cover to remain valid (e.g., "alarm must be maintained and set", "sprinkler system must be serviced annually")
+- **Subjectivities**: Any pre-binding requirements (e.g., "subject to site inspection", "subject to review of fire protection systems", "subject to confirmation of property values")
 
 ### Liability (if present)
 - Note that Employers' Liability is statutory and usually non-differentiated
