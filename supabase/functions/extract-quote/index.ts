@@ -125,15 +125,85 @@ serve(async (req) => {
     stage = "extract";
     const t_extract_start = performance.now();
     
-    const systemPrompt = "Extract quote fields. JSON only.";
-    const userPrompt = `NEEDED:
-product_name, policy_period{inception,expiry}, retro_date,
-territorial_limits, jurisdiction,
-premium{base,taxes_fees,total}, premium_adjustability,
-broker_commission, payment_terms, quote_valid_until,
-endorsements_noted[], exclusions_noted[], conditions_warranties_noted[],
-subjectivities[{title,normalized_category,is_mandatory,verbatim_excerpt,page_ref}],
-other_key_terms[], evidence[{field,snippet,page_ref}]`;
+    const systemPrompt = "You are a specialist insurance document analyzer. Extract all fields accurately from this insurance quote. Return only valid JSON.";
+    const userPrompt = `Extract the following fields from this insurance quote document. Pay special attention to coverage limits and inner limits - extract ALL monetary values with their currencies.
+
+REQUIRED FIELDS:
+
+1. insurer_name: The insurance company providing this quote
+2. product_name: The specific insurance product/policy type
+3. client_name: The client/insured party name
+
+4. policy_period:
+   - inception: Start date (ISO format YYYY-MM-DD)
+   - expiry: End date (ISO format YYYY-MM-DD)
+
+5. retro_date: Retroactive date if applicable (ISO format)
+
+6. territorial_limits: Geographic coverage area
+
+7. jurisdiction: Governing law jurisdiction
+
+8. premium:
+   - base: Base premium amount (numeric)
+   - taxes_fees: Taxes and fees (numeric)
+   - total: Total premium (numeric)
+   - currency: Currency code (e.g., "GBP", "USD")
+
+9. coverage_limits: Main policy limits as object with structure:
+   {
+     "aggregate_limit": { "amount": number, "currency": "GBP", "description": "text" },
+     "per_claim_limit": { "amount": number, "currency": "GBP", "description": "text" },
+     "any_other_limits": { "amount": number, "currency": "GBP", "description": "text" }
+   }
+
+10. inner_limits: Sub-limits and specific coverage limits as array:
+   [
+     { "coverage_name": "Legal Expenses", "limit": 100000, "currency": "GBP", "applies_to": "per claim" },
+     { "coverage_name": "Crisis Management", "limit": 50000, "currency": "GBP", "applies_to": "aggregate" }
+   ]
+
+11. deductible_amount: Deductible/excess amount (numeric)
+
+12. broker_commission: Commission percentage or amount
+
+13. premium_adjustability: Whether premium can be adjusted
+
+14. payment_terms: Payment schedule and terms
+
+15. quote_valid_until: Quote expiration date (ISO format)
+
+16. endorsements_noted: Array of endorsements mentioned
+
+17. exclusions_noted: Array of exclusions mentioned
+
+18. conditions_warranties_noted: Array of conditions and warranties
+
+19. subjectivities: Array of items requiring action before binding:
+   [
+     {
+       "title": "Brief description",
+       "normalized_category": "documentation|risk_improvement|financial|other",
+       "is_mandatory": true/false,
+       "verbatim_excerpt": "Exact quote from document",
+       "page_ref": "page number"
+     }
+   ]
+
+20. other_key_terms: Array of other important terms
+
+21. evidence: Array documenting where key information was found:
+   [
+     {
+       "field": "coverage_limits",
+       "snippet": "exact text from document",
+       "page_ref": "page X"
+     }
+   ]
+
+CRITICAL: Extract ALL monetary amounts accurately with correct currency. For coverage_limits and inner_limits, capture every limit mentioned in the document.
+
+Return as valid JSON object with all fields.
 
     const extractRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -154,7 +224,7 @@ other_key_terms[], evidence[{field,snippet,page_ref}]`;
           }
         ],
         temperature: 0,
-        max_tokens: 800,
+        max_tokens: 4000,
         response_format: { type: 'json_object' }
       }),
     });

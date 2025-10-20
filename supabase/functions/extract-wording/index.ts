@@ -125,22 +125,157 @@ serve(async (req) => {
     stage = "extract";
     const t_extract_start = performance.now();
     
-    const systemPrompt = "Extract wording fields. JSON only.";
-    const userPrompt = `NEEDED:
-form_name_or_code, version_date, coverage_trigger,
-insuring_clauses[{title,summary,page_ref}],
-definitions_notable[{term,delta_from_market,verbatim_excerpt,page_ref}],
-exclusions[], conditions[], warranties[], endorsements[],
-limits[], sublimits[], inner_limits_and_sub_limits[],
-deductibles_excesses[], defence_costs_position,
-extended_reporting_period{availability,duration,conditions,page_ref},
-claims_control{control_rights,consent_required,settlement_clause_summary,page_ref},
-claims_notification{timing,method,strictness,page_ref},
-cancellation{insurer_rights,insured_rights,notice,refunds,page_ref},
-governing_law_and_jurisdiction{law,jurisdiction,page_ref},
-dispute_resolution{process,page_ref},
-TLDR{3_bullet_summary,what_is_different_or_unusual,client_attention_items,overall_complexity},
-evidence[{field,snippet,page_ref}]`;
+    const systemPrompt = "You are a specialist insurance policy wording analyzer. Extract all fields accurately from this policy wording document with special attention to coverage limits and sub-limits. Return only valid JSON.";
+    const userPrompt = `Extract the following fields from this insurance policy wording document. Extract ALL coverage limits, sub-limits, and inner limits with complete monetary values and currencies.
+
+REQUIRED FIELDS:
+
+1. insurer_name: The insurance company issuing this policy
+
+2. form_name_or_code: Policy form name or reference code
+
+3. version_date: Version or effective date (ISO format YYYY-MM-DD)
+
+4. coverage_trigger: What triggers coverage (e.g., "claims made", "occurrence")
+
+5. insuring_clauses: Array of main insuring clauses:
+   [
+     {
+       "title": "Clause name",
+       "summary": "What it covers",
+       "page_ref": "page X"
+     }
+   ]
+
+6. definitions_notable: Array of key defined terms:
+   [
+     {
+       "term": "Defined term",
+       "delta_from_market": "How this differs from standard market definition",
+       "verbatim_excerpt": "Exact definition from document",
+       "page_ref": "page X"
+     }
+   ]
+
+7. exclusions: Array of exclusions (what is NOT covered)
+
+8. conditions: Array of policy conditions
+
+9. warranties: Array of warranties
+
+10. endorsements: Array of endorsements
+
+11. limits: Main policy limits as array:
+   [
+     {
+       "limit_type": "Aggregate Limit|Per Claim Limit|etc",
+       "amount": numeric value,
+       "currency": "GBP|USD|EUR",
+       "description": "Full description",
+       "page_ref": "page X"
+     }
+   ]
+
+12. sublimits: Sub-limits within main coverage:
+   [
+     {
+       "coverage_name": "Specific coverage",
+       "limit": numeric value,
+       "currency": "GBP|USD|EUR",
+       "applies_to": "per claim|aggregate|annual",
+       "description": "Full description",
+       "page_ref": "page X"
+     }
+   ]
+
+13. inner_limits_and_sub_limits: ALL specific coverage limits including those within sections:
+   [
+     {
+       "coverage_section": "Section name (e.g., 'Crisis Management', 'Legal Expenses')",
+       "limit_amount": numeric value,
+       "currency": "GBP|USD|EUR",
+       "limit_type": "sub-limit|inner limit|specific coverage",
+       "applies_to": "per claim|aggregate|annual",
+       "verbatim_text": "Exact wording from policy",
+       "page_ref": "page X"
+     }
+   ]
+
+14. deductibles_excesses: Array of deductibles/excesses with amounts
+
+15. defence_costs_position: How defence costs are treated (e.g., "within limits", "in addition to limits")
+
+16. extended_reporting_period:
+   {
+     "availability": "Available?",
+     "duration": "How long",
+     "conditions": "Any conditions",
+     "page_ref": "page X"
+   }
+
+17. claims_control:
+   {
+     "control_rights": "Who controls claims",
+     "consent_required": "When consent needed",
+     "settlement_clause_summary": "Settlement terms",
+     "page_ref": "page X"
+   }
+
+18. claims_notification:
+   {
+     "timing": "When to notify",
+     "method": "How to notify",
+     "strictness": "Strict compliance required?",
+     "page_ref": "page X"
+   }
+
+19. cancellation:
+   {
+     "insurer_rights": "Insurer cancellation rights",
+     "insured_rights": "Insured cancellation rights",
+     "notice": "Notice period required",
+     "refunds": "Refund terms",
+     "page_ref": "page X"
+   }
+
+20. governing_law_and_jurisdiction:
+   {
+     "law": "Governing law",
+     "jurisdiction": "Jurisdiction",
+     "page_ref": "page X"
+   }
+
+21. dispute_resolution:
+   {
+     "process": "Dispute resolution process",
+     "page_ref": "page X"
+   }
+
+22. TLDR:
+   {
+     "3_bullet_summary": ["Key point 1", "Key point 2", "Key point 3"],
+     "what_is_different_or_unusual": "Notable differences from standard market wording",
+     "client_attention_items": "Items requiring client attention",
+     "overall_complexity": "Low|Medium|High"
+   }
+
+23. evidence: Array documenting where key information was found:
+   [
+     {
+       "field": "limits",
+       "snippet": "exact text from document",
+       "page_ref": "page X"
+     }
+   ]
+
+CRITICAL INSTRUCTIONS:
+- Extract EVERY monetary limit mentioned in the document
+- Include currency for all amounts
+- Capture both main limits and ALL sub-limits/inner limits
+- Look for limits in coverage sections, extensions, and additional coverages
+- Extract exact amounts - do not summarize or approximate
+
+Return as valid JSON object with all fields.
 
     const extractRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -161,7 +296,7 @@ evidence[{field,snippet,page_ref}]`;
           }
         ],
         temperature: 0,
-        max_tokens: 1200,
+        max_tokens: 4000,
         response_format: { type: 'json_object' }
       }),
     });
