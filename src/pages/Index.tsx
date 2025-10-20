@@ -11,7 +11,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useRole } from "@/hooks/useRole";
 
 const Index = () => {
-  const [currentView, setCurrentView] = useState<'landing' | 'dashboard'>('landing');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { toast } = useToast();
   const { role, loading: roleLoading, isAdmin, isBroker, isStaff } = useRole();
@@ -42,78 +41,9 @@ const Index = () => {
       navigate('/admin');
     } else if (isBroker) {
       navigate('/app');
-    } else {
-      // User is authenticated but has no role assigned
-      setCurrentView('dashboard');
     }
+    // If user is authenticated but has no role, stay on landing page
   }, [isAuthenticated, role, roleLoading, isAdmin, isBroker, isStaff, navigate]);
-
-  useEffect(() => {
-    const checkRecovery = () => {
-      const hash = window.location.hash.substring(1);
-      const params = new URLSearchParams(hash);
-      const type = params.get('type');
-      const accessToken = params.get('access_token');
-      const otpToken = params.get('token');
-      const email = params.get('email');
-      if (type === 'recovery' && (accessToken || (otpToken && email))) {
-        setCurrentView('dashboard');
-      }
-    };
-
-    checkRecovery();
-    const onHashChange = () => checkRecovery();
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
-  }, []);
-
-  const handleSignOut = async () => {
-    try {
-      await supabase.auth.signOut();
-      setIsAuthenticated(false);
-      setCurrentView('landing');
-      toast({
-        title: "Signed out",
-        description: "You have been signed out successfully",
-      });
-    } catch (error) {
-      console.error('Error signing out:', error);
-      toast({
-        title: "Error",
-        description: "Failed to sign out",
-        variant: "destructive",
-      });
-    }
-  };
-
-  if (currentView === 'dashboard') {
-    return (
-      <AuthWrapper onBack={() => setCurrentView('landing')}>
-        <div className="container mx-auto px-4 py-8">
-          <div className="rounded-lg border bg-card p-6 max-w-2xl mx-auto">
-            <h2 className="text-2xl font-bold mb-4">Getting Started</h2>
-            <p className="text-muted-foreground mb-4">
-              Welcome to CoverCompass! To get started, you need to be assigned a role and organization.
-            </p>
-            <p className="text-sm text-muted-foreground mb-6">
-              Contact your administrator or CoverCompass support at{' '}
-              <a href="mailto:hello@covercompass.co.uk" className="text-primary hover:underline">
-                hello@covercompass.co.uk
-              </a>
-            </p>
-            <div className="flex gap-3">
-              <Button onClick={handleSignOut} variant="outline">
-                Sign Out
-              </Button>
-              <Button onClick={() => setCurrentView('landing')}>
-                Back to Home
-              </Button>
-            </div>
-          </div>
-        </div>
-      </AuthWrapper>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -139,7 +69,7 @@ const Index = () => {
             <Button 
               size="sm"
               className="sm:size-default"
-              onClick={() => setCurrentView('dashboard')}
+              onClick={() => navigate('/auth')}
             >
               Get Started
             </Button>
@@ -163,7 +93,7 @@ const Index = () => {
             <Button 
               size="lg" 
               className="w-full sm:w-auto"
-              onClick={() => setCurrentView('dashboard')}
+              onClick={() => navigate('/auth')}
             >
               Start Comparing Quotes
             </Button>
@@ -311,7 +241,7 @@ const Index = () => {
           <p className="text-lg mb-8 opacity-90">
             Join brokers who are already saving hours and winning more business with CoverCompass.
           </p>
-          <Button size="lg" variant="secondary" onClick={() => setCurrentView('dashboard')}>
+          <Button size="lg" variant="secondary" onClick={() => navigate('/auth')}>
             Start Your Free Trial
           </Button>
         </div>
