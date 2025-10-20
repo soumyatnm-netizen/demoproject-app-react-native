@@ -67,21 +67,48 @@ const Index = () => {
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      setIsAuthenticated(false);
+      setCurrentView('landing');
+      toast({
+        title: "Signed out",
+        description: "You have been signed out successfully",
+      });
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast({
+        title: "Error",
+        description: "Failed to sign out",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (currentView === 'dashboard') {
     return (
       <AuthWrapper onBack={() => setCurrentView('landing')}>
         <div className="container mx-auto px-4 py-8">
-          <div className="rounded-lg border bg-card p-6">
+          <div className="rounded-lg border bg-card p-6 max-w-2xl mx-auto">
             <h2 className="text-2xl font-bold mb-4">Getting Started</h2>
             <p className="text-muted-foreground mb-4">
               Welcome to CoverCompass! To get started, you need to be assigned a role and organization.
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground mb-6">
               Contact your administrator or CoverCompass support at{' '}
               <a href="mailto:hello@covercompass.co.uk" className="text-primary hover:underline">
                 hello@covercompass.co.uk
               </a>
             </p>
+            <div className="flex gap-3">
+              <Button onClick={handleSignOut} variant="outline">
+                Sign Out
+              </Button>
+              <Button onClick={() => setCurrentView('landing')}>
+                Back to Home
+              </Button>
+            </div>
           </div>
         </div>
       </AuthWrapper>
