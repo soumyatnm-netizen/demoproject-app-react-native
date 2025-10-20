@@ -3,10 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowLeft, FileText, BarChart3, TrendingUp, Upload, Users, Building2, Target, Star, Settings } from "lucide-react";
+import { ArrowLeft, FileText, BarChart3, TrendingUp, Upload, Users, Building2, Target, Star } from "lucide-react";
 import FileUpload from "./FileUpload";
-import { TestOpenAI } from "./TestOpenAI";
 import ComparisonView from "./ComparisonView";
 import CompanyManagement from "./CompanyManagement";
 import ClientReportGenerator from "./ClientReportGenerator";
@@ -69,7 +67,6 @@ const Dashboard = ({ onBack }: DashboardProps) => {
   const [showProcessingSuccess, setShowProcessingSuccess] = useState<StructuredQuote | null>(null);
   const [selectedDocumentForMatching, setSelectedDocumentForMatching] = useState<{ id: string; name: string } | null>(null);
   const [currentView, setCurrentView] = useState<'dashboard' | 'broker-portal' | 'admin-portal'>('dashboard');
-  const [showOpenAITest, setShowOpenAITest] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -238,24 +235,6 @@ const Dashboard = ({ onBack }: DashboardProps) => {
               </div>
             </div>
             <div className="flex items-center space-x-6 mr-20">
-              <Button variant="ghost" size="sm" onClick={fetchData}>
-                <Settings className="h-4 w-4 mr-2" />
-                Refresh Data
-              </Button>
-              <Dialog open={showOpenAITest} onOpenChange={setShowOpenAITest}>
-                <DialogTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <Settings className="h-4 w-4 mr-2" />
-                    API Test
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>API Configuration Test</DialogTitle>
-                  </DialogHeader>
-                  <TestOpenAI />
-                </DialogContent>
-              </Dialog>
               <Badge variant="secondary">Beta</Badge>
             </div>
         </div>
