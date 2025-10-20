@@ -119,14 +119,19 @@ RULES:
 - IMPORTANT: Weight the Business Interruption coverage higher in the comparison, as volatile claims are most likely to fall here
 
 ### Property
-- General scope of cover — note any major discrepancies between wordings
-- **Security requirements**: Highlight any security warranties (e.g., alarm requirements, key-holding, security patrols) that could void cover if breached
-- **Unoccupied property**: Note any exclusions for unoccupied or vacant premises (e.g., 30-day, 60-day limits)
-- **Perils covered**: Any unusual exclusions or extensions to standard all-risks cover
-- **Valuation basis**: Reinstatement, indemnity, or first-loss basis
-- **Property away from premises**: Any restrictions on portable equipment, goods in transit
-- **Restrictive conditions or warranties** the client must comply with for cover to remain valid (e.g., "alarm must be maintained and set", "sprinkler system must be serviced annually")
-- **Subjectivities**: Any pre-binding requirements (e.g., "subject to site inspection", "subject to review of fire protection systems", "subject to confirmation of property values")
+- **Sum insured / Limits**: Buildings, contents, stock values - note specific figures for each
+- **Excess / Deductible**: Amount and basis (e.g., £1,000 per claim, £5,000 for subsidence)
+- **General scope of cover**: All-risks, named perils, or specified cover - note any major discrepancies
+- **Security requirements**: Highlight any security warranties with specific details (e.g., "5-lever mortice locks required", "alarm must be Grade 2 or higher", "key-holding service mandatory")
+- **Unoccupied property**: Note exact exclusion periods (e.g., "exclusion after 30 consecutive days vacant", "exclusion after 60 days")
+- **Perils covered**: List any unusual exclusions or extensions (e.g., flood cover included/excluded, subsidence covered/not covered, terrorism included/excluded)
+- **Valuation basis**: Reinstatement value, indemnity value, or first-loss basis - specify exact terms
+- **Business interruption**: Indemnity period (e.g., 12 months, 24 months), basis (gross profit, gross revenue)
+- **Property away from premises**: Specific limits for portable equipment, goods in transit, employees' tools (e.g., "£10,000 limit for laptops away from premises")
+- **Inner limits**: Any sublimits for specific items (e.g., "£5,000 limit for any one item of office equipment", "£25,000 limit for stock at any one location")
+- **Betterment clauses**: Any deductions for wear and tear or betterment
+- **Restrictive conditions or warranties**: Specific conditions client must comply with (e.g., "alarm must be maintained and set whenever premises unattended", "sprinkler system must be serviced annually", "fire extinguishers must be inspected every 6 months")
+- **Subjectivities**: Any pre-binding requirements with timeframes (e.g., "subject to site inspection within 30 days", "subject to review of fire protection systems", "subject to confirmation of property values by surveyor")
 
 ### Liability (if present)
 - Note that Employers' Liability is statutory and usually non-differentiated
@@ -223,29 +228,47 @@ OUTPUT FORMAT:
         {
           "carrier": "CFC",
           "key_terms": [
-            "All Risks basis",
-            "Reinstatement value",
-            "No security warranties"
+            "Sum Insured: Buildings £500,000, Contents £200,000, Stock £100,000",
+            "Excess: £1,000 per claim, £5,000 for subsidence",
+            "Cover: All Risks basis",
+            "Valuation: Reinstatement value (new for old)",
+            "BI Indemnity Period: 12 months on gross profit basis",
+            "Security: No specific security warranties",
+            "Unoccupied Property: Not Covered after 60 days",
+            "Property Away: £10,000 limit for portable equipment",
+            "Betterment: No deduction for betterment on buildings"
           ],
           "standout_points": [
-            "✅ Broad all-risks cover",
-            "📋 Standard terms"
+            "✅ Broad all-risks cover with reinstatement value",
+            "✅ No restrictive security warranties",
+            "✅ Generous 60-day unoccupied property cover",
+            "✅ No betterment deduction provides better protection"
           ]
         },
         {
           "carrier": "Hiscox",
           "key_terms": [
-            "All Risks basis",
-            "Reinstatement value",
-            "Security warranty: Intruder alarm maintained and set"
+            "Sum Insured: Buildings £500,000, Contents £200,000, Stock £100,000",
+            "Excess: £2,500 per claim, £10,000 for subsidence",
+            "Cover: All Risks basis",
+            "Valuation: Reinstatement value with betterment deduction",
+            "BI Indemnity Period: 6 months on gross profit basis",
+            "Security: Intruder alarm (Grade 2 or higher) must be maintained and set",
+            "Unoccupied Property: Exclusion after 30 consecutive days",
+            "Property Away: £5,000 limit for portable equipment",
+            "Inner Limit: £5,000 any one item of office equipment"
           ],
           "standout_points": [
-            "⚠️ Security warranty is condition precedent - breach voids cover",
-            "❌ Unoccupied property exclusion after 30 days"
+            "⚠️ Security warranty is condition precedent - breach voids all property cover",
+            "❌ Unoccupied property exclusion after only 30 days vs CFC's 60 days",
+            "❌ Higher excesses (£2,500 vs £1,000, £10,000 vs £5,000 for subsidence)",
+            "⚠️ Betterment deduction reduces claim payments",
+            "❌ Shorter BI period (6 months vs 12 months)",
+            "⚠️ Lower portable equipment limit (£5,000 vs £10,000)"
           ]
         }
       ],
-      "broker_notes": "Hiscox imposes security warranty that could void cover if alarm not set. Check client's alarm maintenance procedures. Unoccupied property exclusion may be restrictive."
+      "broker_notes": "Hiscox imposes Grade 2 intruder alarm security warranty that is a condition precedent - any breach voids all property cover. Check client has compliant alarm and maintenance procedures in place. Hiscox also has more restrictive unoccupied property terms (30 days vs 60 days), higher excesses across the board, betterment deductions that reduce claims, and half the BI period. CFC provides materially better property protection with fewer compliance risks."
     }
   ],
   "overall_findings": [

@@ -1510,14 +1510,21 @@ const InstantQuoteComparison = () => {
                         const summary = product.broker_notes || 'Detailed comparison of policy terms and coverage.';
                         const pageBreak = productIdx > 0 ? '<div class="page-break"></div>' : '';
 
+                        const summarySection = product.broker_notes ? `
+                          <div style="margin-top: 2rem; padding: 1rem; background-color: rgba(139, 92, 246, 0.05); border-left: 4px solid rgb(139, 92, 246); border-radius: 0 0.375rem 0.375rem 0;">
+                            <h4 style="font-size: 0.875rem; font-weight: 700; color: #1f2937; margin: 0 0 0.5rem 0;">Summary</h4>
+                            <p style="font-size: 0.875rem; font-weight: 600; color: #1f2937; margin: 0;">${product.broker_notes}</p>
+                          </div>
+                        ` : '';
+
                         return `
                           ${pageBreak}
                           <div class="policy-section mb-12">
                             <h2 class="text-2xl font-bold text-gray-800 border-b pb-2 mb-4">${product.product}</h2>
-                            <p class="text-sm text-gray-600 mb-6 font-medium">${summary}</p>
                             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                               ${carriersHTML}
                             </div>
+                            ${summarySection}
                           </div>
                         `;
                       }).join('') || '<p class="text-gray-500">No comparison data available.</p>';
@@ -1710,11 +1717,6 @@ const InstantQuoteComparison = () => {
                 <Card key={productIdx} className="border-2">
                   <CardHeader className="bg-gradient-to-r from-primary/5 to-background">
                     <CardTitle className="text-xl">{product.product}</CardTitle>
-                    {product.broker_notes && (
-                      <CardDescription className="mt-2 text-base">
-                        {product.broker_notes}
-                      </CardDescription>
-                    )}
                   </CardHeader>
                   <CardContent className="pt-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1810,6 +1812,14 @@ const InstantQuoteComparison = () => {
                         </Card>
                       ))}
                     </div>
+
+                    {/* Product-level Summary */}
+                    {product.broker_notes && (
+                      <div className="mt-6 p-4 bg-primary/5 border-l-4 border-primary rounded-r">
+                        <h4 className="text-sm font-bold text-foreground mb-2">Summary</h4>
+                        <p className="text-sm font-semibold text-foreground">{product.broker_notes}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
