@@ -1489,10 +1489,19 @@ const InstantQuoteComparison = () => {
                               ` : ''}
 
                               ${standoutPointsHTML ? `
-                                <h4 class="text-base font-bold text-gray-800 mt-4 mb-2 border-t pt-3">Standout Points</h4>
+                                <h4 className="text-base font-bold text-gray-800 mt-4 mb-2 border-t pt-3">Standout Points</h4>
                                 <ul class="list-none space-y-2 text-sm text-gray-700 pl-0">
                                   ${standoutPointsHTML}
                                 </ul>
+                              ` : ''}
+                              
+                              ${carrier.standout_summary || carrier.summary ? `
+                                <div class="bg-blue-50 border-l-4 border-blue-600 rounded-lg p-4 mt-4">
+                                  <h4 class="text-sm font-bold mb-2 text-blue-900">Summary</h4>
+                                  <p class="text-sm font-semibold text-gray-800 leading-relaxed">
+                                    ${carrier.standout_summary || carrier.summary}
+                                  </p>
+                                </div>
                               ` : ''}
                             </div>
                           `;
@@ -1764,6 +1773,16 @@ const InstantQuoteComparison = () => {
                                 </ul>
                               </div>
                             )}
+                            
+                            {/* Summary Section - NEW */}
+                            {(carrier.standout_summary || carrier.summary) && (
+                              <div className="bg-primary/5 border-l-4 border-primary rounded-lg p-4 mt-4">
+                                <h5 className="text-sm font-bold mb-2 text-primary">Summary</h5>
+                                <p className="text-sm font-semibold text-foreground leading-relaxed">
+                                  {carrier.standout_summary || carrier.summary}
+                                </p>
+                              </div>
+                            )}
                           </CardContent>
                         </Card>
                       ))}
@@ -1800,9 +1819,12 @@ const InstantQuoteComparison = () => {
                       <span className="text-xl">{insurer.carrier}</span>
                     </CardTitle>
                     {insurer.standout_summary && (
-                      <CardDescription className="mt-2 text-base font-medium">
-                        {insurer.standout_summary}
-                      </CardDescription>
+                      <div className="bg-primary/5 border-l-4 border-primary rounded-lg p-4 mt-3">
+                        <h5 className="text-sm font-bold mb-2 text-primary">Summary</h5>
+                        <p className="text-sm font-semibold text-foreground leading-relaxed">
+                          {insurer.standout_summary}
+                        </p>
+                      </div>
                     )}
                   </CardHeader>
                   <CardContent className="space-y-4 pt-6">
