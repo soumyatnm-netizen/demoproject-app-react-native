@@ -277,62 +277,117 @@ CRITICAL INSTRUCTIONS:
 
 Return as valid JSON object with all fields.`;
 
-    const extractRes = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: userPrompt },
-              { type: 'file', file: { file_id: fileId } }
-            ]
-          }
-        ],
-        temperature: 0,
-        max_tokens: 4000,
-        response_format: { type: 'json_object' }
-      }),
-    });
 
-    const extractText = await extractRes.text();
-    if (!extractRes.ok) {
-      console.error('[extract-wording] Extract error:', extractText.slice(0, 400));
-      return json(req, extractRes.status, { ok: false, stage: 'extract', error: extractText.slice(0, 400) });
-    }
-
-    const extractData = JSON.parse(extractText);
-    const content = extractData.choices[0].message.content;
-    const structured = typeof content === 'string' ? JSON.parse(content) : content;
+    // Retry logic for OpenAI API calls
+    let extractRes;
+    let lastError;
+    const maxRetries = 3;
     
-    console.log('[extract-wording] Extracted in', (performance.now() - t_extract_start).toFixed(0), 'ms');
-    console.log('[extract-wording] Usage:', JSON.stringify(extractData.usage));
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[extract-wording] Extraction attempt ${attempt}/${maxRetries}`);
+        
+        extractRes = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              {
+                role: 'user',
+                content: [
+                  { type: 'text', text: userPrompt },
+                  { type: 'file', file: { file_id: fileId } }
+                ]
+              }
+            ],
+            temperature: 0,
+            max_tokens: 4000,
+            response_format: { type: 'json_object' }
+          }),
+        });
 
-    const totalTime = (performance.now() - t0).toFixed(0);
-    console.log('[extract-wording] Total time:', totalTime, 'ms');
+        const extractText = await extractRes.text();
+        
+        if (!extractRes.ok) {
+          const errorData = JSON.parse(extractText);
+          lastError = errorData;
+          
+          // Check if it's a server error (5xx) that we should retry
+          if (extractRes.status >= 500 && extractRes.status < 600) {
+            console.error(`[extract-wording] Server error on attempt ${attempt}:`, extractText.slice(0, 400));
+            
+            if (attempt < maxRetries) {
+              // Exponential backoff: 2s, 4s, 8s
+              const waitTime = Math.pow(2, attempt) * 1000;
+              console.log(`[extract-wording] Retrying in ${waitTime}ms...`);
+              await new Promise(resolve => setTimeout(resolve, waitTime));
+              continue;
+            }
+          }
+          
+          // Non-retryable error or max retries reached
+          console.error('[extract-wording] Extract error:', extractText.slice(0, 400));
+          return json(req, extractRes.status, { 
+            ok: false, 
+            stage: 'extract', 
+            error: extractText.slice(0, 400),
+            retriable: extractRes.status >= 500
+          });
+        }
 
-    return json(req, 200, {
-      ok: true,
-      result: structured,
-      meta: {
-        documentId,
-        filename: document.filename,
-        processedAt: new Date().toISOString(),
-        model: extractData.model,
-        usage: extractData.usage,
-        timing: {
-          total_ms: parseInt(totalTime),
-          fetch_ms: parseInt((t_fetch_start - t0).toFixed(0)),
-          upload_ms: parseInt((t_extract_start - t_upload_start).toFixed(0)),
-          extract_ms: parseInt((performance.now() - t_extract_start).toFixed(0))
+        // Success - parse and return
+        const extractData = JSON.parse(extractText);
+        const content = extractData.choices[0].message.content;
+        const structured = typeof content === 'string' ? JSON.parse(content) : content;
+        
+        console.log('[extract-wording] Extracted in', (performance.now() - t_extract_start).toFixed(0), 'ms');
+        console.log('[extract-wording] Usage:', JSON.stringify(extractData.usage));
+
+        const totalTime = (performance.now() - t0).toFixed(0);
+        console.log('[extract-wording] Total time:', totalTime, 'ms');
+
+        return json(req, 200, {
+          ok: true,
+          result: structured,
+          meta: {
+            documentId,
+            filename: document.filename,
+            processedAt: new Date().toISOString(),
+            model: extractData.model,
+            usage: extractData.usage,
+            timing: {
+              total_ms: parseInt(totalTime),
+              fetch_ms: parseInt((t_fetch_start - t0).toFixed(0)),
+              upload_ms: parseInt((t_extract_start - t_upload_start).toFixed(0)),
+              extract_ms: parseInt((performance.now() - t_extract_start).toFixed(0))
+            },
+            attempts: attempt
+          }
+        });
+        
+      } catch (error) {
+        lastError = error;
+        console.error(`[extract-wording] Attempt ${attempt} failed:`, String(error));
+        
+        if (attempt < maxRetries) {
+          const waitTime = Math.pow(2, attempt) * 1000;
+          console.log(`[extract-wording] Retrying in ${waitTime}ms...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
         }
       }
+    }
+    
+    // All retries failed
+    return json(req, 500, { 
+      ok: false, 
+      stage: 'extract', 
+      error: `Extraction failed after ${maxRetries} attempts. Last error: ${JSON.stringify(lastError).slice(0, 200)}`,
+      retriable: true
     });
 
   } catch (error) {
