@@ -1558,6 +1558,12 @@ const InstantQuoteComparison = () => {
             .comparison-card {
                 box-shadow: none !important;
                 border: 1px solid #ccc !important;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            .policy-section {
+                page-break-inside: avoid;
+                break-inside: avoid;
             }
             .page-break {
                 page-break-before: always;
