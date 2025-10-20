@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,24 +8,10 @@ import Dashboard from "@/components/Dashboard";
 import AuthWrapper from "@/components/AuthWrapper";
 import RoiCalculator from "@/components/RoiCalculator";
 import { useToast } from "@/hooks/use-toast";
-import { useRole } from "@/hooks/useRole";
 
 const Index = () => {
   const [currentView, setCurrentView] = useState<'landing' | 'dashboard'>('landing');
   const { toast } = useToast();
-  const navigate = useNavigate();
-  const { isAdmin, isBroker, user, isLoading } = useRole();
-
-  // Redirect authenticated users to their appropriate dashboard
-  useEffect(() => {
-    if (!isLoading && user) {
-      if (isAdmin) {
-        navigate('/admin', { replace: true });
-      } else if (isBroker) {
-        navigate('/app', { replace: true });
-      }
-    }
-  }, [isAdmin, isBroker, user, isLoading, navigate]);
 
   useEffect(() => {
     const checkRecovery = () => {
