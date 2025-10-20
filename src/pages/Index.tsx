@@ -1,49 +1,44 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileUp, BarChart3, Users, Shield, Upload, Eye, Download } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import FileUpload from "@/components/FileUpload";
+import Dashboard from "@/components/Dashboard";
 import AuthWrapper from "@/components/AuthWrapper";
 import RoiCalculator from "@/components/RoiCalculator";
 import { useToast } from "@/hooks/use-toast";
-import { useRole } from "@/hooks/useRole";
 
 const Index = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentView, setCurrentView] = useState<'landing' | 'dashboard'>('landing');
   const { toast } = useToast();
-  const { role, loading: roleLoading, isAdmin, isBroker, isStaff } = useRole();
-  const navigate = useNavigate();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setIsAuthenticated(!!user);
+    const checkRecovery = () => {
+      const hash = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+      const type = params.get('type');
+      const accessToken = params.get('access_token');
+      const otpToken = params.get('token');
+      const email = params.get('email');
+      if (type === 'recovery' && (accessToken || (otpToken && email))) {
+        setCurrentView('dashboard');
+      }
     };
 
-    checkAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAuthenticated(!!session);
-    });
-
-    return () => subscription.unsubscribe();
+    checkRecovery();
+    const onHashChange = () => checkRecovery();
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
-  // Redirect authenticated users to appropriate portal
-  useEffect(() => {
-    if (!isAuthenticated || roleLoading) return;
-
-    if (isStaff) {
-      navigate('/cc');
-    } else if (isAdmin) {
-      navigate('/admin');
-    } else if (isBroker) {
-      navigate('/app');
-    }
-    // If user is authenticated but has no role, stay on landing page
-  }, [isAuthenticated, role, roleLoading, isAdmin, isBroker, isStaff, navigate]);
+  if (currentView === 'dashboard') {
+    return (
+      <AuthWrapper onBack={() => setCurrentView('landing')}>
+        <Dashboard onBack={() => setCurrentView('landing')} />
+      </AuthWrapper>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -69,7 +64,7 @@ const Index = () => {
             <Button 
               size="sm"
               className="sm:size-default"
-              onClick={() => navigate('/auth')}
+              onClick={() => setCurrentView('dashboard')}
             >
               Get Started
             </Button>
@@ -93,7 +88,7 @@ const Index = () => {
             <Button 
               size="lg" 
               className="w-full sm:w-auto"
-              onClick={() => navigate('/auth')}
+              onClick={() => setCurrentView('dashboard')}
             >
               Start Comparing Quotes
             </Button>
@@ -241,7 +236,7 @@ const Index = () => {
           <p className="text-lg mb-8 opacity-90">
             Join brokers who are already saving hours and winning more business with CoverCompass.
           </p>
-          <Button size="lg" variant="secondary" onClick={() => navigate('/auth')}>
+          <Button size="lg" variant="secondary" onClick={() => setCurrentView('dashboard')}>
             Start Your Free Trial
           </Button>
         </div>

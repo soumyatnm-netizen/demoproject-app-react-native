@@ -526,44 +526,6 @@ export type Database = {
         }
         Relationships: []
       }
-      invite_codes: {
-        Row: {
-          code: string
-          created_at: string
-          created_by: string
-          expires_at: string
-          max_uses: number | null
-          org_id: string
-          used_count: number | null
-        }
-        Insert: {
-          code: string
-          created_at?: string
-          created_by: string
-          expires_at: string
-          max_uses?: number | null
-          org_id: string
-          used_count?: number | null
-        }
-        Update: {
-          code?: string
-          created_at?: string
-          created_by?: string
-          expires_at?: string
-          max_uses?: number | null
-          org_id?: string
-          used_count?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "invite_codes_org_id_fkey"
-            columns: ["org_id"]
-            isOneToOne: false
-            referencedRelation: "orgs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       login_audit: {
         Row: {
           failure_reason: string | null
@@ -717,71 +679,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      org_features: {
-        Row: {
-          enabled: boolean | null
-          feature: string
-          id: string
-          org_id: string
-          tier: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          enabled?: boolean | null
-          feature: string
-          id?: string
-          org_id: string
-          tier?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          enabled?: boolean | null
-          feature?: string
-          id?: string
-          org_id?: string
-          tier?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "org_features_org_id_fkey"
-            columns: ["org_id"]
-            isOneToOne: false
-            referencedRelation: "orgs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      orgs: {
-        Row: {
-          created_at: string
-          domain: string | null
-          id: string
-          logo_url: string | null
-          name: string
-          plan: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          domain?: string | null
-          id?: string
-          logo_url?: string | null
-          name: string
-          plan?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          domain?: string | null
-          id?: string
-          logo_url?: string | null
-          name?: string
-          plan?: string | null
-          updated_at?: string
-        }
-        Relationships: []
       }
       pii_access_audit: {
         Row: {
@@ -1658,73 +1555,6 @@ export type Database = {
           },
         ]
       }
-      usage_events: {
-        Row: {
-          created_at: string
-          event_type: string
-          id: string
-          meta: Json | null
-          org_id: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          event_type: string
-          id?: string
-          meta?: Json | null
-          org_id?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          event_type?: string
-          id?: string
-          meta?: Json | null
-          org_id?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "usage_events_org_id_fkey"
-            columns: ["org_id"]
-            isOneToOne: false
-            referencedRelation: "orgs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      user_roles: {
-        Row: {
-          created_at: string
-          id: string
-          org_id: string | null
-          role: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          org_id?: string | null
-          role: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          org_id?: string | null
-          role?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_roles_org_id_fkey"
-            columns: ["org_id"]
-            isOneToOne: false
-            referencedRelation: "orgs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Views: {
       market_intelligence_aggregated: {
@@ -1958,17 +1788,13 @@ export type Database = {
         Args: { user_id: string }
         Returns: string
       }
-      get_user_org: {
-        Args: { p_user_id: string }
-        Returns: string
-      }
       get_user_portal_access: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["portal_type"]
       }
       get_user_role: {
-        Args: { p_user_id: string }
-        Returns: string
+        Args: { user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
       }
       grant_sensitive_data_consent: {
         Args: {
@@ -1979,16 +1805,8 @@ export type Database = {
         }
         Returns: string
       }
-      has_role: {
-        Args: { check_role: string; p_user_id: string }
-        Returns: boolean
-      }
       has_sensitive_data_consent: {
         Args: { consent_type: string; target_user_id: string }
-        Returns: boolean
-      }
-      is_cc_staff: {
-        Args: { p_user_id: string }
         Returns: boolean
       }
       is_company_admin: {
@@ -1997,10 +1815,6 @@ export type Database = {
       }
       is_hr_admin: {
         Args: { user_id: string }
-        Returns: boolean
-      }
-      is_org_admin: {
-        Args: { p_user_id: string }
         Returns: boolean
       }
       is_same_company_user: {
