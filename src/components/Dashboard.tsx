@@ -55,7 +55,7 @@ interface UserProfile {
   id: string;
   user_id: string;
   company_id: string | null;
-  role: 'company_admin' | 'broker' | 'viewer' | 'hr_admin';
+  role: 'company_admin' | 'broker' | 'viewer' | 'hr_admin' | 'CC_STAFF';
   first_name: string | null;
   last_name: string | null;
   subscription_tier: string;
