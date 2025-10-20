@@ -275,7 +275,7 @@ CRITICAL INSTRUCTIONS:
 - Look for limits in coverage sections, extensions, and additional coverages
 - Extract exact amounts - do not summarize or approximate
 
-Return as valid JSON object with all fields.
+Return as valid JSON object with all fields.`;
 
     const extractRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',

@@ -203,7 +203,7 @@ REQUIRED FIELDS:
 
 CRITICAL: Extract ALL monetary amounts accurately with correct currency. For coverage_limits and inner_limits, capture every limit mentioned in the document.
 
-Return as valid JSON object with all fields.
+Return as valid JSON object with all fields.`;
 
     const extractRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
