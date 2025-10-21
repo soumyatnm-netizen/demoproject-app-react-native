@@ -116,7 +116,7 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
     });
 
     return () => subscription.unsubscribe();
-  }, [inviteData]);
+  }, [inviteData, companyData, isAdminSignUp, companyName, adminFirstName, adminLastName, jobTitle, companyDomain]);
 
   // Check user role and redirect CC Staff to /cc
   const checkUserRoleAndRedirect = async (userId: string) => {
