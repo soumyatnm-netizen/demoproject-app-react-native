@@ -97,10 +97,16 @@ serve(async (req) => {
       return json(req, 413, { ok: false, error: 'PDF too large (max 20MB)' });
     }
 
-    // Convert PDF to base64 for Lovable AI
+    // Convert PDF to base64 for Lovable AI (chunked to avoid stack overflow)
     stage = "convert_base64";
     const t_convert_start = performance.now();
-    const base64Pdf = btoa(String.fromCharCode(...pdfBytes));
+    const chunkSize = 8192;
+    let binaryString = '';
+    for (let i = 0; i < pdfBytes.length; i += chunkSize) {
+      const chunk = pdfBytes.slice(i, i + chunkSize);
+      binaryString += String.fromCharCode(...chunk);
+    }
+    const base64Pdf = btoa(binaryString);
     console.log('[extract-quote] PDF converted to base64 in', (performance.now() - t_convert_start).toFixed(0), 'ms');
 
     // Extract quote with focused schema
