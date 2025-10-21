@@ -299,7 +299,7 @@ export const DocumentUpload = ({ open, onOpenChange, onClientExtracted }: Docume
                 : 'border-muted-foreground/25 hover:border-primary hover:bg-primary/5'
             }`}
           >
-            <input {...getInputProps()} />
+            <input {...getInputProps()} multiple />
             <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-lg font-medium mb-2">
               {isDragActive ? 'Drop the files here...' : 'Drag & drop multiple client documents here'}
@@ -311,7 +311,8 @@ export const DocumentUpload = ({ open, onOpenChange, onClientExtracted }: Docume
               Select Multiple Files
             </Button>
             <p className="text-xs text-muted-foreground mt-4">
-              Supports: PDF, Handwritten notes (JPG, PNG), DOCX documents (max 20MB per file). AI-powered OCR and handwriting recognition included.
+              Supports: PDF, Handwritten notes (JPG, PNG), DOCX documents (max 20MB per file).<br />
+              <strong>Tip:</strong> Hold Ctrl (Windows) or Cmd (Mac) to select multiple files at once.
             </p>
           </div>
 
