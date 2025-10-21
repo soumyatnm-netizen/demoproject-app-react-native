@@ -87,6 +87,17 @@ const FileUpload = ({ onUploadSuccess }: FileUploadProps) => {
         throw new Error('Authentication required');
       }
 
+      // Get user's company_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile?.company_id) {
+        throw new Error('User profile or company not found');
+      }
+
       // Create document record
       const { data: documentData, error: dbError } = await supabase
         .from('documents')
@@ -96,7 +107,8 @@ const FileUpload = ({ onUploadSuccess }: FileUploadProps) => {
           file_size: file.size,
           storage_path: filePath,
           status: 'uploaded',
-          user_id: user.id
+          user_id: user.id,
+          company_id: profile.company_id
         })
         .select()
         .single();

@@ -244,10 +244,22 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
         notes: newClient.notes
       };
 
+      // Get user's company_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile?.company_id) {
+        throw new Error('User profile or company not found');
+      }
+
       const { error } = await supabase
         .from('client_reports')
         .insert({
           user_id: user.id,
+          company_id: profile.company_id,
           client_name: newClient.client_name,
           report_title: `${newClient.client_name} - Initial Assessment`,
           report_data: clientData,

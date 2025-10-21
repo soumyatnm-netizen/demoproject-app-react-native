@@ -111,6 +111,17 @@ const ClientReportGenerator = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      // Get user's company_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile?.company_id) {
+        throw new Error('User profile or company not found');
+      }
+
       // Generate key changes and analysis
       const keyChanges = analyseChanges(selectedComparison.comparison_data);
       const recommendations = generateRecommendations(selectedComparison.comparison_data);
@@ -120,6 +131,7 @@ const ClientReportGenerator = () => {
         .from('client_reports')
         .insert({
           user_id: user.id,
+          company_id: profile.company_id,
           comparison_id: selectedComparison.id,
           report_title: reportForm.title,
           client_name: reportForm.clientName,

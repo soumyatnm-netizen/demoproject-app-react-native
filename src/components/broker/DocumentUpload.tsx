@@ -128,6 +128,17 @@ export const DocumentUpload = ({ open, onOpenChange, onClientExtracted }: Docume
         throw new Error('User not authenticated');
       }
 
+      // Get user's company_id
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profileError || !profile?.company_id) {
+        throw new Error('User profile or company not found');
+      }
+
       // Generate unique filename
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -159,6 +170,7 @@ export const DocumentUpload = ({ open, onOpenChange, onClientExtracted }: Docume
         .from('documents')
         .insert({
           user_id: user.id,
+          company_id: profile.company_id,
           filename: file.name,
           file_type: file.type,
           file_size: file.size,

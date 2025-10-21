@@ -114,6 +114,17 @@ const AttackingBrokerIntelligence = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      // Get user's company_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile?.company_id) {
+        throw new Error('User profile or company not found');
+      }
+
       // Generate gap analysis using AI logic
       const gapAnalysis = await generateGapAnalysis(selectedIncumbent);
 
@@ -122,6 +133,7 @@ const AttackingBrokerIntelligence = () => {
         .from('gap_analyses')
         .insert({
           user_id: user.id,
+          company_id: profile.company_id,
           incumbent_quote_id: selectedIncumbent.id,
           coverage_gaps: gapAnalysis.gaps,
           opportunity_score: gapAnalysis.opportunityScore,

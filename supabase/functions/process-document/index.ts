@@ -262,6 +262,7 @@ serve(async (req) => {
       .insert({
         document_id: documentId,
         user_id: document.user_id,
+        company_id: document.company_id,
         insurer_name: dbQuoteData.insurer_name,
         product_type: dbQuoteData.product_type,
         industry: dbQuoteData.industry,

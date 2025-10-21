@@ -223,6 +223,17 @@ const InstantQuoteComparison = () => {
         const file = policyWordingDocs[i];
         setProcessingStep(`Processing policy wording ${i + 1} of ${policyWordingDocs.length}...`);
 
+        // Get user's company_id
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('company_id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (!profile?.company_id) {
+          throw new Error('User profile or company not found');
+        }
+
         // Upload to storage
         const fileName = `${user.id}/${Date.now()}-${file.name}`;
         const { data: uploadData, error: uploadError } = await supabase.storage
@@ -236,6 +247,7 @@ const InstantQuoteComparison = () => {
           .from('documents')
           .insert({
             user_id: user.id,
+            company_id: profile.company_id,
             filename: file.name,
             storage_path: uploadData.path,
             file_type: file.type,
@@ -351,6 +363,17 @@ const InstantQuoteComparison = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No authenticated user');
 
+      // Get user's company_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile?.company_id) {
+        throw new Error('User profile or company not found');
+      }
+
       const allDocs: File[] = [...uploadedQuotes, ...policyWordingDocs];
       const docTypes = [
         ...uploadedQuotes.map(() => 'Quote'),
@@ -375,6 +398,7 @@ const InstantQuoteComparison = () => {
           .from('documents')
           .insert({
             user_id: user.id,
+            company_id: profile.company_id,
             filename: file.name,
             storage_path: uploadData.path,
             file_type: file.type,
