@@ -216,8 +216,9 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="instant-comparison">Instant Comparison</TabsTrigger>
+            <TabsTrigger value="quote-comparison">Quote Comparison</TabsTrigger>
             <TabsTrigger value="clients">Client Management</TabsTrigger>
             <TabsTrigger value="documents-appetites">Documents & Appetites</TabsTrigger>
             <TabsTrigger value="matching">Insurer Matching</TabsTrigger>
@@ -228,6 +229,14 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
           <TabsContent value="instant-comparison">
             {hasFeature('quote_comparison') || hasFeature('document_processing') ? (
               <InstantQuoteComparison />
+            ) : (
+              <ComingSoonAlert featureName="Quote Comparison" />
+            )}
+          </TabsContent>
+
+          <TabsContent value="quote-comparison">
+            {hasFeature('quote_comparison') ? (
+              <QuoteComparison />
             ) : (
               <ComingSoonAlert featureName="Quote Comparison" />
             )}
