@@ -101,27 +101,55 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
       const userId = (await supabase.auth.getUser()).data.user?.id;
       if (!userId) throw new Error('Not authenticated');
 
-      // Call the function to generate the invite code
-      const { data: inviteData, error: inviteError } = await supabase
-        .rpc('generate_invite_code')
-        .single();
-
-      if (inviteError) throw inviteError;
-
-      const inviteCode = inviteData || await generateFallbackCode();
-
-      const { error } = await supabase
+      // Check for existing pending invite
+      const { data: existingInvites } = await supabase
         .from('company_invites')
-        .insert([{
-          company_id: selectedCompany.id,
-          email: inviteEmail,
-          role: inviteRole as any,
-          invited_by: userId,
-          invite_code: inviteCode,
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        }]);
+        .select('id, invite_code')
+        .eq('company_id', selectedCompany.id)
+        .eq('email', inviteEmail.toLowerCase().trim())
+        .is('used_at', null)
+        .gt('expires_at', new Date().toISOString());
 
-      if (error) throw error;
+      let inviteCode: string;
+
+      if (existingInvites && existingInvites.length > 0) {
+        // Update existing invite
+        const existingInvite = existingInvites[0];
+        inviteCode = existingInvite.invite_code;
+        
+        const { error: updateError } = await supabase
+          .from('company_invites')
+          .update({
+            role: inviteRole as any,
+            invited_by: userId,
+            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          })
+          .eq('id', existingInvite.id);
+
+        if (updateError) throw updateError;
+      } else {
+        // Create new invite
+        const { data: inviteData, error: inviteError } = await supabase
+          .rpc('generate_invite_code')
+          .single();
+
+        if (inviteError) throw inviteError;
+
+        inviteCode = inviteData || await generateFallbackCode();
+
+        const { error } = await supabase
+          .from('company_invites')
+          .insert([{
+            company_id: selectedCompany.id,
+            email: inviteEmail.toLowerCase().trim(),
+            role: inviteRole as any,
+            invited_by: userId,
+            invite_code: inviteCode,
+            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          }]);
+
+        if (error) throw error;
+      }
 
       // Send invite email
       try {
@@ -133,15 +161,19 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
             role: inviteRole,
           },
         });
+        
+        toast({
+          title: "Success",
+          description: `Invite ${existingInvites && existingInvites.length > 0 ? 'updated' : 'created'} for ${inviteEmail} - Invitation email sent`,
+        });
       } catch (emailError) {
         console.error('Failed to send invite email:', emailError);
-        // Don't fail the invite creation if email fails
+        toast({
+          title: "Success",
+          description: `Invite ${existingInvites && existingInvites.length > 0 ? 'updated' : 'created'} for ${inviteEmail} (email failed to send)`,
+          variant: "destructive",
+        });
       }
-
-      toast({
-        title: "Success",
-        description: `Invite created for ${inviteEmail} - Invitation email sent`,
-      });
 
       setShowInviteDialog(false);
       setInviteEmail("");
