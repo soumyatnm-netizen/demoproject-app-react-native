@@ -67,9 +67,9 @@ const FeaturesManagement = ({ selectedCompanyId }: { selectedCompanyId?: string 
   const loadFeatures = async () => {
     try {
       const { data, error } = await supabase
-        .from('org_features')
+        .from('broker_company_features')
         .select('*')
-        .eq('org_id', selectedCompany);
+        .eq('company_id', selectedCompany);
 
       if (error) throw error;
       setFeatures(data || []);
@@ -81,21 +81,23 @@ const FeaturesManagement = ({ selectedCompanyId }: { selectedCompanyId?: string 
   const toggleFeature = async (featureId: string, enabled: boolean) => {
     try {
       const existingFeature = features.find(f => f.feature === featureId);
+      const availableFeature = AVAILABLE_FEATURES.find(f => f.id === featureId);
       
       if (existingFeature) {
         const { error } = await supabase
-          .from('org_features')
+          .from('broker_company_features')
           .update({ enabled })
           .eq('id', existingFeature.id);
 
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from('org_features')
+          .from('broker_company_features')
           .insert({
-            org_id: selectedCompany,
+            company_id: selectedCompany,
             feature: featureId,
             enabled,
+            tier: availableFeature?.tier,
           });
 
         if (error) throw error;

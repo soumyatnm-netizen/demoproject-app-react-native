@@ -134,6 +134,41 @@ export type Database = {
         }
         Relationships: []
       }
+      broker_company_features: {
+        Row: {
+          company_id: string
+          enabled: boolean | null
+          feature: string
+          id: string
+          tier: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          enabled?: boolean | null
+          feature: string
+          id?: string
+          tier?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          enabled?: boolean | null
+          feature?: string
+          id?: string
+          tier?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_company_features_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "broker_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_reports: {
         Row: {
           activity_split: Json | null
