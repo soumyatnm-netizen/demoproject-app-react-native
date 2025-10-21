@@ -123,14 +123,29 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
 
       if (error) throw error;
 
+      // Send invite email
+      try {
+        await supabase.functions.invoke('send-company-invite', {
+          body: {
+            email: inviteEmail,
+            companyName: selectedCompany.name,
+            inviteCode: inviteCode,
+            role: inviteRole,
+          },
+        });
+      } catch (emailError) {
+        console.error('Failed to send invite email:', emailError);
+        // Don't fail the invite creation if email fails
+      }
+
       toast({
         title: "Success",
-        description: `Invite created for ${inviteEmail}`,
+        description: `Invite created for ${inviteEmail} - Invitation email sent`,
       });
 
       setShowInviteDialog(false);
       setInviteEmail("");
-      setInviteRole("BROKER");
+      setInviteRole("broker");
     } catch (error: any) {
       toast({
         title: "Error",

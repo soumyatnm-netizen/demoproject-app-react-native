@@ -1,5 +1,8 @@
 project_id = "ijhiavpjobzfxoirhnux"
 
+[functions.send-company-invite]
+verify_jwt = true
+
 [functions.comprehensive-comparison]
 verify_jwt = true
 
