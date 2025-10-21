@@ -18,6 +18,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/auth/reset" element={<ResetPassword />} />
           <Route path="/cc/*" element={<CCStaffDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

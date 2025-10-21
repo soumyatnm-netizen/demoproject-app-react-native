@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
  * @returns Promise with error if any
  */
 export async function sendPasswordReset(email: string) {
-  const redirectUrl = `${window.location.origin}/auth/reset`;
+  const redirectUrl = `${window.location.origin}/reset-password`;
   
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: redirectUrl

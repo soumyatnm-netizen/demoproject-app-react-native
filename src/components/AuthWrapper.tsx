@@ -542,7 +542,7 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
     setForgotPasswordLoading(true);
 
     try {
-      const redirectUrl = `${window.location.origin}/auth/reset`;
+      const redirectUrl = `${window.location.origin}/reset-password`;
       const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
         redirectTo: redirectUrl,
       });
@@ -551,7 +551,7 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
 
       toast({
         title: "Password Reset Email Sent",
-        description: "Check your email for password reset instructions from Cover Compass.",
+        description: "Check your email for password reset instructions from Cover Compass. The email may take a few minutes to arrive.",
       });
       
       setShowForgotPassword(false);

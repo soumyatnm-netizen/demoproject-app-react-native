@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Shield, Eye, EyeOff, CheckCircle } from "lucide-react";
+import { Shield, Eye, EyeOff, CheckCircle, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
@@ -28,6 +28,7 @@ const ResetPassword = () => {
   const [isValidLink, setIsValidLink] = useState(false);
   const [linkError, setLinkError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     validateResetLink();
@@ -36,6 +37,7 @@ const ResetPassword = () => {
   const validateResetLink = async () => {
     setValidating(true);
     setLinkError("");
+    setErrorMessage(null);
 
     try {
       // Check for code parameter (new PKCE flow)
@@ -43,13 +45,16 @@ const ResetPassword = () => {
       const code = urlParams.get('code');
       
       if (code) {
+        console.log('Exchanging code for session...');
         // Exchange code for session
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         
         if (error) {
+          console.error('Code exchange error:', error);
           setLinkError(error.message || "This reset link is invalid or has expired.");
           setIsValidLink(false);
         } else {
+          console.log('Code exchange successful');
           setIsValidLink(true);
         }
       } else {
@@ -59,10 +64,23 @@ const ResetPassword = () => {
         const type = params.get('type');
         const accessToken = params.get('access_token');
 
+        console.log('Legacy flow check:', { type, hasAccessToken: !!accessToken });
+
         if (type === 'recovery' && accessToken) {
-          setIsValidLink(true);
+          // Verify session is valid
+          const { data: { session }, error } = await supabase.auth.getSession();
+          
+          if (error || !session) {
+            console.error('Invalid session:', error);
+            setLinkError("This password reset link has expired or is invalid.");
+            setIsValidLink(false);
+          } else {
+            console.log('Valid legacy recovery session');
+            setIsValidLink(true);
+          }
         } else {
-          setLinkError("No valid reset link found. Please request a new password reset.");
+          console.log('No valid reset link found');
+          setLinkError("Please use the password reset link from your Cover Compass email.");
           setIsValidLink(false);
         }
       }
@@ -78,9 +96,11 @@ const ResetPassword = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
 
     // Validate passwords match
     if (password !== confirmPassword) {
+      setErrorMessage("Passwords do not match.");
       toast({
         title: "Passwords don't match",
         description: "Please make sure both passwords are identical.",
@@ -94,6 +114,7 @@ const ResetPassword = () => {
       passwordSchema.parse(password);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        setErrorMessage(error.issues[0].message);
         toast({
           title: "Invalid Password",
           description: error.issues[0].message,
@@ -110,22 +131,49 @@ const ResetPassword = () => {
         password: password
       });
 
-      if (error) throw error;
+      if (error) {
+        let errorMsg = "Failed to update password. Please try again.";
+        
+        if (error.message.includes('token expired') || error.message.includes('expired')) {
+          errorMsg = "This reset link has expired. Please request a new password reset email.";
+        } else if (error.message.includes('similar')) {
+          errorMsg = "The new password is too similar to your previous password.";
+        } else if (error.message) {
+          errorMsg = error.message;
+        }
+        
+        setErrorMessage(errorMsg);
+        toast({
+          title: "Error",
+          description: errorMsg,
+          variant: "destructive",
+        });
+        return;
+      }
 
       setSuccess(true);
       toast({
-        title: "Password Updated",
-        description: "Your password has been successfully reset.",
+        title: "Password Updated Successfully",
+        description: "Your password has been reset. Redirecting to login...",
       });
+
+      // Clear URL hash for security
+      window.history.pushState({}, document.title, window.location.pathname);
+      
+      // Sign out and redirect to home/login
+      await supabase.auth.signOut();
 
       // Redirect to home after 2 seconds
       setTimeout(() => {
-        navigate('/');
+        navigate('/', { replace: true });
       }, 2000);
     } catch (error: any) {
+      console.error('Password reset error:', error);
+      const errorMsg = "A critical error occurred. Please try again.";
+      setErrorMessage(errorMsg);
       toast({
         title: "Error",
-        description: error.message || "Failed to update password. Please try again.",
+        description: errorMsg,
         variant: "destructive",
       });
     } finally {
@@ -164,7 +212,7 @@ const ResetPassword = () => {
             </div>
             <CardTitle>Password Reset Successful</CardTitle>
             <CardDescription>
-              Your password has been updated. Redirecting you to the home page...
+              Your password has been updated. Redirecting you to the login page...
             </CardDescription>
           </CardHeader>
         </Card>
@@ -174,117 +222,140 @@ const ResetPassword = () => {
 
   if (!isValidLink) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card className="w-full max-w-md mx-4">
-          <CardHeader>
-            <div className="flex items-center justify-center mb-4">
-              <img 
-                src="/lovable-uploads/117007fd-e5c4-4ee6-a580-ee7bde7ad08a.png" 
-                alt="Cover Compass" 
-                className="h-12"
-              />
-            </div>
-            <CardTitle className="text-center">Reset Link Invalid</CardTitle>
-            <CardDescription className="text-center">
-              {linkError || "This reset link has expired or is invalid."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Alert>
-              <AlertDescription>
-                Password reset links expire after a certain time for security reasons. 
-                Please request a new password reset link.
-              </AlertDescription>
-            </Alert>
-            <Button 
-              onClick={handleRequestNewLink} 
-              className="w-full mt-4"
-            >
-              Request New Reset Link
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-full max-w-md space-y-6">
+          <div className="text-center">
+            <img 
+              src="/lovable-uploads/117007fd-e5c4-4ee6-a580-ee7bde7ad08a.png" 
+              alt="Cover Compass" 
+              className="h-16 mx-auto mb-4" 
+            />
+            <p className="text-muted-foreground">Markets Mapped. Cover Unlocked</p>
+          </div>
+          
+          <Card>
+            <CardHeader>
+              <div className="flex justify-center mb-4">
+                <XCircle className="h-12 w-12 text-destructive" />
+              </div>
+              <CardTitle className="text-center">Invalid Reset Link</CardTitle>
+              <CardDescription className="text-center">
+                {linkError || "This password reset link is invalid or has expired."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Alert>
+                <AlertDescription>
+                  Password reset links expire after a certain time for security reasons. 
+                  Please request a new password reset link from Cover Compass.
+                </AlertDescription>
+              </Alert>
+              <Button 
+                onClick={handleRequestNewLink} 
+                className="w-full"
+              >
+                Request New Reset Link
+              </Button>
+              <p className="text-sm text-center text-muted-foreground">
+                Need help? Contact us at{" "}
+                <a href="mailto:dan@covercompass.co.uk" className="text-primary hover:underline">
+                  dan@covercompass.co.uk
+                </a>
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <Card className="w-full max-w-md mx-4">
-        <CardHeader>
-          <div className="flex items-center justify-center mb-4">
-            <img 
-              src="/lovable-uploads/117007fd-e5c4-4ee6-a580-ee7bde7ad08a.png" 
-              alt="Cover Compass" 
-              className="h-12"
-            />
-          </div>
-          <CardTitle className="text-center">Set New Password</CardTitle>
-          <CardDescription className="text-center">
-            Choose a strong password for your Cover Compass account
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="password">New Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your new password"
-                  required
-                  disabled={submitting}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  tabIndex={-1}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-6">
+        <div className="text-center">
+          <img 
+            src="/lovable-uploads/117007fd-e5c4-4ee6-a580-ee7bde7ad08a.png" 
+            alt="Cover Compass" 
+            className="h-16 mx-auto mb-4" 
+          />
+          <p className="text-muted-foreground">Markets Mapped. Cover Unlocked</p>
+        </div>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-center">Set New Password</CardTitle>
+            <CardDescription className="text-center">
+              Choose a strong password for your Cover Compass account
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {errorMessage && (
+              <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                <p className="text-sm text-destructive text-center">{errorMessage}</p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Must be at least 8 characters with uppercase, lowercase, and number
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm New Password</Label>
-              <div className="relative">
-                <Input
-                  id="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm your new password"
-                  required
-                  disabled={submitting}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  tabIndex={-1}
-                >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+            )}
+            
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="password">New Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your new password"
+                    required
+                    disabled={submitting}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Must be at least 8 characters with uppercase, lowercase, and number
+                </p>
               </div>
-            </div>
 
-            <Button 
-              type="submit" 
-              className="w-full"
-              disabled={submitting || !password || !confirmPassword}
-            >
-              {submitting ? "Updating Password..." : "Update Password"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm your new password"
+                    required
+                    disabled={submitting}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    tabIndex={-1}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full"
+                disabled={submitting || !password || !confirmPassword}
+              >
+                {submitting ? "Updating Password..." : "Reset Password"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
