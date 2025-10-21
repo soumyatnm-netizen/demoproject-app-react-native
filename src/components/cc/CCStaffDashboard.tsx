@@ -4,13 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Users, BarChart3, Package, FileText, LogOut, Shield } from "lucide-react";
+import { Building2, Users, BarChart3, Package, FileText, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ClientAccounts from "./ClientAccounts";
 import FeaturesManagement from "./FeaturesManagement";
 import SystemAnalytics from "./SystemAnalytics";
 import MarketplaceInsights from "./MarketplaceInsights";
 import GlobalReports from "./GlobalReports";
+import coverCompassLogo from "@/assets/covercompass-logo-new.png";
 
 const CCStaffDashboard = () => {
   const navigate = useNavigate();
@@ -68,7 +69,7 @@ const CCStaffDashboard = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <Shield className="h-12 w-12 text-primary mx-auto mb-4 animate-pulse" />
+          <img src={coverCompassLogo} alt="Cover Compass" className="h-12 mx-auto mb-4 animate-pulse" />
           <p className="text-muted-foreground">Verifying access...</p>
         </div>
       </div>
@@ -85,7 +86,7 @@ const CCStaffDashboard = () => {
       <header className="border-b bg-card sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Shield className="h-8 w-8 text-primary" />
+            <img src={coverCompassLogo} alt="Cover Compass" className="h-8" />
             <div>
               <h1 className="text-xl font-bold">CC Staff Dashboard</h1>
               <p className="text-sm text-muted-foreground">System Control Center</p>
