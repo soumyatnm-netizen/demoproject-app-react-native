@@ -126,19 +126,19 @@ serve(async (req) => {
 
     // Helpers
     const buildPrompt = () => `
-    You are an advanced document analysis AI with OCR and handwriting recognition capabilities. Extract client/business information from this document.
+    You are an advanced document analysis AI with OCR and handwriting recognition capabilities. Extract client/business information from this insurance document.
 
     **CRITICAL**: Return field names in snake_case format. Use these exact field names:
 
     REQUIRED FIELDS (use snake_case):
-    - client_name: Business/Client name
+    - client_name: Business/Client name (also check "Insured name", "Policyholder", "Company name")
     - contact_email: Email address
     - contact_phone: Phone number
-    - coverage_requirements: Array of coverage types needed
+    - coverage_requirements: **ARRAY of coverage types** - Look in tables with headers like "Cover", "Coverage", "Insurance Type", "Protection". Extract each row as a separate item. Examples: ["Professional indemnity", "Public liability", "Employers' liability", "Cyber insurance", "Property insurance", "Business interruption"]
     - industry: Industry/sector
     - employee_count: Number of employees (as number)
     - revenue_band: Revenue range (format: "1-5m" for £1M-£5M)
-    - main_address: Full street address
+    - main_address: Full street address (may be labeled "Insured premises", "Business address", "Registered address")
     - postcode: Postal/ZIP code
 
     OPTIONAL FIELDS (use snake_case):
@@ -148,7 +148,7 @@ serve(async (req) => {
     - wage_roll: Total annual wage roll in £
     - policy_renewal_date: When policy renews (YYYY-MM-DD) - look for "Renewal Date", "Policy Expires", "Expiry Date"
     - current_broker: Name of current insurance broker
-    - current_carrier: Current insurance company/underwriter
+    - current_carrier: Current insurance company/underwriter (may be in header or footer)
     - current_premium_total: Total annual premium (number only, no currency symbols)
     - claims_free: true if no recent claims, false if has claims, null if unknown
     - recent_claims_details: Description of any recent claims
@@ -158,7 +158,25 @@ serve(async (req) => {
     - notes: Any additional relevant information
     - risk_profile: "low", "medium", or "high"
 
-    **EXTRACTION RULES**:
+    **CRITICAL EXTRACTION RULES FOR COVERAGE_REQUIREMENTS**:
+    1. Look for tables with columns: "Cover", "Coverage", "Insurance Type", "Protection", "Section"
+    2. Extract the NAME of each coverage type listed - ignore amounts, limits, and excess values
+    3. Common coverage types include:
+       - Professional indemnity / Professional liability
+       - Public liability / Public and products liability
+       - Employers' liability
+       - Directors and officers (D&O)
+       - Cyber insurance / Cyber and data protection
+       - Property insurance (contents, buildings, equipment)
+       - Business interruption
+       - Crime / Fidelity guarantee
+       - Environmental liability
+       - Product liability
+       - Crisis containment / Management liability
+    4. Include ALL coverage types found in the table, even if value is "Included" or "£0"
+    5. Return as array of strings: ["Professional indemnity", "Public liability", "Cyber insurance"]
+
+    **OTHER EXTRACTION RULES**:
     1. Use exact snake_case field names as shown above
     2. For dates, always use YYYY-MM-DD format
     3. For numbers, extract digits only (no currency symbols or commas)
@@ -166,7 +184,8 @@ serve(async (req) => {
     5. For arrays, return [] if empty
     6. Use null for missing fields
     7. For percentages objects, ensure they add up to 100 or leave as null
-    8. Look carefully for policy renewal dates - they may be in headers, footers, or summary sections
+    8. Look for client/insured name in multiple places: header, "Insured name", "Policyholder", "Company"
+    9. Address may be labeled "Insured premises", "Risk address", "Business address"
 
     Return ONLY a valid JSON object with snake_case field names. No explanation, just the JSON.
     `;
