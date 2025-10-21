@@ -271,7 +271,7 @@ Return as valid JSON object with all fields.`;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`[extract-wording] Extraction attempt ${attempt}/${maxRetries} using Lovable AI (GPT-4o-mini)`);
+        console.log(`[extract-wording] Extraction attempt ${attempt}/${maxRetries} using Lovable AI (GPT-5 Mini)`);
         
         extractRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
@@ -280,7 +280,7 @@ Return as valid JSON object with all fields.`;
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'openai/gpt-4o-mini', // GPT-4o-mini supports PDF processing reliably
+            model: 'openai/gpt-5-mini', // GPT-5 Mini supports PDF processing reliably
             messages: [
               { role: 'system', content: systemPrompt },
               {
@@ -379,7 +379,7 @@ Return as valid JSON object with all fields.`;
             documentId,
             filename: document.filename,
             processedAt: new Date().toISOString(),
-            model: extractData.model || 'openai/gpt-4o-mini',
+            model: extractData.model || 'openai/gpt-5-mini',
             usage: extractData.usage,
             timing: {
               total_ms: parseInt(totalTime),
