@@ -10,16 +10,16 @@ import { Package, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const AVAILABLE_FEATURES = [
-  { id: 'document_processing', name: 'Document Processing', tier: 'basic' },
-  { id: 'quote_comparison', name: 'Quote Comparison', tier: 'basic' },
-  { id: 'market_intelligence', name: 'Market Intelligence', tier: 'professional' },
-  { id: 'placement_tracking', name: 'Placement Tracking', tier: 'professional' },
-  { id: 'underwriter_matching', name: 'Underwriter Matching', tier: 'professional' },
-  { id: 'appetite_guides', name: 'Appetite Guides', tier: 'professional' },
-  { id: 'predictive_analytics', name: 'Predictive Analytics', tier: 'enterprise' },
-  { id: 'api_access', name: 'API Access', tier: 'enterprise' },
-  { id: 'custom_reporting', name: 'Custom Reporting', tier: 'enterprise' },
-  { id: 'white_label', name: 'White Label', tier: 'enterprise' },
+  { id: 'document_processing', name: 'Document Processing' },
+  { id: 'quote_comparison', name: 'Quote Comparison' },
+  { id: 'market_intelligence', name: 'Market Intelligence' },
+  { id: 'placement_tracking', name: 'Placement Tracking' },
+  { id: 'underwriter_matching', name: 'Underwriter Matching' },
+  { id: 'appetite_guides', name: 'Appetite Guides' },
+  { id: 'predictive_analytics', name: 'Predictive Analytics' },
+  { id: 'api_access', name: 'API Access' },
+  { id: 'custom_reporting', name: 'Custom Reporting' },
+  { id: 'white_label', name: 'White Label' },
 ];
 
 const FeaturesManagement = ({ selectedCompanyId }: { selectedCompanyId?: string | null }) => {
@@ -99,7 +99,6 @@ const FeaturesManagement = ({ selectedCompanyId }: { selectedCompanyId?: string 
       // Process all pending changes
       for (const [featureId, enabled] of pendingChanges.entries()) {
         const existingFeature = features.find(f => f.feature === featureId);
-        const availableFeature = AVAILABLE_FEATURES.find(f => f.id === featureId);
         
         if (existingFeature) {
           const { error } = await supabase
@@ -115,7 +114,6 @@ const FeaturesManagement = ({ selectedCompanyId }: { selectedCompanyId?: string 
               company_id: selectedCompany,
               feature: featureId,
               enabled,
-              tier: availableFeature?.tier,
             });
 
           if (error) throw error;
@@ -159,7 +157,7 @@ const FeaturesManagement = ({ selectedCompanyId }: { selectedCompanyId?: string 
               <SelectContent>
                 {companies.map((company) => (
                   <SelectItem key={company.id} value={company.id}>
-                    {company.name} ({company.subscription_tier})
+                    {company.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -173,7 +171,6 @@ const FeaturesManagement = ({ selectedCompanyId }: { selectedCompanyId?: string 
                 <h3 className="font-semibold">
                   {selectedCompanyData.name}
                 </h3>
-                <Badge>{selectedCompanyData.subscription_tier}</Badge>
               </div>
 
               <div className="space-y-3">
@@ -183,11 +180,6 @@ const FeaturesManagement = ({ selectedCompanyId }: { selectedCompanyId?: string 
                   const hasPendingChange = pendingChanges.has(feature.id);
                   const currentEnabled = featureRecord ? featureRecord.enabled : true;
                   const isEnabled = hasPendingChange ? pendingChanges.get(feature.id)! : currentEnabled;
-                  
-                  const tierMatch = 
-                    (selectedCompanyData.subscription_tier === 'enterprise') ||
-                    (selectedCompanyData.subscription_tier === 'professional' && ['basic', 'professional'].includes(feature.tier)) ||
-                    (selectedCompanyData.subscription_tier === 'basic' && feature.tier === 'basic');
 
                   return (
                     <div
@@ -195,20 +187,10 @@ const FeaturesManagement = ({ selectedCompanyId }: { selectedCompanyId?: string 
                       className="flex items-center justify-between p-4 border rounded-lg"
                     >
                       <div className="flex-1">
-                        <div className="flex items-center gap-3">
-                          <Label htmlFor={feature.id}>{feature.name}</Label>
-                          <Badge variant="outline" className="text-xs">
-                            {feature.tier}
-                          </Badge>
-                          {!tierMatch && (
-                            <Badge variant="secondary" className="text-xs">
-                              Tier Required
-                            </Badge>
-                          )}
-                        </div>
+                        <Label htmlFor={feature.id}>{feature.name}</Label>
                       </div>
                       <div className="flex items-center gap-3">
-                        {isEnabled && tierMatch ? (
+                        {isEnabled ? (
                           <Check className="h-4 w-4 text-green-500" />
                         ) : (
                           <X className="h-4 w-4 text-muted-foreground" />
@@ -220,9 +202,8 @@ const FeaturesManagement = ({ selectedCompanyId }: { selectedCompanyId?: string 
                         )}
                         <Switch
                           id={feature.id}
-                          checked={tierMatch && isEnabled}
+                          checked={isEnabled}
                           onCheckedChange={(checked) => toggleFeature(feature.id, checked)}
-                          disabled={!tierMatch}
                         />
                       </div>
                     </div>
