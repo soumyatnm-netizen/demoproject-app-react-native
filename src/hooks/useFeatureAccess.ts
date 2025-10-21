@@ -56,7 +56,10 @@ export const useFeatureAccess = () => {
   };
 
   const hasFeature = (featureName: string): boolean => {
-    return features[featureName] === true;
+    // If no feature record exists, default to enabled (true)
+    // If a record exists, use the enabled value from the database
+    const feature = features[featureName];
+    return feature !== undefined ? feature : true;
   };
 
   const checkFeature = async (featureName: string): Promise<boolean> => {

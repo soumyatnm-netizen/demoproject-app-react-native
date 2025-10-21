@@ -156,7 +156,10 @@ const FeaturesManagement = ({ selectedCompanyId }: { selectedCompanyId?: string 
 
               <div className="space-y-3">
                 {AVAILABLE_FEATURES.map((feature) => {
-                  const enabled = features.find(f => f.feature === feature.id && f.enabled);
+                  const featureRecord = features.find(f => f.feature === feature.id);
+                  // Default to enabled (true) if no record exists, otherwise use the record's enabled value
+                  const isEnabled = featureRecord ? featureRecord.enabled : true;
+                  
                   const tierMatch = 
                     (selectedCompanyData.subscription_tier === 'enterprise') ||
                     (selectedCompanyData.subscription_tier === 'professional' && ['basic', 'professional'].includes(feature.tier)) ||
@@ -181,14 +184,14 @@ const FeaturesManagement = ({ selectedCompanyId }: { selectedCompanyId?: string 
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        {enabled ? (
+                        {isEnabled && tierMatch ? (
                           <Check className="h-4 w-4 text-green-500" />
                         ) : (
                           <X className="h-4 w-4 text-muted-foreground" />
                         )}
                         <Switch
                           id={feature.id}
-                          checked={!!enabled}
+                          checked={tierMatch && isEnabled}
                           onCheckedChange={(checked) => toggleFeature(feature.id, checked)}
                           disabled={!tierMatch}
                         />
