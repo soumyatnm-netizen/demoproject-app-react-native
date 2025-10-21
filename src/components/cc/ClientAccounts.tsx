@@ -18,6 +18,7 @@ interface ClientAccountsProps {
 const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
   const { toast } = useToast();
   const [companies, setCompanies] = useState<any[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
@@ -36,6 +37,7 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
   
   useEffect(() => {
     loadCompanies();
+    loadPendingInvites();
   }, []);
 
   const loadCompanies = async () => {
@@ -56,6 +58,22 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPendingInvites = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('company_invites')
+        .select('*, broker_companies(name)')
+        .is('used_at', null)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setPendingInvites(data || []);
+    } catch (error) {
+      console.error('Error loading pending invites:', error);
     }
   };
 
@@ -178,6 +196,31 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
       setShowInviteDialog(false);
       setInviteEmail("");
       setInviteRole("broker");
+      loadPendingInvites(); // Refresh pending invites
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteInvite = async (inviteId: string) => {
+    try {
+      const { error } = await supabase
+        .from('company_invites')
+        .delete()
+        .eq('id', inviteId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Invite deleted successfully",
+      });
+
+      loadPendingInvites();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -203,6 +246,68 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
 
   return (
     <div className="space-y-6">
+      {/* Pending Invites Section */}
+      {pendingInvites.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Pending Invitations</CardTitle>
+            <CardDescription>{pendingInvites.length} active invite(s) waiting to be used</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Company</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Invite Code</TableHead>
+                  <TableHead>Expires</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingInvites.map((invite) => (
+                  <TableRow key={invite.id}>
+                    <TableCell>{invite.email}</TableCell>
+                    <TableCell>{invite.broker_companies?.name || 'Unknown'}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{invite.role}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyCode(invite.invite_code)}
+                      >
+                        {copiedCode === invite.invite_code ? (
+                          <Check className="h-4 w-4 mr-2" />
+                        ) : (
+                          <Copy className="h-4 w-4 mr-2" />
+                        )}
+                        {invite.invite_code}
+                      </Button>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {new Date(invite.expires_at).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteInvite(invite.id)}
+                      >
+                        Delete
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Companies Section */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
