@@ -103,11 +103,427 @@ const DeepComparison = ({ insurers }: DeepComparisonProps) => {
     });
   };
 
-  const exportToPDF = () => {
-    toast({
-      title: "PDF Export",
-      description: "PDF export functionality coming soon",
-    });
+  const exportToPDF = async () => {
+    if (!comparison) return;
+
+    try {
+      toast({
+        title: "Generating PDF Report",
+        description: "Creating professional side-by-side comparison...",
+      });
+
+      const htmlContent = generateComparisonPDFHTML();
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-pdf-report`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({ htmlContent })
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || 'Failed to generate PDF');
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
+      
+      const fileName = `Comprehensive_Comparison_${new Date().toISOString().split('T')[0]}.pdf`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "PDF Generated Successfully",
+        description: `Report downloaded as ${fileName}`,
+      });
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({
+        title: "PDF Generation Failed",
+        description: error.message || "Failed to generate PDF report",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const generateComparisonPDFHTML = (): string => {
+    const { insurers: insurerResults, deltas } = comparison;
+    
+    // Extract product sections from the insurer data
+    const productSections = [
+      { key: 'professional_indemnity', title: 'Professional Indemnity' },
+      { key: 'cyber', title: 'Cyber & Data' },
+      { key: 'crime', title: 'Crime & Fraud' },
+      { key: 'public_products_liability', title: 'Public & Products Liability' },
+      { key: 'employers_liability', title: 'Employers\' Liability' },
+      { key: 'property', title: 'Property & Business Interruption' },
+    ];
+    
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprehensive Insurance Comparison</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 10pt;
+            line-height: 1.4;
+            color: #1f2937;
+        }
+        .page { 
+            page-break-after: always; 
+            padding: 20mm;
+        }
+        .page:last-child { page-break-after: auto; }
+        
+        h1 { 
+            font-size: 20pt; 
+            font-weight: 700; 
+            color: #1e40af;
+            margin-bottom: 6mm;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 3mm;
+        }
+        h2 { 
+            font-size: 16pt; 
+            font-weight: 600; 
+            margin: 6mm 0 4mm 0;
+            color: #374151;
+        }
+        h3 { 
+            font-size: 11pt; 
+            font-weight: 600; 
+            margin-bottom: 2mm;
+            color: #4b5563;
+        }
+        
+        .premium-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6mm;
+            margin-bottom: 8mm;
+        }
+        
+        .premium-card {
+            border: 2px solid #fbbf24;
+            border-radius: 3mm;
+            padding: 4mm;
+            background: #fef3c7;
+        }
+        
+        .premium-total {
+            font-size: 20pt;
+            font-weight: 700;
+            color: #92400e;
+            margin: 2mm 0;
+        }
+        
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5mm;
+            margin-bottom: 6mm;
+        }
+        
+        .insurer-card {
+            border: 1.5px solid #d1d5db;
+            border-radius: 2mm;
+            padding: 4mm;
+            background: white;
+        }
+        
+        .insurer-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 3mm;
+            padding-bottom: 2mm;
+            border-bottom: 1.5px solid #e5e7eb;
+        }
+        
+        .insurer-name {
+            font-size: 13pt;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        
+        .section-title {
+            font-size: 10pt;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 3mm 0 2mm 0;
+        }
+        
+        .key-terms {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .key-terms li {
+            padding-left: 4mm;
+            margin-bottom: 1.5mm;
+            position: relative;
+            font-size: 9pt;
+            line-height: 1.5;
+        }
+        
+        .key-terms li:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+            color: #3b82f6;
+        }
+        
+        .subjectivities-box {
+            background: #fef3c7;
+            border: 2px solid #fbbf24;
+            border-radius: 2mm;
+            padding: 3mm;
+            margin: 3mm 0;
+        }
+        
+        .subjectivities-title {
+            font-size: 10pt;
+            font-weight: 600;
+            color: #92400e;
+            margin-bottom: 2mm;
+            display: flex;
+            align-items: center;
+        }
+        
+        .warning-icon {
+            margin-right: 2mm;
+        }
+        
+        .subjectivity-item {
+            padding-left: 5mm;
+            margin-bottom: 1.5mm;
+            position: relative;
+            font-size: 9pt;
+            color: #92400e;
+        }
+        
+        .subjectivity-item:before {
+            content: "⚠";
+            position: absolute;
+            left: 0;
+        }
+        
+        .no-subjectivities {
+            color: #059669;
+            font-size: 9pt;
+            display: flex;
+            align-items: center;
+        }
+        
+        .standout-points {
+            list-style: none;
+            margin: 3mm 0 0 0;
+            padding: 0;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 3mm;
+        }
+        
+        .standout-points li {
+            padding-left: 5mm;
+            margin-bottom: 2mm;
+            position: relative;
+            font-size: 9pt;
+            line-height: 1.5;
+        }
+        
+        .icon-positive { color: #059669; }
+        .icon-negative { color: #dc2626; }
+        .icon-warning { color: #d97706; }
+        
+        .summary-box {
+            background: #f3f4f6;
+            border-left: 4px solid #3b82f6;
+            padding: 4mm;
+            margin-top: 4mm;
+            font-size: 9pt;
+            line-height: 1.6;
+        }
+        
+        .summary-title {
+            font-size: 11pt;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 2mm;
+        }
+        
+        @media print {
+            body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+    ${generatePremiumPage(insurerResults)}
+    ${generateProductPagesFromInsurers(productSections, insurerResults, deltas)}
+</body>
+</html>`;
+  };
+
+  const generatePremiumPage = (insurers: any[]): string => {
+    return `
+    <div class="page">
+        <h1>Premium Comparison</h1>
+        <div class="premium-grid">
+            ${insurers.map(insurer => `
+                <div class="premium-card">
+                    <h2 style="margin-top: 0;">${insurer.insurer_name}</h2>
+                    <div class="premium-total">${formatCurrency(insurer.premiums?.total_payable || insurer.premiums?.annual_premium, insurer.premiums?.currency)}</div>
+                    <div style="font-size: 8pt; color: #92400e; margin-top: 2mm;">
+                        ${insurer.premiums?.annual_premium ? 'Annual Premium' : 'Total Payable'}
+                    </div>
+                    
+                    ${Object.keys(insurer.premiums?.base_premium_by_section || {}).length > 0 ? `
+                        <div style="margin-top: 3mm; padding-top: 2mm; border-top: 1px solid #fbbf24;">
+                            <div style="font-size: 8pt; font-weight: 600; color: #78350f; margin-bottom: 1mm;">BREAKDOWN</div>
+                            ${Object.entries(insurer.premiums.base_premium_by_section).map(([section, amount]) => `
+                                <div style="display: flex; justify-content: space-between; font-size: 8pt; color: #92400e; margin-bottom: 1mm;">
+                                    <span>${section.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                                    <span style="font-weight: 600;">${formatCurrency(Number(amount), insurer.premiums?.currency)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                    
+                    <div style="margin-top: 2mm; padding-top: 2mm; border-top: 1px solid #fbbf24;">
+                        <div style="display: flex; justify-content: space-between; font-size: 8pt; color: #92400e;">
+                            <span>Insurance Premium Tax</span>
+                            <span style="font-weight: 600;">${formatCurrency(insurer.premiums?.ipt, insurer.premiums?.currency)}</span>
+                        </div>
+                        ${(insurer.premiums?.fees || []).map((fee: any) => `
+                            <div style="display: flex; justify-content: space-between; font-size: 8pt; color: #92400e; margin-top: 1mm;">
+                                <span>${fee.name}</span>
+                                <span style="font-weight: 600;">${formatCurrency(fee.amount, insurer.premiums?.currency)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    </div>`;
+  };
+
+  const generateProductPagesFromInsurers = (productSections: any[], insurers: any[], deltas: any[]): string => {
+    return productSections.map(section => {
+      const sectionData = insurers.map(insurer => ({
+        insurer_name: insurer.insurer_name,
+        data: insurer[section.key]
+      }));
+      
+      // Find relevant deltas for this section
+      const sectionDeltas = deltas?.filter((d: any) => 
+        d.path?.toLowerCase().includes(section.key.toLowerCase())
+      ) || [];
+      
+      // Generate key terms for each insurer
+      const generateKeyTerms = (insurerName: string, data: any): string[] => {
+        if (!data) return [];
+        const terms: string[] = [];
+        
+        if (data.limit?.amount) {
+          terms.push(`Limit: ${formatCurrency(data.limit.amount, data.limit.currency)} ${data.limit.basis_of_limit || ''}`);
+        }
+        if (data.excess?.amount) {
+          terms.push(`Excess: ${formatCurrency(data.excess.amount, data.excess.currency)} ${data.excess.basis_of_excess || ''}`);
+        }
+        if (data.coverage_triggers) {
+          terms.push(`Trigger: ${Array.isArray(data.coverage_triggers) ? data.coverage_triggers.join(', ') : data.coverage_triggers}`);
+        }
+        if (data.territorial_limits) {
+          terms.push(`Territory: ${data.territorial_limits}`);
+        }
+        
+        return terms;
+      };
+      
+      return `
+        <div class="page">
+            <h1>${section.title}</h1>
+            
+            <div class="comparison-grid">
+                ${sectionData.map(({ insurer_name, data }) => `
+                    <div class="insurer-card">
+                        <div class="insurer-header">
+                            <span class="insurer-name">${insurer_name}</span>
+                        </div>
+                        
+                        ${data ? `
+                            <div class="section-title">Key Terms</div>
+                            <ul class="key-terms">
+                                ${generateKeyTerms(insurer_name, data).map(term => `<li>${term}</li>`).join('')}
+                            </ul>
+                            
+                            <div class="subjectivities-box">
+                                <div class="subjectivities-title">
+                                    <span class="warning-icon">⚠️</span>
+                                    Subjectivities (Pre-Binding)
+                                </div>
+                                ${data.subjectivities && data.subjectivities.length > 0 ? `
+                                    ${data.subjectivities.map((subj: any) => `
+                                        <div class="subjectivity-item">${typeof subj === 'string' ? subj : subj.text}</div>
+                                    `).join('')}
+                                ` : `
+                                    <div class="no-subjectivities">✓ None - Quote is firm</div>
+                                `}
+                            </div>
+                            
+                            ${data.features || data.extensions ? `
+                                <div class="section-title">Standout Points</div>
+                                <ul class="standout-points">
+                                    ${Object.entries(data.features || data.extensions || {}).map(([key, value]) => {
+                                      if (value === true || value === false) {
+                                        const icon = value ? '✅' : '❌';
+                                        const colorClass = value ? 'icon-positive' : 'icon-negative';
+                                        return `<li><span class="${colorClass}" style="position: absolute; left: 0;">${icon}</span>${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span></li>`;
+                                      }
+                                      return '';
+                                    }).filter(Boolean).join('')}
+                                </ul>
+                            ` : ''}
+                        ` : '<div style="color: #9ca3af;">No data available for this section</div>'}
+                    </div>
+                `).join('')}
+            </div>
+            
+            ${sectionDeltas.length > 0 ? `
+                <div class="summary-box">
+                    <div class="summary-title">Key Differences</div>
+                    <div>
+                        ${sectionDeltas.slice(0, 5).map((delta: any) => `
+                            <div style="margin-bottom: 2mm;">
+                                <strong>${delta.path}:</strong> ${delta.assessment}
+                                ${delta.impact ? `<br/><em style="color: #6b7280;">Impact: ${delta.impact}</em>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+      `;
+    }).join('');
   };
 
   if (!comparison) {
