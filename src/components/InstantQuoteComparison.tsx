@@ -329,7 +329,7 @@ const InstantQuoteComparison = () => {
     }
   };
 
-  const analyzeQuotes = async () => {
+  const analyseQuotes = async () => {
     if (!selectedClient || (uploadedQuotes.length === 0 && policyWordingDocs.length === 0)) {
       toast({
         title: "Missing Information",
@@ -345,7 +345,7 @@ const InstantQuoteComparison = () => {
     setShouldCancel(false);
     setStatusLog([]);
     
-    addStatusLog('🚀 Starting optimized analysis pipeline...', 'info');
+    addStatusLog('🚀 Starting optimised analysis pipeline...', 'info');
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -1307,7 +1307,7 @@ const InstantQuoteComparison = () => {
             </div>
             
             <Button 
-              onClick={analyzeQuotes}
+              onClick={analyseQuotes}
               disabled={!selectedClient || (uploadedQuotes.length === 0 && policyWordingDocs.length === 0) || isProcessing}
               size="lg"
               className="w-full"

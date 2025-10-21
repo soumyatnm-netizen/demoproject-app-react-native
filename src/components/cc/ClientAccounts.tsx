@@ -409,7 +409,7 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Client Organizations</CardTitle>
+              <CardTitle>Client Organisations</CardTitle>
               <CardDescription>Manage client accounts and access codes</CardDescription>
             </div>
             <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
@@ -422,7 +422,7 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Create New Company</DialogTitle>
-                  <DialogDescription>Set up a new client organization</DialogDescription>
+                  <DialogDescription>Set up a new client organisation</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>

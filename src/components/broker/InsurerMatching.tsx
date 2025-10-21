@@ -164,7 +164,7 @@ const InsurerMatching = () => {
       
       toast({
         title: forceRefresh ? "Analysis Refreshed" : "Enhanced Analysis Complete",
-        description: `Found ${newMatches.length} matches by analysing ${data.similar_clients_analyzed || 0} similar clients and ${data.appetite_guides_analyzed || 0} appetite guides`,
+        description: `Found ${newMatches.length} matches by analysing ${data.similar_clients_analysed || 0} similar clients and ${data.appetite_guides_analysed || 0} appetite guides`,
       });
 
     } catch (error) {

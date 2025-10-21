@@ -106,7 +106,7 @@ const AttackingBrokerIntelligence = () => {
     }
   };
 
-  const analyzeGaps = async () => {
+  const analyseGaps = async () => {
     if (!selectedIncumbent) return;
 
     try {
@@ -185,7 +185,7 @@ const AttackingBrokerIntelligence = () => {
         .order('win_rate_percentage', { ascending: false })
         .limit(5);
 
-      // Analyze coverage gaps
+      // Analyse coverage gaps
       const gaps: any = {
         coverage_limitations: [],
         pricing_issues: [],
@@ -202,7 +202,7 @@ const AttackingBrokerIntelligence = () => {
         }
       }
 
-      // Analyze pricing based on market intelligence
+      // Analyse pricing based on market intelligence
       let marketAverage = 5000;
       if (marketIntel && marketIntel.length > 0) {
         const avgPremiums = marketIntel.map((m: any) => m.avg_premium).filter(Boolean);
@@ -217,7 +217,7 @@ const AttackingBrokerIntelligence = () => {
         pricingScore += 30;
       }
 
-      // Analyze exclusions
+      // Analyse exclusions
       if (incumbent.exclusions && incumbent.exclusions.length > 5) {
         gaps.policy_restrictions.push(`${incumbent.exclusions.length} exclusions limit coverage scope`);
       }
@@ -430,7 +430,7 @@ const AttackingBrokerIntelligence = () => {
 
             <div className="flex items-end">
               <Button 
-                onClick={analyzeGaps} 
+                onClick={analyseGaps} 
                 disabled={!selectedIncumbent || analyzingGaps}
                 className="w-full bg-orange-600 hover:bg-orange-700"
               >
