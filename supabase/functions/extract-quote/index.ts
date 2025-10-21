@@ -125,85 +125,135 @@ serve(async (req) => {
     stage = "extract";
     const t_extract_start = performance.now();
     
-    const systemPrompt = "You are a specialist insurance document analyzer. Extract all fields accurately from this insurance quote. Return only valid JSON.";
-    const userPrompt = `Extract the following fields from this insurance quote document. Pay special attention to coverage limits and inner limits - extract ALL monetary values with their currencies.
+    const systemPrompt = "You are a CoverCompass specialist insurance document analyzer. Extract all fields with maximum precision from insurance quotes. Target >95% confidence for all extractions. Return only valid JSON.";
+    const userPrompt = `Extract the following fields from this insurance quote document (Quote Schedule). Be thorough and precise.
 
-REQUIRED FIELDS:
+**PHASE 1: STRUCTURED DATA EXTRACTION (QUOTES)**
 
-1. insurer_name: The insurance company providing this quote
-2. product_name: The specific insurance product/policy type
-3. client_name: The client/insured party name
+Extract with HIGH CONFIDENCE (Target >95%):
 
-4. policy_period:
-   - inception: Start date (ISO format YYYY-MM-DD)
-   - expiry: End date (ISO format YYYY-MM-DD)
+**PRICING (High Priority)**
+- Premium_Net: Net premium amount (Currency format: "GBP 65,952.65")
+- Premium_IPT: Insurance Premium Tax (Currency)
+- Premium_Total_Annual: Total annual premium payable (Currency)
+- Policy_Admin_Fee: Policy admin fee if separate (Currency) [Medium Priority]
 
-5. retro_date: Retroactive date if applicable (ISO format)
+**LIMITS (High Priority)**
+- Limit_Indemnity_PI_E&O: Professional Indemnity/Errors & Omissions limit (Currency, e.g., "GBP 5,000,000")
+- Limit_Indemnity_Cyber_Overall: Overall Cyber Insurance limit (Currency)
+- Limit_Indemnity_PL_Products: Public/Products Liability limit (Currency)
+- Limit_Indemnity_Crime_Theft: Crime/Employee Theft limit (Currency)
+- Limit_Basis: Is limit "aggregate" or "any one claim"? Specify for each coverage type
 
-6. territorial_limits: Geographic coverage area
+**DEDUCTIBLES (High Priority)**
+- Deductible_PI_Standard: PI deductible per claim/loss (Currency)
+- Deductible_Cyber_FirstParty: Cyber first-party losses/BI deductible (Currency)
+- Deductible_Crime_Standard: Crime/theft deductible (Currency)
+- Deductible_Basis: Per claim, per loss, costs-inclusive/exclusive? Specify
 
-7. jurisdiction: Governing law jurisdiction
+**DATES (High Priority)**
+- Policy_Period_Start: Policy inception date (YYYY-MM-DD)
+- Policy_Period_Expiry: Policy expiry date (YYYY-MM-DD)
+- Quote_Expiry_Date: Quote validity expiry date (YYYY-MM-DD) [Medium Priority]
 
-8. premium:
-   - base: Base premium amount (numeric)
-   - taxes_fees: Taxes and fees (numeric)
-   - total: Total premium (numeric)
-   - currency: Currency code (e.g., "GBP", "USD")
+**COVERAGE DETAILS**
+- Coverage_Type: List of all coverage types included (e.g., ["Professional Indemnity", "Cyber & Data", "Crime"])
+- Costs_Inclusive: Are defence costs inside or outside the limit? Specify per coverage
+- Territorial_Limits: Geographic coverage (e.g., "Worldwide excluding USA/Canada")
+- Jurisdiction: Governing law (e.g., "England and Wales")
 
-9. coverage_limits: Main policy limits as object with structure:
-   {
-     "aggregate_limit": { "amount": number, "currency": "GBP", "description": "text" },
-     "per_claim_limit": { "amount": number, "currency": "GBP", "description": "text" },
-     "any_other_limits": { "amount": number, "currency": "GBP", "description": "text" }
-   }
+**INNER LIMITS & SUB-LIMITS**
+Extract ALL sublimits mentioned:
+- inner_limits: Array of objects:
+  [
+    { 
+      "coverage_name": "Legal Expenses", 
+      "limit": 100000, 
+      "currency": "GBP", 
+      "applies_to": "per claim",
+      "description": "Legal defence costs"
+    },
+    { 
+      "coverage_name": "Crisis Management", 
+      "limit": 50000, 
+      "currency": "GBP", 
+      "applies_to": "aggregate",
+      "description": "PR and crisis response"
+    }
+  ]
 
-10. inner_limits: Sub-limits and specific coverage limits as array:
-   [
-     { "coverage_name": "Legal Expenses", "limit": 100000, "currency": "GBP", "applies_to": "per claim" },
-     { "coverage_name": "Crisis Management", "limit": 50000, "currency": "GBP", "applies_to": "aggregate" }
-   ]
+**CYBER-SPECIFIC DETAILS (If Applicable)**
+- Cyber_BI_Indemnity_Period: Business Interruption coverage period (e.g., "90 days", "365 days")
+- Cyber_BI_Time_Excess: BI time excess (e.g., "8 hours", "24 hours")
+- Cyber_AICOW_Limit: Additional Increased Cost of Working limit
+- Cyber_Operational_Error_Limit: Operational error coverage limit
+- Cyber_Dependent_BI_Limit: Dependent business interruption limit
+- Cyber_Crime_Limit: Cyber crime limit
+- Cyber_Crime_Excess: Cyber crime excess/deductible
+- Cyber_Security_Requirements: Minimum security conditions (MFA, EDR, patching, etc.)
 
-11. deductible_amount: Deductible/excess amount (numeric)
+**PROPERTY-SPECIFIC DETAILS (If Applicable)**
+- Property_Sum_Insured_Buildings: Buildings sum insured
+- Property_Sum_Insured_Contents: Contents sum insured
+- Property_Sum_Insured_Stock: Stock sum insured
+- Property_Excess: Standard excess amount
+- Property_Excess_Subsidence: Subsidence-specific excess
+- Property_Cover_Type: "All Risks", "Named Perils", "Specified Cover"
+- Property_Valuation_Basis: "Reinstatement", "Indemnity", "First Loss"
+- Property_BI_Period: Business Interruption indemnity period
+- Property_Security_Requirements: Security warranties (alarm type, locks, etc.)
+- Property_Unoccupied_Exclusion: Days before unoccupied property exclusion applies
 
-12. broker_commission: Commission percentage or amount
+**SUBJECTIVITIES (Critical)**
+Extract ALL pre-binding conditions that must be satisfied:
+- subjectivities: Array of objects:
+  [
+    {
+      "title": "Brief description",
+      "category": "documentation|risk_improvement|financial|security|survey|other",
+      "is_mandatory": true,
+      "verbatim_excerpt": "Exact text from document",
+      "deadline_days": Number of days if specified,
+      "page_ref": "Page X"
+    }
+  ]
 
-13. premium_adjustability: Whether premium can be adjusted
+**EXCLUSIONS & CONDITIONS**
+- exclusions_noted: Array of key exclusions
+- conditions_warranties_noted: Array of conditions precedent and warranties
+- endorsements_noted: Array of endorsements/modifications
 
-14. payment_terms: Payment schedule and terms
+**KEY TERMS**
+- broker_commission: Commission % or amount
+- payment_terms: Payment schedule
+- premium_adjustability: Can premium be adjusted?
+- retro_date: Retroactive date if applicable
 
-15. quote_valid_until: Quote expiration date (ISO format)
+**EVIDENCE TRAIL**
+- evidence: Document where ALL key data points were found:
+  [
+    {
+      "field": "Premium_Total_Annual",
+      "value": "GBP 65,952.65",
+      "snippet": "exact text from document",
+      "page_ref": "Page 2"
+    }
+  ]
 
-16. endorsements_noted: Array of endorsements mentioned
+**OUTPUT FORMAT:**
+Return a comprehensive JSON object with ALL fields above. Use null for fields not found. Include confidence scores where data is ambiguous.
 
-17. exclusions_noted: Array of exclusions mentioned
+CRITICAL INSTRUCTIONS:
+1. Extract EVERY monetary value with exact currency
+2. Distinguish between aggregate vs any-one-claim limits
+3. Distinguish between costs-inclusive vs costs-exclusive
+4. Flag ALL subjectivities as these are binding conditions
+5. Note all security requirements as these are potential claim declinature risks
+6. For Cyber: BI period and time excess are CRITICAL - extract precisely
+7. For Property: Security warranties and unoccupied exclusions are CRITICAL
+8. Provide evidence trail for all key extractions
 
-18. conditions_warranties_noted: Array of conditions and warranties
-
-19. subjectivities: Array of items requiring action before binding:
-   [
-     {
-       "title": "Brief description",
-       "normalized_category": "documentation|risk_improvement|financial|other",
-       "is_mandatory": true/false,
-       "verbatim_excerpt": "Exact quote from document",
-       "page_ref": "page number"
-     }
-   ]
-
-20. other_key_terms: Array of other important terms
-
-21. evidence: Array documenting where key information was found:
-   [
-     {
-       "field": "coverage_limits",
-       "snippet": "exact text from document",
-       "page_ref": "page X"
-     }
-   ]
-
-CRITICAL: Extract ALL monetary amounts accurately with correct currency. For coverage_limits and inner_limits, capture every limit mentioned in the document.
-
-Return as valid JSON object with all fields.`;
+Return as valid JSON object.`;
 
     // Retry logic for OpenAI API calls
     let extractRes;
