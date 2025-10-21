@@ -17,8 +17,10 @@ import DocumentProcessingSuccess from "./DocumentProcessingSuccess";
 import UnderwriterMatchingResults from "./UnderwriterMatchingResults";
 import BrokerPortal from "./BrokerPortal";
 import AdminPortal from "./AdminPortal";
+import ComingSoonAlert from "./ComingSoonAlert";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 
 interface DashboardProps {
   onBack: () => void;
@@ -68,6 +70,7 @@ const Dashboard = ({ onBack }: DashboardProps) => {
   const [selectedDocumentForMatching, setSelectedDocumentForMatching] = useState<{ id: string; name: string } | null>(null);
   const [currentView, setCurrentView] = useState<'dashboard' | 'broker-portal' | 'admin-portal'>('dashboard');
   const { toast } = useToast();
+  const { hasFeature, loading: featuresLoading } = useFeatureAccess();
 
   useEffect(() => {
     fetchData();
@@ -166,7 +169,7 @@ const Dashboard = ({ onBack }: DashboardProps) => {
     }, 3000); // Wait 3 seconds for processing
   };
 
-  if (loading) {
+  if (loading || featuresLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -369,23 +372,43 @@ const Dashboard = ({ onBack }: DashboardProps) => {
           </TabsContent>
 
           <TabsContent value="comparison">
-            <ComparisonView quotes={quotes} onRefresh={fetchData} />
+            {hasFeature('quote_comparison') || hasFeature('document_processing') ? (
+              <ComparisonView quotes={quotes} onRefresh={fetchData} />
+            ) : (
+              <ComingSoonAlert featureName="Quick Comparison" />
+            )}
           </TabsContent>
 
           <TabsContent value="reports">
-            <ClientReportGenerator />
+            {hasFeature('custom_reporting') ? (
+              <ClientReportGenerator />
+            ) : (
+              <ComingSoonAlert featureName="Client Reports" />
+            )}
           </TabsContent>
 
           <TabsContent value="intelligence">
-            <MarketIntelligenceDashboard />
+            {hasFeature('market_intelligence') ? (
+              <MarketIntelligenceDashboard />
+            ) : (
+              <ComingSoonAlert featureName="Market Intelligence" />
+            )}
           </TabsContent>
 
           <TabsContent value="tracking">
-            <PlacementOutcomeTracker />
+            {hasFeature('placement_tracking') ? (
+              <PlacementOutcomeTracker />
+            ) : (
+              <ComingSoonAlert featureName="Placement Tracking" />
+            )}
           </TabsContent>
 
           <TabsContent value="predictions">
-            <PredictiveAnalyticsDashboard />
+            {hasFeature('predictive_analytics') ? (
+              <PredictiveAnalyticsDashboard />
+            ) : (
+              <ComingSoonAlert featureName="Predictive Analytics" />
+            )}
           </TabsContent>
 
           <TabsContent value="team">
