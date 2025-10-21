@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CC Staff Dashboard - Cover Compass</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <style>
+        .tab-active {
+            background-color: #007bff;
+            color: white;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 50;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 100;
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-40">
+        <div class="container mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2">
+                    <span class="text-2xl font-bold text-[#007bff]">Cover</span>
+                    <span class="text-2xl font-bold text-gray-800">Compass</span>
+                </div>
+                <div class="border-l border-gray-300 pl-4">
+                    <h1 class="text-xl font-bold text-gray-800">CC Staff Dashboard</h1>
+                    <p class="text-sm text-gray-500">System Control Center</p>
+                </div>
+            </div>
+            <button onclick="signOut()" class="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                </svg>
+                <span>Sign Out</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="bg-white border-b border-gray-200">
+        <div class="container mx-auto px-4">
+            <div class="flex space-x-1 overflow-x-auto">
+                <button onclick="switchTab('clients')" id="tab-clients" class="tab-active flex items-center space-x-2 px-6 py-3 font-medium rounded-t-lg transition whitespace-nowrap">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                    </svg>
+                    <span>Clients</span>
+                </button>
+                <button onclick="switchTab('features')" id="tab-features" class="flex items-center space-x-2 px-6 py-3 font-medium text-gray-600 hover:bg-gray-100 rounded-t-lg transition whitespace-nowrap">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                    </svg>
+                    <span>Features</span>
+                </button>
+                <button onclick="switchTab('analytics')" id="tab-analytics" class="flex items-center space-x-2 px-6 py-3 font-medium text-gray-600 hover:bg-gray-100 rounded-t-lg transition whitespace-nowrap">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                    <span>Analytics</span>
+                </button>
+                <button onclick="switchTab('marketplace')" id="tab-marketplace" class="flex items-center space-x-2 px-6 py-3 font-medium text-gray-600 hover:bg-gray-100 rounded-t-lg transition whitespace-nowrap">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                    <span>Marketplace</span>
+                </button>
+                <button onclick="switchTab('reports')" id="tab-reports" class="flex items-center space-x-2 px-6 py-3 font-medium text-gray-600 hover:bg-gray-100 rounded-t-lg transition whitespace-nowrap">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <span>Reports</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Clients Tab Content -->
+        <div id="content-clients" class="tab-content">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div class="p-6 border-b border-gray-200 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">Client Organizations</h2>
+                        <p class="text-sm text-gray-500 mt-1">Manage client accounts and access codes</p>
+                    </div>
+                    <button onclick="openCreateModal()" class="flex items-center space-x-2 bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-md transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        <span>Create Company</span>
+                    </button>
+                </div>
+
+                <!-- Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tier</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Users</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company Code</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="organizationsTable" class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                                    <svg class="w-12 h-12 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                    </svg>
+                                    <p>Loading organizations...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Placeholder Content for Other Tabs -->
+        <div id="content-features" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">Features Management</h2>
+                <p class="text-gray-500">Coming soon...</p>
+            </div>
+        </div>
+
+        <div id="content-analytics" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">Analytics Dashboard</h2>
+                <p class="text-gray-500">Coming soon...</p>
+            </div>
+        </div>
+
+        <div id="content-marketplace" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">Marketplace Insights</h2>
+                <p class="text-gray-500">Coming soon...</p>
+            </div>
+        </div>
+
+        <div id="content-reports" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">Global Reports</h2>
+                <p class="text-gray-500">Coming soon...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Create Company Modal -->
+    <div id="createModal" class="modal">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="p-6 border-b border-gray-200">
+                <h3 class="text-xl font-bold text-gray-800">Create New Company</h3>
+            </div>
+            <form onsubmit="createCompany(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
+                    <input type="text" id="companyName" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#007bff] focus:border-transparent" placeholder="Enter company name">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Subscription Tier</label>
+                    <select id="companyTier" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#007bff] focus:border-transparent">
+                        <option value="">Select tier...</option>
+                        <option value="basic">Basic</option>
+                        <option value="professional">Professional</option>
+                        <option value="enterprise">Enterprise</option>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" onclick="closeCreateModal()" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-[#007bff] text-white rounded-md hover:bg-[#0056b3] transition">Create Company</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBL5WuRNVcKC9Vf6v8JXxK5WvMZNQqVZzI",
+            authDomain: "lovable-artifacts.firebaseapp.com",
+            projectId: "lovable-artifacts",
+            storageBucket: "lovable-artifacts.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef123456"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Global variables (expected to be defined)
+        const __initial_auth_token = typeof window.__initial_auth_token !== 'undefined' ? window.__initial_auth_token : null;
+        const __app_id = typeof window.__app_id !== 'undefined' ? window.__app_id : 'default-app';
+        const userId = __initial_auth_token || crypto.randomUUID();
+
+        // Firestore path
+        const collectionPath = `artifacts/${__app_id}/public/data/client_organizations`;
+
+        // Tab switching
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('[id^="tab-"]').forEach(tab => {
+                tab.classList.remove('tab-active', 'bg-white');
+                tab.classList.add('text-gray-600', 'hover:bg-gray-100');
+            });
+            document.getElementById(`tab-${tabName}`).classList.add('tab-active');
+            document.getElementById(`tab-${tabName}`).classList.remove('text-gray-600', 'hover:bg-gray-100');
+
+            // Update content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            document.getElementById(`content-${tabName}`).classList.remove('hidden');
+        }
+
+        // Generate unique 6-character alphanumeric code
+        function generateCompanyCode() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let code = '';
+            for (let i = 0; i < 6; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return code;
+        }
+
+        // Check if code is unique
+        async function isCodeUnique(code) {
+            const snapshot = await db.collection(collectionPath)
+                .where('companyCode', '==', code)
+                .get();
+            return snapshot.empty;
+        }
+
+        // Generate unique code
+        async function generateUniqueCode() {
+            let code = generateCompanyCode();
+            let attempts = 0;
+            while (!(await isCodeUnique(code)) && attempts < 10) {
+                code = generateCompanyCode();
+                attempts++;
+            }
+            return code;
+        }
+
+        // Modal functions
+        function openCreateModal() {
+            document.getElementById('createModal').classList.add('active');
+        }
+
+        function closeCreateModal() {
+            document.getElementById('createModal').classList.remove('active');
+            document.getElementById('companyName').value = '';
+            document.getElementById('companyTier').value = '';
+        }
+
+        // Create company
+        async function createCompany(event) {
+            event.preventDefault();
+            
+            const companyName = document.getElementById('companyName').value;
+            const tier = document.getElementById('companyTier').value;
+
+            try {
+                const companyCode = await generateUniqueCode();
+                
+                await db.collection(collectionPath).add({
+                    companyName: companyName,
+                    tier: tier,
+                    users: 0,
+                    companyCode: companyCode,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                showToast('Company created successfully!');
+                closeCreateModal();
+            } catch (error) {
+                console.error('Error creating company:', error);
+                showToast('Error creating company', 'error');
+            }
+        }
+
+        // Copy code to clipboard
+        async function copyCode(code) {
+            try {
+                await navigator.clipboard.writeText(code);
+                showToast('Code copied to clipboard!');
+            } catch (error) {
+                console.error('Error copying code:', error);
+                showToast('Failed to copy code', 'error');
+            }
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.style.background = type === 'error' ? '#ef4444' : '#10b981';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        // Render organizations table
+        function renderOrganizations(organizations) {
+            const tableBody = document.getElementById('organizationsTable');
+            
+            if (organizations.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                            <svg class="w-12 h-12 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                            </svg>
+                            <p class="font-medium mb-1">No organizations found</p>
+                            <p class="text-sm">Create your first company to get started</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tableBody.innerHTML = organizations.map(org => `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4">
+                        <div class="font-medium text-gray-900">${org.companyName}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="inline-flex px-3 py-1 text-xs font-medium rounded-full ${
+                            org.tier === 'enterprise' ? 'bg-purple-100 text-purple-800' :
+                            org.tier === 'professional' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'
+                        }">
+                            ${org.tier}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center text-gray-700">
+                            <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                            </svg>
+                            <span>${org.users}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        ${org.companyCode ? `
+                            <div class="flex items-center space-x-2">
+                                <button onclick="copyCode('${org.companyCode}')" class="flex items-center space-x-1 text-sm text-gray-700 hover:text-[#007bff] transition">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                    </svg>
+                                    <span class="font-mono font-semibold">${org.companyCode}</span>
+                                </button>
+                            </div>
+                        ` : `
+                            <span class="inline-flex px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">No code</span>
+                        `}
+                    </td>
+                    <td class="px-6 py-4">
+                        <button onclick="inviteUser('${org.id}')" class="flex items-center space-x-1 text-sm text-gray-700 hover:text-[#007bff] border border-gray-300 hover:border-[#007bff] px-3 py-1.5 rounded-md transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                            </svg>
+                            <span>Invite</span>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Invite user (placeholder)
+        function inviteUser(orgId) {
+            showToast('Invite functionality coming soon!');
+        }
+
+        // Sign out
+        function signOut() {
+            showToast('Signing out...');
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1000);
+        }
+
+        // Listen for real-time updates
+        function setupRealtimeListener() {
+            db.collection(collectionPath)
+                .orderBy('createdAt', 'desc')
+                .onSnapshot((snapshot) => {
+                    const organizations = [];
+                    snapshot.forEach((doc) => {
+                        organizations.push({
+                            id: doc.id,
+                            ...doc.data()
+                        });
+                    });
+                    renderOrganizations(organizations);
+                }, (error) => {
+                    console.error('Error listening to organizations:', error);
+                    showToast('Error loading organizations', 'error');
+                });
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            setupRealtimeListener();
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('createModal').addEventListener('click', (e) => {
+            if (e.target.id === 'createModal') {
+                closeCreateModal();
+            }
+        });
+    </script>
+</body>
+</html>
