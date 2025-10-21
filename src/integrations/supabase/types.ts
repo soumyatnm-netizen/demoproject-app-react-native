@@ -176,6 +176,7 @@ export type Database = {
           broker_logo_url: string | null
           claims_free: boolean | null
           client_name: string
+          company_id: string | null
           comparison_id: string | null
           created_at: string
           current_broker: string | null
@@ -201,6 +202,7 @@ export type Database = {
           broker_logo_url?: string | null
           claims_free?: boolean | null
           client_name: string
+          company_id?: string | null
           comparison_id?: string | null
           created_at?: string
           current_broker?: string | null
@@ -226,6 +228,7 @@ export type Database = {
           broker_logo_url?: string | null
           claims_free?: boolean | null
           client_name?: string
+          company_id?: string | null
           comparison_id?: string | null
           created_at?: string
           current_broker?: string | null
@@ -246,6 +249,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "client_reports_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "broker_companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "client_reports_comparison_id_fkey"
             columns: ["comparison_id"]
@@ -312,6 +322,7 @@ export type Database = {
       comparisons: {
         Row: {
           client_name: string | null
+          company_id: string | null
           comparison_data: Json | null
           created_at: string
           description: string | null
@@ -324,6 +335,7 @@ export type Database = {
         }
         Insert: {
           client_name?: string | null
+          company_id?: string | null
           comparison_data?: Json | null
           created_at?: string
           description?: string | null
@@ -336,6 +348,7 @@ export type Database = {
         }
         Update: {
           client_name?: string | null
+          company_id?: string | null
           comparison_data?: Json | null
           created_at?: string
           description?: string | null
@@ -346,7 +359,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "comparisons_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "broker_companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       coverage_categories: {
         Row: {
@@ -385,6 +406,7 @@ export type Database = {
       }
       documents: {
         Row: {
+          company_id: string | null
           created_at: string
           file_size: number | null
           file_type: string
@@ -397,6 +419,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          company_id?: string | null
           created_at?: string
           file_size?: number | null
           file_type: string
@@ -409,6 +432,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          company_id?: string | null
           created_at?: string
           file_size?: number | null
           file_type?: string
@@ -420,7 +444,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "broker_companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       file_access_audit: {
         Row: {
@@ -467,6 +499,7 @@ export type Database = {
       gap_analyses: {
         Row: {
           attack_strategy: string | null
+          company_id: string | null
           comparison_id: string | null
           competitive_advantages: string[] | null
           coverage_gaps: Json
@@ -481,6 +514,7 @@ export type Database = {
         }
         Insert: {
           attack_strategy?: string | null
+          company_id?: string | null
           comparison_id?: string | null
           competitive_advantages?: string[] | null
           coverage_gaps: Json
@@ -495,6 +529,7 @@ export type Database = {
         }
         Update: {
           attack_strategy?: string | null
+          company_id?: string | null
           comparison_id?: string | null
           competitive_advantages?: string[] | null
           coverage_gaps?: Json
@@ -508,6 +543,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "gap_analyses_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "broker_companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "gap_analyses_comparison_id_fkey"
             columns: ["comparison_id"]
@@ -973,6 +1015,7 @@ export type Database = {
       }
       policy_wordings: {
         Row: {
+          company_id: string | null
           coverage_sections: Json | null
           created_at: string
           document_id: string | null
@@ -993,6 +1036,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          company_id?: string | null
           coverage_sections?: Json | null
           created_at?: string
           document_id?: string | null
@@ -1013,6 +1057,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          company_id?: string | null
           coverage_sections?: Json | null
           created_at?: string
           document_id?: string | null
@@ -1033,6 +1078,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "policy_wordings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "broker_companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "policy_wordings_document_id_fkey"
             columns: ["document_id"]
@@ -1227,6 +1279,7 @@ export type Database = {
       }
       reports: {
         Row: {
+          company_id: string | null
           comparison_id: string
           created_at: string
           export_format: string | null
@@ -1237,6 +1290,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          company_id?: string | null
           comparison_id: string
           created_at?: string
           export_format?: string | null
@@ -1247,6 +1301,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          company_id?: string | null
           comparison_id?: string
           created_at?: string
           export_format?: string | null
@@ -1257,6 +1312,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "reports_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "broker_companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "reports_comparison_id_fkey"
             columns: ["comparison_id"]
@@ -1392,6 +1454,7 @@ export type Database = {
       structured_quotes: {
         Row: {
           client_name: string
+          company_id: string | null
           coverage_limits: Json | null
           created_at: string
           deductible_amount: number | null
@@ -1416,6 +1479,7 @@ export type Database = {
         }
         Insert: {
           client_name: string
+          company_id?: string | null
           coverage_limits?: Json | null
           created_at?: string
           deductible_amount?: number | null
@@ -1440,6 +1504,7 @@ export type Database = {
         }
         Update: {
           client_name?: string
+          company_id?: string | null
           coverage_limits?: Json | null
           created_at?: string
           deductible_amount?: number | null
@@ -1463,6 +1528,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "structured_quotes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "broker_companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "structured_quotes_document_id_fkey"
             columns: ["document_id"]
