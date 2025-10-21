@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +44,8 @@ interface AuthWrapperProps {
 }
 
 const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -92,6 +95,9 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
             } : null;
             
             createOrUpdateProfile(session.user, inviteData, adminSignUpData, companyData);
+            
+            // Check user role and redirect if needed
+            checkUserRoleAndRedirect(session.user.id);
           }, 100);
         }
       }
@@ -102,10 +108,38 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      
+      // Check role on initial load if user is already signed in
+      if (session?.user) {
+        checkUserRoleAndRedirect(session.user.id);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, [inviteData]);
+
+  // Check user role and redirect CC Staff to /cc
+  const checkUserRoleAndRedirect = async (userId: string) => {
+    // Skip if already on CC routes or auth/reset
+    if (location.pathname.startsWith('/cc') || location.pathname === '/auth/reset') {
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('role', 'CC_STAFF')
+        .maybeSingle();
+
+      if (!error && data) {
+        navigate('/cc', { replace: true });
+      }
+    } catch (error) {
+      console.error('Error checking user role:', error);
+    }
+  };
 
   const createOrUpdateProfile = async (user: User, inviteInfo?: any, adminData?: any, companyInfo?: any) => {
     console.log('createOrUpdateProfile called with:', { 
