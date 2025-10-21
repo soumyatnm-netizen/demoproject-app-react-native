@@ -248,7 +248,7 @@ Return as valid JSON object.`;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`[extract-quote] Extraction attempt ${attempt}/${maxRetries} using Lovable AI (GPT-5 Mini)`);
+        console.log(`[extract-quote] Extraction attempt ${attempt}/${maxRetries} using Lovable AI (GPT-5)`);
         
         extractRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
@@ -257,7 +257,7 @@ Return as valid JSON object.`;
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'openai/gpt-5-mini', // GPT-5 Mini supports PDF processing reliably
+            model: 'openai/gpt-5', // GPT-5 flagship model with excellent multimodal PDF support
             messages: [
               { role: 'system', content: systemPrompt },
               {
@@ -356,7 +356,7 @@ Return as valid JSON object.`;
             documentId,
             filename: document.filename,
             processedAt: new Date().toISOString(),
-            model: extractData.model || 'openai/gpt-5-mini',
+            model: extractData.model || 'openai/gpt-5',
             usage: extractData.usage,
             timing: {
               total_ms: parseInt(totalTime),
