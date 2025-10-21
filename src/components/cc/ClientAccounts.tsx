@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Building2, Users, Key, Copy, Check, Settings } from "lucide-react";
+import { Plus, Building2, Users, Key, Copy, Check, Settings, Mail, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface ClientAccountsProps {
@@ -22,7 +22,11 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [showCompanyInvitesDialog, setShowCompanyInvitesDialog] = useState(false);
+  const [showCompanyDetailsDialog, setShowCompanyDetailsDialog] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<any>(null);
+  const [companyInvites, setCompanyInvites] = useState<any[]>([]);
+  const [companyUsers, setCompanyUsers] = useState<any[]>([]);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   
   // Form states
@@ -267,6 +271,60 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
     });
   };
 
+  const loadCompanyInvites = async (companyId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('company_invites')
+        .select('*')
+        .eq('company_id', companyId)
+        .is('used_at', null)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setCompanyInvites(data || []);
+    } catch (error) {
+      console.error('Error loading company invites:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load company invites",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const loadCompanyUsers = async (companyId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setCompanyUsers(data || []);
+    } catch (error) {
+      console.error('Error loading company users:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load company users",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const viewCompanyInvites = async (company: any) => {
+    setSelectedCompany(company);
+    await loadCompanyInvites(company.id);
+    setShowCompanyInvitesDialog(true);
+  };
+
+  const viewCompanyDetails = async (company: any) => {
+    setSelectedCompany(company);
+    await loadCompanyUsers(company.id);
+    setShowCompanyDetailsDialog(true);
+  };
+
   return (
     <div className="space-y-6">
       {/* Pending Invites Section */}
@@ -459,6 +517,22 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => viewCompanyInvites(company)}
+                        >
+                          <Mail className="h-4 w-4 mr-2" />
+                          Invites
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => viewCompanyDetails(company)}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Details
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => {
                             setSelectedCompany(company);
                             setShowInviteDialog(true);
@@ -521,6 +595,156 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
             <Button onClick={createInvite} className="w-full">
               Create Invite
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Company Invites Dialog */}
+      <Dialog open={showCompanyInvitesDialog} onOpenChange={setShowCompanyInvitesDialog}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Pending Invites - {selectedCompany?.name}</DialogTitle>
+            <DialogDescription>
+              Active invitations for this company
+            </DialogDescription>
+          </DialogHeader>
+          {companyInvites.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">No pending invites</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Invite Code</TableHead>
+                  <TableHead>Expires</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {companyInvites.map((invite) => (
+                  <TableRow key={invite.id}>
+                    <TableCell>{invite.email}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{invite.role}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyCode(invite.invite_code)}
+                      >
+                        {copiedCode === invite.invite_code ? (
+                          <Check className="h-4 w-4 mr-2" />
+                        ) : (
+                          <Copy className="h-4 w-4 mr-2" />
+                        )}
+                        {invite.invite_code}
+                      </Button>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {new Date(invite.expires_at).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          deleteInvite(invite.id);
+                          loadCompanyInvites(selectedCompany.id);
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Company Details Dialog */}
+      <Dialog open={showCompanyDetailsDialog} onOpenChange={setShowCompanyDetailsDialog}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Company Details - {selectedCompany?.name}</DialogTitle>
+            <DialogDescription>
+              View company information and users
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6">
+            {/* Company Info */}
+            <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
+              <div>
+                <Label className="text-sm font-medium">Company Name</Label>
+                <p className="text-sm">{selectedCompany?.name}</p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Subscription Tier</Label>
+                <Badge>{selectedCompany?.subscription_tier}</Badge>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Company Code</Label>
+                <p className="text-sm font-mono">{selectedCompany?.company_code}</p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Max Users</Label>
+                <p className="text-sm">{selectedCompany?.max_users}</p>
+              </div>
+              {selectedCompany?.domain && (
+                <div>
+                  <Label className="text-sm font-medium">Domain</Label>
+                  <p className="text-sm">{selectedCompany.domain}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Users List */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Active Users ({companyUsers.length})</h3>
+              {companyUsers.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">No users yet</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Last Login</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {companyUsers.map((user) => (
+                      <TableRow key={user.user_id}>
+                        <TableCell>
+                          {user.first_name && user.last_name 
+                            ? `${user.first_name} ${user.last_name}` 
+                            : 'N/A'}
+                        </TableCell>
+                        <TableCell>{user.email || 'N/A'}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{user.role}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={user.is_active ? "default" : "secondary"}>
+                            {user.is_active ? "Active" : "Inactive"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {user.last_login_at 
+                            ? new Date(user.last_login_at).toLocaleDateString()
+                            : 'Never'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
