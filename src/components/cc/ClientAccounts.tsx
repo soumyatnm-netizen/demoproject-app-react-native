@@ -151,61 +151,49 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
       const userId = (await supabase.auth.getUser()).data.user?.id;
       if (!userId) throw new Error('Not authenticated');
 
-      // Check for existing pending invite
-      const { data: existingInvites } = await supabase
+      const email = inviteEmail.toLowerCase().trim();
+
+      // Delete any existing pending invites for this email/company to avoid duplicates
+      const { error: deleteError } = await supabase
         .from('company_invites')
-        .select('id, invite_code')
+        .delete()
         .eq('company_id', selectedCompany.id)
-        .eq('email', inviteEmail.toLowerCase().trim())
-        .is('used_at', null)
-        .gt('expires_at', new Date().toISOString());
+        .eq('email', email)
+        .is('used_at', null);
 
-      let inviteCode: string;
-
-      if (existingInvites && existingInvites.length > 0) {
-        // Update existing invite
-        const existingInvite = existingInvites[0];
-        inviteCode = existingInvite.invite_code;
-        
-        const { error: updateError } = await supabase
-          .from('company_invites')
-          .update({
-            role: inviteRole as any,
-            invited_by: userId,
-            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          })
-          .eq('id', existingInvite.id);
-
-        if (updateError) throw updateError;
-      } else {
-        // Create new invite
-        const { data: inviteData, error: inviteError } = await supabase
-          .rpc('generate_invite_code')
-          .single();
-
-        if (inviteError) throw inviteError;
-
-        inviteCode = inviteData || await generateFallbackCode();
-
-        const { error } = await supabase
-          .from('company_invites')
-          .insert([{
-            company_id: selectedCompany.id,
-            email: inviteEmail.toLowerCase().trim(),
-            role: inviteRole as any,
-            invited_by: userId,
-            invite_code: inviteCode,
-            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          }]);
-
-        if (error) throw error;
+      if (deleteError) {
+        console.warn('Error deleting existing invites:', deleteError);
+        // Continue anyway - we'll handle duplicates below
       }
+
+      // Generate new invite code
+      const { data: inviteData, error: inviteError } = await supabase
+        .rpc('generate_invite_code')
+        .single();
+
+      if (inviteError) throw inviteError;
+
+      const inviteCode = inviteData || await generateFallbackCode();
+
+      // Create new invite
+      const { error } = await supabase
+        .from('company_invites')
+        .insert([{
+          company_id: selectedCompany.id,
+          email: email,
+          role: inviteRole as any,
+          invited_by: userId,
+          invite_code: inviteCode,
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        }]);
+
+      if (error) throw error;
 
       // Send invite email
       try {
         await supabase.functions.invoke('send-company-invite', {
           body: {
-            email: inviteEmail,
+            email: email,
             companyName: selectedCompany.name,
             inviteCode: inviteCode,
             role: inviteRole,
@@ -214,13 +202,13 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
         
         toast({
           title: "Success",
-          description: `Invite ${existingInvites && existingInvites.length > 0 ? 'updated' : 'created'} for ${inviteEmail} - Invitation email sent`,
+          description: `Invitation sent to ${email}`,
         });
       } catch (emailError) {
         console.error('Failed to send invite email:', emailError);
         toast({
-          title: "Success",
-          description: `Invite ${existingInvites && existingInvites.length > 0 ? 'updated' : 'created'} for ${inviteEmail} (email failed to send)`,
+          title: "Partial Success",
+          description: `Invite created for ${email} but email failed to send`,
           variant: "destructive",
         });
       }
