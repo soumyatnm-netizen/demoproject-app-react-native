@@ -100,11 +100,9 @@ serve(async (req) => {
     // Convert PDF to base64 for Lovable AI (chunked to avoid stack overflow)
     stage = "convert_base64";
     const t_convert_start = performance.now();
-    const chunkSize = 8192;
     let binaryString = '';
-    for (let i = 0; i < pdfBytes.length; i += chunkSize) {
-      const chunk = pdfBytes.slice(i, i + chunkSize);
-      binaryString += String.fromCharCode(...chunk);
+    for (let i = 0; i < pdfBytes.length; i++) {
+      binaryString += String.fromCharCode(pdfBytes[i]);
     }
     const base64Pdf = btoa(binaryString);
     console.log('[extract-wording] PDF converted to base64 in', (performance.now() - t_convert_start).toFixed(0), 'ms');

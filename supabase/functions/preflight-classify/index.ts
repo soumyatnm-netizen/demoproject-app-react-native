@@ -67,13 +67,11 @@ serve(async (req) => {
     console.log(`[Preflight] PDF fetched: ${pdfBytes.byteLength} bytes`);
 
     // Convert PDF to base64 for Lovable AI (chunked to avoid stack overflow)
-    const chunkSize = 8192;
-    let base64Pdf = '';
-    for (let i = 0; i < pdfBytes.length; i += chunkSize) {
-      const chunk = pdfBytes.slice(i, i + chunkSize);
-      base64Pdf += String.fromCharCode(...chunk);
+    let binaryString = '';
+    for (let i = 0; i < pdfBytes.length; i++) {
+      binaryString += String.fromCharCode(pdfBytes[i]);
     }
-    base64Pdf = btoa(base64Pdf);
+    const base64Pdf = btoa(binaryString);
     console.log(`[Preflight] PDF converted to base64`);
 
     // Lightweight classification prompt (150-250 tokens)
