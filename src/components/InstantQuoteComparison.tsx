@@ -299,6 +299,19 @@ const InstantQuoteComparison = () => {
           throw new Error(processResult?.error || 'Policy wording processing returned unsuccessful result');
         }
 
+        // Check if cached result was used
+        if (processResult?.cached) {
+          console.log(`⚡ Cache hit for ${file.name} - instant results!`);
+          addStatusLog(`⚡ Found cached analysis for ${file.name} - instant results!`, 'success');
+          toast({
+            title: "⚡ Cached Analysis Used",
+            description: `${file.name} was previously analyzed - instant results!`,
+            duration: 3000,
+          });
+        } else {
+          addStatusLog(`✅ Completed AI analysis of ${file.name}`, 'success');
+        }
+
         if (processResult?.meta?.policyWordingId) {
           processedIds.push(processResult.meta.policyWordingId);
         } else {

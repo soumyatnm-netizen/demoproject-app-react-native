@@ -2,6 +2,7 @@ console.log("[policy-wording] boot NO_PDFJS");
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { generateDocumentHash, getCachedDocument, cacheDocumentResults } from '../_shared/document-cache.ts';
 
 // CORS helpers
 function corsHeaders(req: Request) {
@@ -102,6 +103,64 @@ serve(async (req) => {
     if (pdfBytes.byteLength > 30 * 1024 * 1024) {
       return json(req, 413, { ok: false, error: 'PDF too large (max 30MB). Please use a smaller document or split it into sections.' });
     }
+
+    // 🚀 CHECK CACHE: Generate document hash and check if we've analyzed this before
+    console.log('🔍 Generating document hash for cache lookup...');
+    const documentHash = await generateDocumentHash(pdfBytes.buffer, {
+      insurer: document.filename?.toLowerCase(),
+      fileSize: pdfBytes.byteLength
+    });
+    console.log('📋 Document hash:', documentHash.slice(0, 16) + '...');
+    
+    // Try to get cached results
+    const cachedAnalysis = await getCachedDocument(supabase, documentHash);
+    
+    if (cachedAnalysis) {
+      console.log('⚡ CACHE HIT! Using previously analyzed data - saving AI processing time');
+      
+      // Store a reference using cached data
+      const { data: policyWording, error: cacheInsertError } = await supabase
+        .from('policy_wordings')
+        .insert({
+          document_id: documentId,
+          user_id: document.user_id,
+          insurer_name: cachedAnalysis.insurer_name || 'Cached',
+          policy_version: cachedAnalysis.policy_version || null,
+          policy_date: cachedAnalysis.policy_date || null,
+          insured_name: null,
+          policy_period: cachedAnalysis.policy_period || null,
+          jurisdiction: cachedAnalysis.jurisdiction || null,
+          coverage_sections: cachedAnalysis.coverage_sections || {},
+          key_variables: cachedAnalysis.key_variables || {},
+          emerging_risks: {},
+          services: {},
+          plain_language_summary: cachedAnalysis.plain_language_summary || {},
+          status: 'completed'
+        })
+        .select()
+        .single();
+      
+      if (cacheInsertError) {
+        console.error('Database insert error (cached):', cacheInsertError);
+        return json(req, 500, { ok: false, error: `Failed to save cached analysis: ${cacheInsertError.message}` });
+      }
+      
+      return json(req, 200, {
+        ok: true,
+        cached: true,
+        result: cachedAnalysis,
+        meta: {
+          documentId,
+          policyWordingId: policyWording.id,
+          insurerName: policyWording.insurer_name,
+          processedAt: new Date().toISOString(),
+          source: 'cache',
+          documentHash: documentHash.slice(0, 16) + '...'
+        }
+      });
+    }
+    
+    console.log('❌ Cache miss - proceeding with full AI analysis...');
 
     // --- Upload to OpenAI Files API (with granular error handling) ---
     let fileId: string | null = null;
@@ -348,10 +407,38 @@ serve(async (req) => {
       limits_count: analysisData.structure?.limits?.length || 0,
       exclusions_count: analysisData.terms?.exclusions?.length || 0
     });
+
+    // 💾 CACHE THE RESULTS for future use
+    console.log('💾 Caching analysis results for future reuse...');
+    await cacheDocumentResults(
+      supabase,
+      documentHash,
+      policyWording.insurer_name,
+      {
+        insurer_name: policyWording.insurer_name,
+        policy_version: policyWording.policy_version,
+        policy_date: policyWording.policy_date,
+        policy_period: policyWording.policy_period,
+        jurisdiction: policyWording.jurisdiction,
+        coverage_sections: policyWording.coverage_sections,
+        key_variables: policyWording.key_variables,
+        plain_language_summary: policyWording.plain_language_summary
+      },
+      {
+        policyType: analysisData.policy?.policy_type,
+        fileSize: pdfBytes.byteLength,
+        additionalMetadata: {
+          model: responsesData?.model || 'gpt-4o-mini',
+          usage: responsesData?.usage
+        }
+      }
+    );
+    
     console.log('=== Process Policy Wording Completed Successfully ===');
 
     return json(req, 200, {
       ok: true,
+      cached: false,
       result: analysisData,
       meta: {
         documentId,
@@ -359,7 +446,8 @@ serve(async (req) => {
         insurerName: policyWording.insurer_name,
         processedAt: new Date().toISOString(),
         model: responsesData?.model || 'gpt-4o-mini',
-        usage: responsesData?.usage
+        usage: responsesData?.usage,
+        documentHash: documentHash.slice(0, 16) + '...'
       }
     });
 

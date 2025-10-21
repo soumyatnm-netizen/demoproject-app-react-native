@@ -1013,6 +1013,51 @@ export type Database = {
           },
         ]
       }
+      policy_wording_cache: {
+        Row: {
+          created_at: string | null
+          document_hash: string
+          document_metadata: Json | null
+          extracted_data: Json
+          file_size_bytes: number | null
+          id: string
+          insurer_name: string
+          last_used_at: string | null
+          page_count: number | null
+          policy_type: string | null
+          use_count: number | null
+          version: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          document_hash: string
+          document_metadata?: Json | null
+          extracted_data: Json
+          file_size_bytes?: number | null
+          id?: string
+          insurer_name: string
+          last_used_at?: string | null
+          page_count?: number | null
+          policy_type?: string | null
+          use_count?: number | null
+          version?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          document_hash?: string
+          document_metadata?: Json | null
+          extracted_data?: Json
+          file_size_bytes?: number | null
+          id?: string
+          insurer_name?: string
+          last_used_at?: string | null
+          page_count?: number | null
+          policy_type?: string | null
+          use_count?: number | null
+          version?: number | null
+        }
+        Relationships: []
+      }
       policy_wordings: {
         Row: {
           company_id: string | null
@@ -1911,6 +1956,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      cleanup_old_policy_cache: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       cleanup_sensitive_audit_logs: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -2289,6 +2338,10 @@ export type Database = {
       trigger_underwriter_matching: {
         Args: { p_document_id: string }
         Returns: boolean
+      }
+      update_cache_usage: {
+        Args: { p_document_hash: string }
+        Returns: undefined
       }
       validate_company_code: {
         Args: { p_code: string }
