@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
 
     // Send email via Resend
     const { data, error } = await resend.emails.send({
-      from: `${fromName} <onboarding@resend.dev>`, // Replace with your verified domain
+      from: `${fromName} <${Deno.env.get('RESEND_FROM_EMAIL') || 'onboarding@resend.dev'}>`, // Use verified domain when configured
       to: [user.email],
       subject,
       html,

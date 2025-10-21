@@ -27,7 +27,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Sending invite email to:", email, "for company:", companyName);
 
     const emailResponse = await resend.emails.send({
-      from: "CoverCompass <onboarding@resend.dev>",
+      from: `${Deno.env.get("RESEND_FROM_NAME") || "CoverCompass"} <${Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev"}>`,
       to: [email],
       subject: `Welcome to CoverCompass - ${companyName}`,
       html: `
