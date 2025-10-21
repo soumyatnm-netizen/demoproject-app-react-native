@@ -234,6 +234,59 @@ export const POLICY_WORDING_SCHEMA = {
           quote:   { type: ["string","null"] }
         }
       }
+    },
+
+    coverage_features: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        feature_ai_affirmative_covered: { 
+          type: ["boolean","null"],
+          description: "AI/ML liability coverage (affirmative artificial intelligence, machine learning, algorithm, decision engine liability)"
+        },
+        feature_contractual_liability: { 
+          type: ["boolean","null"],
+          description: "Full contractual breach coverage (beyond professional negligence)"
+        },
+        feature_inefficacy_covered: { 
+          type: ["boolean","null"],
+          description: "Inefficacy coverage (inability to perform, failure of product)"
+        },
+        feature_separate_indemnity_towers: { 
+          type: ["boolean","null"],
+          description: "Separate limit towers / non-eroding limits / dedicated sub-limits"
+        },
+        feature_proactive_services: { 
+          type: ["boolean","null"],
+          description: "Proactive services included (risk management, cyber-attack prevention, risk platform)"
+        },
+        scope_geographic_coverage: { 
+          type: ["string","null"],
+          description: "Geographic scope (e.g., 'Worldwide excluding US/CA', 'EU only', 'Worldwide')"
+        },
+        deductible_data_special: { 
+          type: ["string","null"],
+          description: "Special excess for personal data claims/regulatory investigations (Currency or 'N/A')"
+        },
+        limit_crisis_response: { 
+          type: ["string","null"],
+          description: "Crisis response limit (crisis containment, PR costs) - separate sub-limit (Currency or 'N/A')"
+        },
+        feature_reasoning: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            ai_affirmative_reasoning: { type: ["string","null"] },
+            contractual_liability_reasoning: { type: ["string","null"] },
+            inefficacy_reasoning: { type: ["string","null"] },
+            separate_towers_reasoning: { type: ["string","null"] },
+            proactive_services_reasoning: { type: ["string","null"] },
+            geographic_scope_reasoning: { type: ["string","null"] },
+            data_special_reasoning: { type: ["string","null"] },
+            crisis_response_reasoning: { type: ["string","null"] }
+          }
+        }
+      }
     }
   }
 };

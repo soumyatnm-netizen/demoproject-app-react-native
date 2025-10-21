@@ -211,8 +211,62 @@ serve(async (req) => {
     }
 
     // --- Prepare API call parameters ---
-    const systemText = "You analyse insurance policy wordings for brokers. Extract structure (insuring clause, definitions, conditions, warranties, limits/sublimits/deductibles, territory, jurisdiction, claims basis) plus exclusions and endorsements. Flag ambiguities and broker actions. Include citations. Be concise but complete. Only output valid JSON per the schema.";
-    const userText = "Analyze the attached policy wording PDF and return structured JSON per schema. Be thorough but concise.";
+    const systemText = `You analyse insurance policy wordings for brokers. 
+
+PHASE 1: Extract structure (insuring clause, definitions, conditions, warranties, limits/sublimits/deductibles, territory, jurisdiction, claims basis) plus exclusions and endorsements.
+
+PHASE 2: Extract Coverage Feature Flags - search the ENTIRE policy wording document for these specific features:
+
+1. AI/ML Liability (feature_ai_affirmative_covered): 
+   - Search for: "artificial intelligence", "machine learning", "algorithm liability", "decision engine", "AI", "ML"
+   - TRUE if affirmative coverage found (i.e., explicitly covered)
+   - FALSE if explicitly excluded or silent
+   - Provide reasoning with page/section reference
+
+2. Contractual Breach (feature_contractual_liability):
+   - Search for: "contractual breach", "breach of contract", "express warranty", "contractual liability"
+   - TRUE if full contractual liability covered (beyond professional negligence)
+   - FALSE if limited or excluded
+   - Provide reasoning with reference
+
+3. Efficacy/Inefficacy (feature_inefficacy_covered):
+   - Search for: "inability to perform", "failure of product", "inefficacy", "failure to achieve", "non-performance"
+   - TRUE if covered
+   - FALSE if excluded
+   - Provide reasoning with reference
+
+4. Separate Limit Towers (feature_separate_indemnity_towers):
+   - Search for: "separate limit", "non-eroding limit", "dedicated limit", "independent limit", "additional limit"
+   - TRUE if multiple independent limit towers exist
+   - FALSE if single aggregate limit only
+   - Provide reasoning
+
+5. Proactive Services (feature_proactive_services):
+   - Search for: "proactive", "risk management services", "cyber prevention", "included services", "risk platform", "monitoring"
+   - TRUE if value-added proactive services included
+   - FALSE if none or reactive only
+   - Provide reasoning
+
+6. Geographic Scope (scope_geographic_coverage):
+   - Extract: Territory, jurisdiction, geographic limits
+   - Return specific scope: "Worldwide", "Worldwide excluding USA/Canada", "EU only", "UK only", etc.
+   - Provide reasoning with exact wording
+
+7. Personal Data Special Excess (deductible_data_special):
+   - Search for: "data breach excess", "personal data deductible", "regulatory investigation excess", "privacy excess"
+   - Return currency amount if higher excess applies to data claims
+   - Return "N/A" if no special excess
+   - Provide reasoning
+
+8. Crisis Response Limit (limit_crisis_response):
+   - Search for: "crisis management", "crisis containment", "crisis communication", "PR costs", "reputation management"
+   - Return currency amount if separate sub-limit exists
+   - Return "N/A" if not separately limited or not covered
+   - Provide reasoning
+
+Flag ambiguities and broker actions. Include citations. Be thorough but concise. Only output valid JSON per the schema.`;
+    
+    const userText = "Analyze the attached policy wording PDF and return structured JSON per schema. Extract ALL Phase 1 structural data AND Phase 2 coverage features. Be thorough - search the entire document for each feature.";
     
     console.log('[PW] systemText defined:', systemText ? 'yes' : 'no');
     console.log('[PW] userText defined:', userText ? 'yes' : 'no');
@@ -387,7 +441,18 @@ serve(async (req) => {
             notable_terms: analysisData.terms?.notable_terms || []
           },
           definitions: analysisData.definitions || [],
-          citations: analysisData.citations || []
+          citations: analysisData.citations || [],
+          coverage_features: {
+            feature_ai_affirmative_covered: analysisData.coverage_features?.feature_ai_affirmative_covered ?? null,
+            feature_contractual_liability: analysisData.coverage_features?.feature_contractual_liability ?? null,
+            feature_inefficacy_covered: analysisData.coverage_features?.feature_inefficacy_covered ?? null,
+            feature_separate_indemnity_towers: analysisData.coverage_features?.feature_separate_indemnity_towers ?? null,
+            feature_proactive_services: analysisData.coverage_features?.feature_proactive_services ?? null,
+            scope_geographic_coverage: analysisData.coverage_features?.scope_geographic_coverage ?? null,
+            deductible_data_special: analysisData.coverage_features?.deductible_data_special ?? null,
+            limit_crisis_response: analysisData.coverage_features?.limit_crisis_response ?? null,
+            feature_reasoning: analysisData.coverage_features?.feature_reasoning || {}
+          }
         },
         status: 'completed'
       })
