@@ -28,208 +28,184 @@ export const PasswordResetEmail = ({
   redirect_to,
   token_hash,
   user_email,
-}: PasswordResetEmailProps) => (
-  <Html>
-    <Head />
-    <Preview>Reset your CoverCompass password</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        <Section style={header}>
-          <div style={logo}>
-            <div style={logoIcon}>🧭</div>
-            <Text style={logoText}>CoverCompass</Text>
-          </div>
-          <Text style={tagline}>Markets Mapped. Cover Unlocked</Text>
-        </Section>
-
-        <Section style={content}>
-          <Heading style={h1}>Reset Your Password</Heading>
-          
-          <Text style={text}>
-            We received a request to reset the password for your CoverCompass account ({user_email}).
-          </Text>
-
-          <Text style={text}>
-            Click the button below to create a new password:
-          </Text>
-
-          <Section style={buttonContainer}>
-            <Button
-              href={`${redirect_to}#type=recovery&token=${token}&email=${encodeURIComponent(user_email || '')}`}
-              style={button}
-            >
-              Reset Password
-            </Button>
+}: PasswordResetEmailProps) => {
+  const resetUrl = `${redirect_to}#type=recovery&token=${token}&email=${encodeURIComponent(user_email || '')}`;
+  
+  return (
+    <Html>
+      <Head />
+      <Preview>Reset your Cover Compass password</Preview>
+      <Body style={main}>
+        <Container style={container}>
+          <Section style={header}>
+            <Heading style={logoText}>Cover Compass</Heading>
+            <Text style={tagline}>Markets Mapped. Cover Unlocked</Text>
           </Section>
 
-          <Text style={text}>
-            Or copy and paste this link into your browser:
-          </Text>
-          
-          <code style={code}>
-            {`${redirect_to}#type=recovery&token=${token}&email=${encodeURIComponent(user_email || '')}`}
-          </code>
+          <Section style={content}>
+            <Heading style={h1}>Password Reset Request</Heading>
+            
+            <Text style={greeting}>Hello,</Text>
 
-          <Section style={securityNotice}>
-            <Text style={securityTitle}>🔒 Security Notice</Text>
-            <Text style={securityText}>
-              This password reset link will expire in 1 hour for your security. If you didn't request this password reset, you can safely ignore this email - your account remains secure.
+            <Text style={text}>
+              We received a request to reset the password for your Cover Compass account. 
+              If you initiated this request, please click the secure link below to proceed.
+            </Text>
+
+            <Section style={buttonContainer}>
+              <Button
+                href={resetUrl}
+                style={button}
+              >
+                Reset My Password
+              </Button>
+            </Section>
+
+            <Section style={securityNotice}>
+              <Text style={securityText}>
+                <strong style={strongText}>Important:</strong> This link is only valid for a limited time. 
+                If you did not request a password reset, please ignore this email. Your password will remain secure.
+              </Text>
+            </Section>
+          </Section>
+
+          <Section style={footer}>
+            <Text style={footerText}>
+              You are receiving this email because a password reset was requested for the user associated with this email address.
+            </Text>
+            <Text style={footerText}>
+              If the button above does not work, copy and paste this URL into your browser:
+            </Text>
+            <Text style={footerLink}>
+              <Link href={resetUrl} style={linkStyle}>
+                {resetUrl}
+              </Link>
             </Text>
           </Section>
-        </Section>
-
-        <Section style={footer}>
-          <Text style={footerText}>
-            If you didn't request this password reset, please ignore this email or contact support if you have concerns.
-          </Text>
-          <Text style={footerText}>
-            Need help? Contact us at support@covercompass.io
-          </Text>
-          <Text style={footerText}>
-            <Link href={redirect_to} style={footerLink}>
-              CoverCompass
-            </Link>
-            {' '}- Transforming insurance placement with AI
-          </Text>
-        </Section>
-      </Container>
-    </Body>
-  </Html>
-);
+        </Container>
+      </Body>
+    </Html>
+  );
+};
 
 export default PasswordResetEmail;
 
 const main = {
-  backgroundColor: '#f8fafc',
-  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif',
+  backgroundColor: '#f6f6f6',
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
 };
 
 const container = {
   backgroundColor: '#ffffff',
   margin: '0 auto',
-  marginBottom: '64px',
+  marginBottom: '40px',
+  marginTop: '20px',
   maxWidth: '600px',
+  borderRadius: '8px',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+  overflow: 'hidden',
 };
 
 const header = {
-  backgroundColor: '#1e40af', // Primary blue
-  padding: '40px 32px',
+  backgroundColor: '#ffffff',
+  padding: '20px 20px 10px 20px',
   textAlign: 'center' as const,
-};
-
-const logo = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  marginBottom: '16px',
-};
-
-const logoIcon = {
-  fontSize: '32px',
-  marginRight: '12px',
+  borderBottom: '2px solid #007bff',
 };
 
 const logoText = {
-  color: '#ffffff',
-  fontSize: '28px',
+  color: '#007bff',
+  fontSize: '24px',
   fontWeight: 'bold',
   margin: '0',
 };
 
 const tagline = {
-  color: '#e0e7ff',
+  color: '#666666',
   fontSize: '14px',
-  margin: '0',
-  opacity: 0.9,
+  margin: '5px 0 0 0',
 };
 
 const content = {
-  padding: '40px 32px',
+  padding: '40px 40px 20px 40px',
 };
 
 const h1 = {
-  color: '#1e293b',
-  fontSize: '24px',
-  fontWeight: 'bold',
-  lineHeight: '1.25',
-  margin: '0 0 24px 0',
+  color: '#333333',
+  fontSize: '22px',
+  fontWeight: '600',
+  margin: '0 0 20px 0',
+};
+
+const greeting = {
+  color: '#555555',
+  fontSize: '16px',
+  margin: '0 0 15px 0',
 };
 
 const text = {
-  color: '#475569',
+  color: '#555555',
   fontSize: '16px',
   lineHeight: '1.6',
-  margin: '0 0 16px 0',
+  margin: '0 0 25px 0',
 };
 
 const buttonContainer = {
-  margin: '32px 0',
+  margin: '20px 0',
   textAlign: 'center' as const,
 };
 
 const button = {
-  backgroundColor: '#dc2626', // Red for password reset action
-  borderRadius: '8px',
+  backgroundColor: '#007bff',
+  borderRadius: '6px',
   color: '#ffffff',
   display: 'inline-block',
   fontSize: '16px',
-  fontWeight: '600',
+  fontWeight: 'bold',
   lineHeight: '1.25',
-  padding: '16px 32px',
+  padding: '12px 25px',
   textAlign: 'center' as const,
   textDecoration: 'none',
 };
 
-const code = {
-  backgroundColor: '#f1f5f9',
-  border: '1px solid #e2e8f0',
-  borderRadius: '6px',
-  color: '#475569',
-  display: 'block',
-  fontSize: '14px',
-  padding: '16px',
-  wordBreak: 'break-all' as const,
-  margin: '16px 0',
-};
-
 const securityNotice = {
-  backgroundColor: '#fef2f2',
-  border: '1px solid #fecaca',
-  borderRadius: '8px',
-  margin: '32px 0',
-  padding: '24px',
-};
-
-const securityTitle = {
-  color: '#991b1b',
-  fontSize: '16px',
-  fontWeight: '600',
-  margin: '0 0 12px 0',
+  margin: '0 0 25px 0',
 };
 
 const securityText = {
-  color: '#7f1d1d',
+  color: '#555555',
   fontSize: '14px',
   lineHeight: '1.6',
   margin: '0',
 };
 
+const strongText = {
+  color: '#ff4747',
+};
+
 const footer = {
-  backgroundColor: '#f8fafc',
-  borderTop: '1px solid #e2e8f0',
-  padding: '32px',
+  backgroundColor: '#f6f6f6',
+  borderTop: '1px solid #eeeeee',
+  padding: '20px 40px',
   textAlign: 'center' as const,
 };
 
 const footerText = {
-  color: '#64748b',
-  fontSize: '14px',
+  color: '#999999',
+  fontSize: '12px',
   lineHeight: '1.6',
-  margin: '0 0 8px 0',
+  margin: '0 0 10px 0',
 };
 
 const footerLink = {
-  color: '#1e40af',
+  color: '#999999',
+  fontSize: '12px',
+  margin: '10px 0 0 0',
+  wordBreak: 'break-all' as const,
+};
+
+const linkStyle = {
+  color: '#007bff',
+  fontSize: '12px',
   textDecoration: 'none',
-  fontWeight: '600',
 };
