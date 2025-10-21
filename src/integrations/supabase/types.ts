@@ -1823,6 +1823,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      generate_unique_company_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_accessible_sensitive_data: {
         Args: Record<PropertyKey, never>
         Returns: {
