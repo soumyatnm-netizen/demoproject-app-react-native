@@ -63,16 +63,34 @@ const ResetPassword = () => {
         const params = new URLSearchParams(hash);
         const type = params.get('type');
         const accessToken = params.get('access_token');
+        const otpToken = params.get('token');
+        const emailParam = params.get('email');
 
-        console.log('Legacy flow check:', { type, hasAccessToken: !!accessToken });
+        console.log('Legacy flow check:', { type, hasAccessToken: !!accessToken, hasOtpToken: !!otpToken, hasEmail: !!emailParam });
 
-        if (type === 'recovery' && accessToken) {
+        if (type === 'recovery' && otpToken && emailParam) {
+          // Legacy OTP-style recovery link
+          const { error } = await supabase.auth.verifyOtp({
+            email: emailParam,
+            token: otpToken,
+            type: 'recovery'
+          });
+          if (error) {
+            console.error('verifyOtp error:', error);
+            setLinkError(error.message || 'This password reset link has expired or is invalid.');
+            setIsValidLink(false);
+          } else {
+            // prevent re-verification on hashchange
+            window.location.hash = 'type=recovery';
+            setIsValidLink(true);
+          }
+        } else if (type === 'recovery' && accessToken) {
           // Verify session is valid
           const { data: { session }, error } = await supabase.auth.getSession();
           
           if (error || !session) {
             console.error('Invalid session:', error);
-            setLinkError("This password reset link has expired or is invalid.");
+            setLinkError('This password reset link has expired or is invalid.');
             setIsValidLink(false);
           } else {
             console.log('Valid legacy recovery session');
@@ -80,7 +98,7 @@ const ResetPassword = () => {
           }
         } else {
           console.log('No valid reset link found');
-          setLinkError("Please use the password reset link from your Cover Compass email.");
+          setLinkError('Please use the password reset link from your Cover Compass email.');
           setIsValidLink(false);
         }
       }
