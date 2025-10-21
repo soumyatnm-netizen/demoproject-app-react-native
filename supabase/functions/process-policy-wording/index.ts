@@ -211,7 +211,7 @@ serve(async (req) => {
     }
 
     // --- Prepare API call parameters ---
-    const systemText = `You analyse insurance policy wordings for brokers. 
+    const systemText = `You analyse insurance policy wordings for brokers. You are a critical risk analyzer identifying coverage gaps.
 
 PHASE 1: Extract structure (insuring clause, definitions, conditions, warranties, limits/sublimits/deductibles, territory, jurisdiction, claims basis) plus exclusions and endorsements.
 
@@ -264,9 +264,62 @@ PHASE 2: Extract Coverage Feature Flags - search the ENTIRE policy wording docum
    - Return "N/A" if not separately limited or not covered
    - Provide reasoning
 
-Flag ambiguities and broker actions. Include citations. Be thorough but concise. Only output valid JSON per the schema.`;
+PHASE 3: Critical Gap and Exclusion Analysis (NEGATIVE FINDINGS - High Priority)
+This phase identifies coverage gaps and onerous obligations that can void coverage or reduce claim payments. Be EXTREMELY thorough.
+
+1. Minimum Security Condition/Warranty (gap_warranty_security_found):
+   - Search for: "warranty", "condition precedent", "minimum security", "alarm must be set", "security system", "intruder alarm", "maintained and set", "Grade 2", "NSI approved", "keyholder", "alarm condition"
+   - TRUE if security warranty/condition precedent found
+   - FALSE if no security warranty
+   - Extract: gap_warranty_security_details - EXACT wording with page reference
+   - CRITICAL: A breach of this warranty can void ALL coverage - flag clearly
+   - Reasoning: Explain the specific security requirements and compliance burden
+
+2. Disaster Recovery/BCP Warranty (gap_warranty_dr_found):
+   - Search for: "disaster recovery", "business continuity", "BCP", "DR plan", "tested annually", "continuity plan", "backup testing", "recovery procedures", "condition precedent: continuity"
+   - TRUE if DR/BCP warranty/condition precedent found
+   - FALSE if no DR/BCP warranty
+   - Extract: gap_warranty_dr_details - EXACT wording with page reference
+   - CRITICAL: Failure to maintain tested DR/BCP can void cyber claims
+   - Reasoning: Explain testing frequency and documentation requirements
+
+3. Pollution Exclusion Scope (gap_exclusion_pollution_type):
+   - Search for: "pollution", "contamination", "pollutants", "gradual pollution", "sudden and accidental", "seepage", "discharge", "toxic substances"
+   - Classify as:
+     * "Total Exclusion" - All pollution excluded (most restrictive)
+     * "Gradual Only Excluded" - Only gradual pollution excluded, sudden/accidental covered
+     * "Sudden & Accidental Covered" - Sudden/accidental pollution covered (broadest)
+     * "Not Excluded" - No pollution exclusion
+   - Extract: gap_exclusion_pollution_details - EXACT exclusion wording with page reference
+   - Reasoning: Explain the scope and impact on environmental liability
+
+4. Prior Knowledge Clause (gap_prior_knowledge_wording):
+   - Search for: "prior knowledge", "known circumstances", "aware", "ought reasonably to have known", "facts which might give rise", "circumstances which may give rise", "existing or pending"
+   - Extract: gap_prior_knowledge_wording - EXACT clause wording (critical for claims disputes)
+   - Classify scope: gap_prior_knowledge_scope
+     * "Broad" - Includes circumstances that "might" or "may" give rise to claims (most restrictive)
+     * "Standard" - Actual claims or specific circumstances known at inception
+     * "Narrow" - Only specifically notified claims excluded
+   - CRITICAL: Broad prior knowledge clauses significantly reduce coverage for ongoing situations
+   - Reasoning: Explain how broad the exclusion is and its impact
+
+5. Additional Gaps (additional_gaps_identified):
+   - Identify any other material gaps, restrictive warranties, or onerous conditions:
+     * Cyber security warranties (MFA, EDR, patching requirements)
+     * Unoccupied property exclusions (30/60 day limits)
+     * Contractual liability limitations
+     * USA/Canada exclusions (when client has exposure)
+     * Professional services limitations
+     * Retroactive date limitations
+     * Extended reporting period limitations
+     * Subjectivities that may void coverage
+   - For each gap provide: gap_type, description, severity (High/Medium/Low), page_reference
+
+Flag ambiguities and broker actions. Include citations. Be thorough but concise. Only output valid JSON per the schema.
+
+CRITICAL INSTRUCTION: Phase 3 Gap Analysis is THE MOST IMPORTANT part of your analysis. Brokers need to identify potential coverage voids and claim declinature risks. Be forensic in your search for warranties, conditions precedent, and broad exclusions.`;
     
-    const userText = "Analyze the attached policy wording PDF and return structured JSON per schema. Extract ALL Phase 1 structural data AND Phase 2 coverage features. Be thorough - search the entire document for each feature.";
+    const userText = "Analyze the attached policy wording PDF and return structured JSON per schema. Extract ALL Phase 1 structural data, Phase 2 coverage features, AND Phase 3 critical gap analysis. Be EXTREMELY thorough on Phase 3 - search every section for warranties, conditions precedent, and restrictive exclusions that could void coverage or reduce claims.";
     
     console.log('[PW] systemText defined:', systemText ? 'yes' : 'no');
     console.log('[PW] userText defined:', userText ? 'yes' : 'no');
@@ -452,6 +505,18 @@ Flag ambiguities and broker actions. Include citations. Be thorough but concise.
             deductible_data_special: analysisData.coverage_features?.deductible_data_special ?? null,
             limit_crisis_response: analysisData.coverage_features?.limit_crisis_response ?? null,
             feature_reasoning: analysisData.coverage_features?.feature_reasoning || {}
+          },
+          gap_analysis: {
+            gap_warranty_security_found: analysisData.gap_analysis?.gap_warranty_security_found ?? null,
+            gap_warranty_security_details: analysisData.gap_analysis?.gap_warranty_security_details ?? null,
+            gap_warranty_dr_found: analysisData.gap_analysis?.gap_warranty_dr_found ?? null,
+            gap_warranty_dr_details: analysisData.gap_analysis?.gap_warranty_dr_details ?? null,
+            gap_exclusion_pollution_type: analysisData.gap_analysis?.gap_exclusion_pollution_type ?? null,
+            gap_exclusion_pollution_details: analysisData.gap_analysis?.gap_exclusion_pollution_details ?? null,
+            gap_prior_knowledge_wording: analysisData.gap_analysis?.gap_prior_knowledge_wording ?? null,
+            gap_prior_knowledge_scope: analysisData.gap_analysis?.gap_prior_knowledge_scope ?? null,
+            gap_reasoning: analysisData.gap_analysis?.gap_reasoning || {},
+            additional_gaps_identified: analysisData.gap_analysis?.additional_gaps_identified || []
           }
         },
         status: 'completed'

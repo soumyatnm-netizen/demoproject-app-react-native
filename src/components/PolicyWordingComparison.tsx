@@ -812,6 +812,651 @@ const PolicyWordingComparison = ({ policyWordingIds }: PolicyWordingComparisonPr
         </CardContent>
       </Card>
 
+      {/* Phase 3: Critical Gap Analysis */}
+      <Card className="border-red-200 bg-red-50/30">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2 text-red-900">
+            <AlertTriangle className="h-5 w-5" />
+            <span>Phase 3: Critical Gap & Exclusion Analysis</span>
+          </CardTitle>
+          <p className="text-sm text-red-700 mt-2">
+            ⚠️ Warranties, conditions precedent, and restrictive exclusions that can void coverage or reduce claims
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[280px]">Gap Analysis Item</TableHead>
+                  {policyWordings.map((pw) => (
+                    <TableHead key={pw.id} className="text-center min-w-[180px]">
+                      {pw.insurer_name}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {/* Security Warranty */}
+                <TableRow className="border-red-100">
+                  <TableCell className="font-medium">
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                        <span>Minimum Security Condition</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Warranty: alarm must be set, condition precedent to liability
+                      </div>
+                      <div className="text-xs text-red-600 font-medium mt-1">
+                        ⚠️ Breach can void ALL coverage
+                      </div>
+                    </div>
+                  </TableCell>
+                  {policyWordings.map((pw) => {
+                    const found = pw.plain_language_summary?.gap_analysis?.gap_warranty_security_found;
+                    const details = pw.plain_language_summary?.gap_analysis?.gap_warranty_security_details;
+                    const reasoning = pw.plain_language_summary?.gap_analysis?.gap_reasoning?.security_warranty_reasoning;
+                    return (
+                      <TableCell key={pw.id} className="text-center">
+                        {found === true ? (
+                          <div className="space-y-2">
+                            <Badge variant="destructive" className="bg-red-600">
+                              <XCircle className="h-3 w-3 mr-1" />
+                              WARRANTY FOUND
+                            </Badge>
+                            {details && (
+                              <div className="text-xs text-left p-2 bg-white rounded border border-red-200">
+                                <p className="font-mono text-red-900">{details}</p>
+                              </div>
+                            )}
+                            {reasoning && (
+                              <p className="text-xs text-muted-foreground text-left">{reasoning}</p>
+                            )}
+                          </div>
+                        ) : found === false ? (
+                          <div className="space-y-1">
+                            <Badge variant="default" className="bg-green-600">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              No Warranty
+                            </Badge>
+                            {reasoning && (
+                              <p className="text-xs text-muted-foreground mt-1">{reasoning}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <Badge variant="secondary">Not Analyzed</Badge>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+
+                {/* DR/BCP Warranty */}
+                <TableRow className="border-red-100">
+                  <TableCell className="font-medium">
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                        <span>Disaster Recovery Warranty</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        DR/BCP tested annually, condition precedent
+                      </div>
+                      <div className="text-xs text-red-600 font-medium mt-1">
+                        ⚠️ Can void cyber claims
+                      </div>
+                    </div>
+                  </TableCell>
+                  {policyWordings.map((pw) => {
+                    const found = pw.plain_language_summary?.gap_analysis?.gap_warranty_dr_found;
+                    const details = pw.plain_language_summary?.gap_analysis?.gap_warranty_dr_details;
+                    const reasoning = pw.plain_language_summary?.gap_analysis?.gap_reasoning?.dr_warranty_reasoning;
+                    return (
+                      <TableCell key={pw.id} className="text-center">
+                        {found === true ? (
+                          <div className="space-y-2">
+                            <Badge variant="destructive" className="bg-red-600">
+                              <XCircle className="h-3 w-3 mr-1" />
+                              WARRANTY FOUND
+                            </Badge>
+                            {details && (
+                              <div className="text-xs text-left p-2 bg-white rounded border border-red-200">
+                                <p className="font-mono text-red-900">{details}</p>
+                              </div>
+                            )}
+                            {reasoning && (
+                              <p className="text-xs text-muted-foreground text-left">{reasoning}</p>
+                            )}
+                          </div>
+                        ) : found === false ? (
+                          <div className="space-y-1">
+                            <Badge variant="default" className="bg-green-600">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              No Warranty
+                            </Badge>
+                            {reasoning && (
+                              <p className="text-xs text-muted-foreground mt-1">{reasoning}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <Badge variant="secondary">Not Analyzed</Badge>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+
+                {/* Pollution Exclusion */}
+                <TableRow className="border-red-100">
+                  <TableCell className="font-medium">
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <Shield className="h-4 w-4 text-orange-600" />
+                        <span>Pollution Exclusion Scope</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Total exclusion vs gradual vs sudden & accidental
+                      </div>
+                    </div>
+                  </TableCell>
+                  {policyWordings.map((pw) => {
+                    const type = pw.plain_language_summary?.gap_analysis?.gap_exclusion_pollution_type;
+                    const details = pw.plain_language_summary?.gap_analysis?.gap_exclusion_pollution_details;
+                    const reasoning = pw.plain_language_summary?.gap_analysis?.gap_reasoning?.pollution_exclusion_reasoning;
+                    return (
+                      <TableCell key={pw.id} className="text-center">
+                        {type ? (
+                          <div className="space-y-2">
+                            <Badge 
+                              variant={type === 'Total Exclusion' ? 'destructive' : type === 'Not Excluded' ? 'default' : 'secondary'}
+                              className={type === 'Total Exclusion' ? 'bg-red-600' : type === 'Not Excluded' ? 'bg-green-600' : ''}
+                            >
+                              {type}
+                            </Badge>
+                            {details && (
+                              <div className="text-xs text-left p-2 bg-white rounded border">
+                                <p className="font-mono text-muted-foreground">{details}</p>
+                              </div>
+                            )}
+                            {reasoning && (
+                              <p className="text-xs text-muted-foreground text-left">{reasoning}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <Badge variant="secondary">Not Analyzed</Badge>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+
+                {/* Prior Knowledge Clause */}
+                <TableRow className="border-red-100">
+                  <TableCell className="font-medium">
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <AlertTriangle className="h-4 w-4 text-orange-600" />
+                        <span>Prior Knowledge Clause</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Breadth of known circumstances exclusion
+                      </div>
+                      <div className="text-xs text-orange-600 font-medium mt-1">
+                        ⚠️ Broad clauses reduce coverage for ongoing situations
+                      </div>
+                    </div>
+                  </TableCell>
+                  {policyWordings.map((pw) => {
+                    const wording = pw.plain_language_summary?.gap_analysis?.gap_prior_knowledge_wording;
+                    const scope = pw.plain_language_summary?.gap_analysis?.gap_prior_knowledge_scope;
+                    const reasoning = pw.plain_language_summary?.gap_analysis?.gap_reasoning?.prior_knowledge_reasoning;
+                    return (
+                      <TableCell key={pw.id} className="text-center">
+                        {wording ? (
+                          <div className="space-y-2">
+                            <Badge 
+                              variant={scope === 'Broad' ? 'destructive' : scope === 'Narrow' ? 'default' : 'secondary'}
+                              className={scope === 'Broad' ? 'bg-red-600' : scope === 'Narrow' ? 'bg-green-600' : ''}
+                            >
+                              {scope || 'Standard'}
+                            </Badge>
+                            <div className="text-xs text-left p-2 bg-white rounded border">
+                              <p className="font-mono text-muted-foreground italic">"{wording}"</p>
+                            </div>
+                            {reasoning && (
+                              <p className="text-xs text-muted-foreground text-left">{reasoning}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <Badge variant="secondary">Not Analyzed</Badge>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Additional Gaps Section */}
+          {policyWordings.some(pw => pw.plain_language_summary?.gap_analysis?.additional_gaps_identified?.length > 0) && (
+            <div className="mt-6">
+              <h4 className="font-medium text-red-900 mb-3 flex items-center">
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                Additional Coverage Gaps Identified
+              </h4>
+              <div className="grid gap-4">
+                {policyWordings.map((pw) => {
+                  const gaps = pw.plain_language_summary?.gap_analysis?.additional_gaps_identified || [];
+                  if (gaps.length === 0) return null;
+                  
+                  return (
+                    <Card key={pw.id} className="border-red-200">
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm">{pw.insurer_name}</CardTitle>
+                      </CardHeader>
+                      <CardContent className="py-3">
+                        <div className="space-y-2">
+                          {gaps.map((gap: any, idx: number) => (
+                            <div key={idx} className="flex items-start space-x-2 p-2 bg-white rounded border">
+                              <AlertTriangle 
+                                className={`h-4 w-4 mt-0.5 flex-shrink-0 ${
+                                  gap.severity === 'High' ? 'text-red-600' : 
+                                  gap.severity === 'Medium' ? 'text-orange-600' : 
+                                  'text-yellow-600'
+                                }`} 
+                              />
+                              <div className="flex-1 text-xs">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="font-medium">{gap.gap_type}</span>
+                                  <Badge variant={gap.severity === 'High' ? 'destructive' : 'secondary'} className="text-xs">
+                                    {gap.severity}
+                                  </Badge>
+                                </div>
+                                <p className="text-muted-foreground">{gap.description}</p>
+                                {gap.page_reference && (
+                                  <p className="text-muted-foreground mt-1 italic">Ref: {gap.page_reference}</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-300">
+            <p className="text-xs text-red-900">
+              <strong>⚠️ CRITICAL WARNING:</strong> Warranties and conditions precedent must be strictly complied with. 
+              A single breach can void ALL coverage for a claim. Review these terms carefully with the client and 
+              ensure they can maintain compliance. Document all discussions regarding these material terms.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Additional Terms */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Zap className="h-5 w-5" />
+            <span>Advanced Coverage Features Analysis</span>
+          </CardTitle>
+          <p className="text-sm text-muted-foreground mt-2">
+            Key differentiating features and emerging risk coverage
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[280px]">Coverage Feature</TableHead>
+                  {policyWordings.map((pw) => (
+                    <TableHead key={pw.id} className="text-center min-w-[150px]">
+                      {pw.insurer_name}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {/* AI/ML Liability */}
+                <TableRow>
+                  <TableCell className="font-medium">
+                    <div>
+                      <div>AI/ML Liability Coverage</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Affirmative artificial intelligence, machine learning, algorithm liability
+                      </div>
+                    </div>
+                  </TableCell>
+                  {policyWordings.map((pw) => {
+                    const feature = pw.plain_language_summary?.coverage_features?.feature_ai_affirmative_covered;
+                    const reasoning = pw.plain_language_summary?.coverage_features?.feature_reasoning?.ai_affirmative_reasoning;
+                    return (
+                      <TableCell key={pw.id} className="text-center">
+                        {feature === true ? (
+                          <div className="space-y-1">
+                            <Badge variant="default" className="bg-green-600">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Covered
+                            </Badge>
+                            {reasoning && (
+                              <p className="text-xs text-muted-foreground mt-1">{reasoning}</p>
+                            )}
+                          </div>
+                        ) : feature === false ? (
+                          <div className="space-y-1">
+                            <Badge variant="destructive">
+                              <XCircle className="h-3 w-3 mr-1" />
+                              Not Covered
+                            </Badge>
+                            {reasoning && (
+                              <p className="text-xs text-muted-foreground mt-1">{reasoning}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <Badge variant="secondary">Unknown</Badge>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+
+                {/* Contractual Liability */}
+                <TableRow>
+                  <TableCell className="font-medium">
+                    <div>
+                      <div>Full Contractual Breach</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Beyond professional negligence - express warranty coverage
+                      </div>
+                    </div>
+                  </TableCell>
+                  {policyWordings.map((pw) => {
+                    const feature = pw.plain_language_summary?.coverage_features?.feature_contractual_liability;
+                    const reasoning = pw.plain_language_summary?.coverage_features?.feature_reasoning?.contractual_liability_reasoning;
+                    return (
+                      <TableCell key={pw.id} className="text-center">
+                        {feature === true ? (
+                          <div className="space-y-1">
+                            <Badge variant="default" className="bg-green-600">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Covered
+                            </Badge>
+                            {reasoning && (
+                              <p className="text-xs text-muted-foreground mt-1">{reasoning}</p>
+                            )}
+                          </div>
+                        ) : feature === false ? (
+                          <div className="space-y-1">
+                            <Badge variant="destructive">
+                              <XCircle className="h-3 w-3 mr-1" />
+                              Limited/Excluded
+                            </Badge>
+                            {reasoning && (
+                              <p className="text-xs text-muted-foreground mt-1">{reasoning}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <Badge variant="secondary">Unknown</Badge>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+
+                {/* Inefficacy Coverage */}
+                <TableRow>
+                  <TableCell className="font-medium">
+                    <div>
+                      <div>Efficacy/Inefficacy Coverage</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Inability to perform, failure of product to achieve intended results
+                      </div>
+                    </div>
+                  </TableCell>
+                  {policyWordings.map((pw) => {
+                    const feature = pw.plain_language_summary?.coverage_features?.feature_inefficacy_covered;
+                    const reasoning = pw.plain_language_summary?.coverage_features?.feature_reasoning?.inefficacy_reasoning;
+                    return (
+                      <TableCell key={pw.id} className="text-center">
+                        {feature === true ? (
+                          <div className="space-y-1">
+                            <Badge variant="default" className="bg-green-600">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Covered
+                            </Badge>
+                            {reasoning && (
+                              <p className="text-xs text-muted-foreground mt-1">{reasoning}</p>
+                            )}
+                          </div>
+                        ) : feature === false ? (
+                          <div className="space-y-1">
+                            <Badge variant="destructive">
+                              <XCircle className="h-3 w-3 mr-1" />
+                              Excluded
+                            </Badge>
+                            {reasoning && (
+                              <p className="text-xs text-muted-foreground mt-1">{reasoning}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <Badge variant="secondary">Unknown</Badge>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+
+                {/* Separate Limit Towers */}
+                <TableRow>
+                  <TableCell className="font-medium">
+                    <div>
+                      <div>Separate Indemnity Towers</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Non-eroding limits, dedicated sub-limits for risk aggregation
+                      </div>
+                    </div>
+                  </TableCell>
+                  {policyWordings.map((pw) => {
+                    const feature = pw.plain_language_summary?.coverage_features?.feature_separate_indemnity_towers;
+                    const reasoning = pw.plain_language_summary?.coverage_features?.feature_reasoning?.separate_towers_reasoning;
+                    return (
+                      <TableCell key={pw.id} className="text-center">
+                        {feature === true ? (
+                          <div className="space-y-1">
+                            <Badge variant="default" className="bg-green-600">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Available
+                            </Badge>
+                            {reasoning && (
+                              <p className="text-xs text-muted-foreground mt-1">{reasoning}</p>
+                            )}
+                          </div>
+                        ) : feature === false ? (
+                          <div className="space-y-1">
+                            <Badge variant="secondary">
+                              Single Aggregate
+                            </Badge>
+                            {reasoning && (
+                              <p className="text-xs text-muted-foreground mt-1">{reasoning}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <Badge variant="secondary">Unknown</Badge>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+
+                {/* Proactive Services */}
+                <TableRow>
+                  <TableCell className="font-medium">
+                    <div>
+                      <div>Proactive Risk Services</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Risk management, cyber prevention, monitoring platforms (value-added)
+                      </div>
+                    </div>
+                  </TableCell>
+                  {policyWordings.map((pw) => {
+                    const feature = pw.plain_language_summary?.coverage_features?.feature_proactive_services;
+                    const reasoning = pw.plain_language_summary?.coverage_features?.feature_reasoning?.proactive_services_reasoning;
+                    return (
+                      <TableCell key={pw.id} className="text-center">
+                        {feature === true ? (
+                          <div className="space-y-1">
+                            <Badge variant="default" className="bg-blue-600">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Included
+                            </Badge>
+                            {reasoning && (
+                              <p className="text-xs text-muted-foreground mt-1">{reasoning}</p>
+                            )}
+                          </div>
+                        ) : feature === false ? (
+                          <div className="space-y-1">
+                            <Badge variant="secondary">
+                              Not Included
+                            </Badge>
+                            {reasoning && (
+                              <p className="text-xs text-muted-foreground mt-1">{reasoning}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <Badge variant="secondary">Unknown</Badge>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+
+                {/* Geographic Scope */}
+                <TableRow>
+                  <TableCell className="font-medium">
+                    <div>
+                      <div>Geographic Coverage Scope</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Territory and jurisdictional reach
+                      </div>
+                    </div>
+                  </TableCell>
+                  {policyWordings.map((pw) => {
+                    const scope = pw.plain_language_summary?.coverage_features?.scope_geographic_coverage;
+                    const reasoning = pw.plain_language_summary?.coverage_features?.feature_reasoning?.geographic_scope_reasoning;
+                    return (
+                      <TableCell key={pw.id} className="text-center">
+                        {scope ? (
+                          <div className="space-y-1">
+                            <Badge variant="outline" className="font-mono text-xs">
+                              {scope}
+                            </Badge>
+                            {reasoning && (
+                              <p className="text-xs text-muted-foreground mt-1">{reasoning}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <Badge variant="secondary">Not Specified</Badge>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+
+                {/* Personal Data Special Excess */}
+                <TableRow>
+                  <TableCell className="font-medium">
+                    <div>
+                      <div>Personal Data Special Excess</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Higher deductible for data breach/regulatory claims
+                      </div>
+                    </div>
+                  </TableCell>
+                  {policyWordings.map((pw) => {
+                    const deductible = pw.plain_language_summary?.coverage_features?.deductible_data_special;
+                    const reasoning = pw.plain_language_summary?.coverage_features?.feature_reasoning?.data_special_reasoning;
+                    return (
+                      <TableCell key={pw.id} className="text-center">
+                        {deductible && deductible !== 'N/A' ? (
+                          <div className="space-y-1">
+                            <Badge variant="outline" className="font-mono">
+                              <AlertTriangle className="h-3 w-3 mr-1" />
+                              {deductible}
+                            </Badge>
+                            {reasoning && (
+                              <p className="text-xs text-muted-foreground mt-1">{reasoning}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <Badge variant="secondary">N/A</Badge>
+                            {reasoning && (
+                              <p className="text-xs text-muted-foreground mt-1">{reasoning}</p>
+                            )}
+                          </div>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+
+                {/* Crisis Response Limit */}
+                <TableRow>
+                  <TableCell className="font-medium">
+                    <div>
+                      <div>Crisis Response Sub-Limit</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Separate limit for crisis management, PR, reputation costs
+                      </div>
+                    </div>
+                  </TableCell>
+                  {policyWordings.map((pw) => {
+                    const limit = pw.plain_language_summary?.coverage_features?.limit_crisis_response;
+                    const reasoning = pw.plain_language_summary?.coverage_features?.feature_reasoning?.crisis_response_reasoning;
+                    return (
+                      <TableCell key={pw.id} className="text-center">
+                        {limit && limit !== 'N/A' ? (
+                          <div className="space-y-1">
+                            <Badge variant="outline" className="font-mono bg-purple-50">
+                              {limit}
+                            </Badge>
+                            {reasoning && (
+                              <p className="text-xs text-muted-foreground mt-1">{reasoning}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <Badge variant="secondary">Not Covered</Badge>
+                            {reasoning && (
+                              <p className="text-xs text-muted-foreground mt-1">{reasoning}</p>
+                            )}
+                          </div>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-xs text-blue-900">
+              <strong>Phase 2 Feature Analysis:</strong> These advanced features represent emerging risks and value-added services. 
+              Coverage differences here can significantly impact claim outcomes for modern technology and professional service risks.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Additional Terms */}
       <Accordion type="multiple" className="w-full">
         <AccordionItem value="conditions">

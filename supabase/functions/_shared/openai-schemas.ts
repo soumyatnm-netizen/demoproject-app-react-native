@@ -287,6 +287,68 @@ export const POLICY_WORDING_SCHEMA = {
           }
         }
       }
+    },
+
+    gap_analysis: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        gap_warranty_security_found: {
+          type: ["boolean","null"],
+          description: "Minimum security conditions/warranties found (alarm must be set, condition precedent to liability)"
+        },
+        gap_warranty_security_details: {
+          type: ["string","null"],
+          description: "Details of security warranty requirements (exact wording with page reference)"
+        },
+        gap_warranty_dr_found: {
+          type: ["boolean","null"],
+          description: "Disaster Recovery/Business Continuity Plan warranty found (DR/BCP tested annually, condition precedent)"
+        },
+        gap_warranty_dr_details: {
+          type: ["string","null"],
+          description: "Details of DR/BCP warranty requirements (exact wording with page reference)"
+        },
+        gap_exclusion_pollution_type: {
+          type: ["string","null"],
+          description: "Pollution exclusion scope: 'Total Exclusion', 'Gradual Only Excluded', 'Sudden & Accidental Covered', 'Not Excluded'"
+        },
+        gap_exclusion_pollution_details: {
+          type: ["string","null"],
+          description: "Pollution exclusion wording details (exact clause with page reference)"
+        },
+        gap_prior_knowledge_wording: {
+          type: ["string","null"],
+          description: "Prior knowledge clause exact wording (e.g., 'The Insured first became aware of...', 'facts which might give rise to...')"
+        },
+        gap_prior_knowledge_scope: {
+          type: ["string","null"],
+          description: "Scope of prior knowledge exclusion: 'Broad' (includes circumstances), 'Standard' (actual claims only), 'Narrow' (specific language)"
+        },
+        gap_reasoning: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            security_warranty_reasoning: { type: ["string","null"] },
+            dr_warranty_reasoning: { type: ["string","null"] },
+            pollution_exclusion_reasoning: { type: ["string","null"] },
+            prior_knowledge_reasoning: { type: ["string","null"] }
+          }
+        },
+        additional_gaps_identified: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              gap_type: { type: ["string","null"] },
+              description: { type: ["string","null"] },
+              severity: { type: ["string","null"] },
+              page_reference: { type: ["string","null"] }
+            }
+          }
+        }
+      }
     }
   }
 };
