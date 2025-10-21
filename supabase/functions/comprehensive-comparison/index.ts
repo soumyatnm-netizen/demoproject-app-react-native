@@ -489,7 +489,7 @@ DISCLAIMERS:
           { role: 'user', content: `Analyze these documents and return your response as a JSON object:\n\n${JSON.stringify(payload, null, 2)}` }
         ],
         temperature: 0,
-        max_tokens: 2500,
+        max_tokens: 16000,
         response_format: { type: "json_object" }
       }),
     });
@@ -516,7 +516,16 @@ DISCLAIMERS:
     }
 
     const aiResponse = await response.json();
-    const analysisResult = JSON.parse(aiResponse.choices[0].message.content);
+    
+    // Parse with better error handling
+    let analysisResult;
+    try {
+      analysisResult = JSON.parse(aiResponse.choices[0].message.content);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      console.error('Raw content:', aiResponse.choices[0].message.content);
+      throw new Error(`Failed to parse AI response: ${parseError.message}`);
+    }
 
     console.log('Comprehensive analysis complete');
 
