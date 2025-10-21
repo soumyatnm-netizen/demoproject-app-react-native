@@ -49,10 +49,10 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
 
-    if (!openAIApiKey) {
-      return json(req, 500, { ok: false, error: 'OPENAI_API_KEY not configured' });
+    if (!lovableApiKey) {
+      return json(req, 500, { ok: false, error: 'LOVABLE_API_KEY not configured' });
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -97,29 +97,11 @@ serve(async (req) => {
       return json(req, 413, { ok: false, error: 'PDF too large (max 20MB)' });
     }
 
-    // Upload to OpenAI
-    stage = "upload_openai";
-    const t_upload_start = performance.now();
-    const pdfFile = new File([pdfBytes], document.filename || 'quote.pdf', { type: 'application/pdf' });
-    const formData = new FormData();
-    formData.append('file', pdfFile);
-    formData.append('purpose', 'assistants');
-
-    const upRes = await fetch('https://api.openai.com/v1/files', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${openAIApiKey}` },
-      body: formData
-    });
-    
-    const upText = await upRes.text();
-    if (!upRes.ok) {
-      console.error('[extract-quote] Upload error:', upText.slice(0, 400));
-      return json(req, upRes.status, { ok: false, stage: 'upload', error: upText.slice(0, 400) });
-    }
-    
-    const uploadData = JSON.parse(upText);
-    const fileId = uploadData.id;
-    console.log('[extract-quote] Uploaded to OpenAI:', fileId, 'in', (performance.now() - t_upload_start).toFixed(0), 'ms');
+    // Convert PDF to base64 for Lovable AI
+    stage = "convert_base64";
+    const t_convert_start = performance.now();
+    const base64Pdf = btoa(String.fromCharCode(...pdfBytes));
+    console.log('[extract-quote] PDF converted to base64 in', (performance.now() - t_convert_start).toFixed(0), 'ms');
 
     // Extract quote with focused schema
     stage = "extract";
@@ -255,53 +237,88 @@ CRITICAL INSTRUCTIONS:
 
 Return as valid JSON object.`;
 
-    // Retry logic for OpenAI API calls
+    // Retry logic for Lovable AI calls with enhanced error handling
     let extractRes;
     let lastError;
-    const maxRetries = 3;
+    const maxRetries = 4; // Increased retries for better reliability
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`[extract-quote] Extraction attempt ${attempt}/${maxRetries}`);
+        console.log(`[extract-quote] Extraction attempt ${attempt}/${maxRetries} using Lovable AI (Gemini 2.5 Flash)`);
         
-        extractRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        extractRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${openAIApiKey}`,
+            'Authorization': `Bearer ${lovableApiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'gpt-4o-mini',
+            model: 'google/gemini-2.5-flash', // Optimized for speed and document extraction
             messages: [
               { role: 'system', content: systemPrompt },
               {
                 role: 'user',
                 content: [
                   { type: 'text', text: userPrompt },
-                  { type: 'file', file: { file_id: fileId } }
+                  { 
+                    type: 'image_url', 
+                    image_url: { 
+                      url: `data:application/pdf;base64,${base64Pdf}` 
+                    } 
+                  }
                 ]
               }
-            ],
-            temperature: 0,
-            max_tokens: 4000,
-            response_format: { type: 'json_object' }
+            ]
           }),
         });
 
         const extractText = await extractRes.text();
         
         if (!extractRes.ok) {
-          const errorData = JSON.parse(extractText);
+          let errorData;
+          try {
+            errorData = JSON.parse(extractText);
+          } catch {
+            errorData = { error: extractText };
+          }
           lastError = errorData;
+          
+          // Handle rate limiting (429)
+          if (extractRes.status === 429) {
+            console.error(`[extract-quote] Rate limit hit on attempt ${attempt}`);
+            if (attempt < maxRetries) {
+              const waitTime = Math.pow(2, attempt + 1) * 1000; // Longer backoff for rate limits: 4s, 8s, 16s
+              console.log(`[extract-quote] Rate limited - retrying in ${waitTime}ms...`);
+              await new Promise(resolve => setTimeout(resolve, waitTime));
+              continue;
+            }
+            return json(req, 429, { 
+              ok: false, 
+              stage: 'extract', 
+              error: 'Rate limit exceeded. Please try again in a few moments.',
+              retriable: true
+            });
+          }
+          
+          // Handle payment required (402)
+          if (extractRes.status === 402) {
+            console.error(`[extract-quote] Payment required - insufficient credits`);
+            return json(req, 402, { 
+              ok: false, 
+              stage: 'extract', 
+              error: 'Insufficient AI credits. Please add credits to your Lovable workspace.',
+              retriable: false
+            });
+          }
           
           // Check if it's a server error (5xx) that we should retry
           if (extractRes.status >= 500 && extractRes.status < 600) {
             console.error(`[extract-quote] Server error on attempt ${attempt}:`, extractText.slice(0, 400));
             
             if (attempt < maxRetries) {
-              // Exponential backoff: 2s, 4s, 8s
+              // Exponential backoff: 2s, 4s, 8s, 16s
               const waitTime = Math.pow(2, attempt) * 1000;
-              console.log(`[extract-quote] Retrying in ${waitTime}ms...`);
+              console.log(`[extract-quote] Server error - retrying in ${waitTime}ms...`);
               await new Promise(resolve => setTimeout(resolve, waitTime));
               continue;
             }
@@ -335,12 +352,12 @@ Return as valid JSON object.`;
             documentId,
             filename: document.filename,
             processedAt: new Date().toISOString(),
-            model: extractData.model,
+            model: extractData.model || 'google/gemini-2.5-flash',
             usage: extractData.usage,
             timing: {
               total_ms: parseInt(totalTime),
               fetch_ms: parseInt((t_fetch_start - t0).toFixed(0)),
-              upload_ms: parseInt((t_extract_start - t_upload_start).toFixed(0)),
+              convert_ms: parseInt((t_extract_start - t_convert_start).toFixed(0)),
               extract_ms: parseInt((performance.now() - t_extract_start).toFixed(0))
             },
             attempts: attempt
@@ -353,7 +370,7 @@ Return as valid JSON object.`;
         
         if (attempt < maxRetries) {
           const waitTime = Math.pow(2, attempt) * 1000;
-          console.log(`[extract-quote] Retrying in ${waitTime}ms...`);
+          console.log(`[extract-quote] Exception - retrying in ${waitTime}ms...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }
       }

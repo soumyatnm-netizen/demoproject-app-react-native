@@ -27,10 +27,10 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
 
-    if (!openaiApiKey) {
-      throw new Error('OPENAI_API_KEY not configured');
+    if (!lovableApiKey) {
+      throw new Error('LOVABLE_API_KEY not configured');
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -63,31 +63,12 @@ serve(async (req) => {
       throw new Error(`Failed to fetch PDF: ${pdfResponse.statusText}`);
     }
 
-    const pdfBytes = await pdfResponse.arrayBuffer();
+    const pdfBytes = new Uint8Array(await pdfResponse.arrayBuffer());
     console.log(`[Preflight] PDF fetched: ${pdfBytes.byteLength} bytes`);
 
-    // Upload to OpenAI
-    const formData = new FormData();
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-    formData.append('file', blob, doc.filename);
-    formData.append('purpose', 'assistants');
-
-    const uploadResponse = await fetch('https://api.openai.com/v1/files', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-      },
-      body: formData,
-    });
-
-    if (!uploadResponse.ok) {
-      const errorText = await uploadResponse.text();
-      throw new Error(`OpenAI upload failed: ${errorText}`);
-    }
-
-    const uploadData = await uploadResponse.json();
-    const fileId = uploadData.id;
-    console.log(`[Preflight] Uploaded to OpenAI: ${fileId}`);
+    // Convert PDF to base64 for Lovable AI
+    const base64Pdf = btoa(String.fromCharCode(...pdfBytes));
+    console.log(`[Preflight] PDF converted to base64`);
 
     // Lightweight classification prompt (150-250 tokens)
     const classificationPrompt = `CoverCompass Preflight. Return JSON only.
@@ -111,39 +92,89 @@ RULES:
 - For Wordings: extract wording/form code if present
 - Use "Unknown" only when content is genuinely unclear`;
 
-    // Call OpenAI with file
-    const completionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: classificationPrompt },
+    // Call Lovable AI with retry logic
+    let completionResponse;
+    let resultText;
+    const maxRetries = 4;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[Preflight] Classification attempt ${attempt}/${maxRetries} using Lovable AI (Gemini 2.5 Flash)`);
+        
+        completionResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${lovableApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-flash',
+            messages: [
               {
-                type: 'file',
-                file: { file_id: fileId }
+                role: 'user',
+                content: [
+                  { type: 'text', text: classificationPrompt },
+                  {
+                    type: 'image_url',
+                    image_url: {
+                      url: `data:application/pdf;base64,${base64Pdf}`
+                    }
+                  }
+                ]
               }
             ]
+          }),
+        });
+
+        const responseText = await completionResponse.text();
+        
+        if (!completionResponse.ok) {
+          // Handle rate limiting (429)
+          if (completionResponse.status === 429) {
+            console.error(`[Preflight] Rate limit hit on attempt ${attempt}`);
+            if (attempt < maxRetries) {
+              const waitTime = Math.pow(2, attempt + 1) * 1000;
+              console.log(`[Preflight] Rate limited - retrying in ${waitTime}ms...`);
+              await new Promise(resolve => setTimeout(resolve, waitTime));
+              continue;
+            }
+            throw new Error('Rate limit exceeded. Please try again in a few moments.');
           }
-        ],
-        temperature: 0,
-        max_tokens: 300,
-      }),
-    });
+          
+          // Handle payment required (402)
+          if (completionResponse.status === 402) {
+            throw new Error('Insufficient AI credits. Please add credits to your Lovable workspace.');
+          }
+          
+          // Handle server errors with retry
+          if (completionResponse.status >= 500 && completionResponse.status < 600) {
+            console.error(`[Preflight] Server error on attempt ${attempt}: ${responseText.slice(0, 200)}`);
+            if (attempt < maxRetries) {
+              const waitTime = Math.pow(2, attempt) * 1000;
+              console.log(`[Preflight] Server error - retrying in ${waitTime}ms...`);
+              await new Promise(resolve => setTimeout(resolve, waitTime));
+              continue;
+            }
+          }
+          
+          throw new Error(`Lovable AI completion failed: ${responseText}`);
+        }
 
-    if (!completionResponse.ok) {
-      const errorText = await completionResponse.text();
-      throw new Error(`OpenAI completion failed: ${errorText}`);
+        const completionData = JSON.parse(responseText);
+        resultText = completionData.choices[0].message.content;
+        console.log(`[Preflight] Classification succeeded on attempt ${attempt}`);
+        break; // Success, exit retry loop
+        
+      } catch (error) {
+        console.error(`[Preflight] Attempt ${attempt} failed:`, String(error));
+        if (attempt >= maxRetries) {
+          throw error; // Max retries reached
+        }
+        const waitTime = Math.pow(2, attempt) * 1000;
+        console.log(`[Preflight] Exception - retrying in ${waitTime}ms...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
     }
-
-    const completionData = await completionResponse.json();
-    const resultText = completionData.choices[0].message.content;
     
     console.log(`[Preflight] Raw result: ${resultText.substring(0, 500)}`);
 
