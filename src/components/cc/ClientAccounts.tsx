@@ -31,6 +31,8 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [deleteInviteId, setDeleteInviteId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteCompanyId, setDeleteCompanyId] = useState<string | null>(null);
+  const [showDeleteCompanyDialog, setShowDeleteCompanyDialog] = useState(false);
   
   // Form states
   const [companyName, setCompanyName] = useState("");
@@ -270,6 +272,38 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
   const confirmDeleteInvite = (inviteId: string) => {
     setDeleteInviteId(inviteId);
     setShowDeleteDialog(true);
+  };
+
+  const deleteCompany = async (companyId: string) => {
+    try {
+      const { error } = await supabase
+        .from('broker_companies')
+        .delete()
+        .eq('id', companyId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Company deleted successfully",
+      });
+
+      loadCompanies();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setShowDeleteCompanyDialog(false);
+      setDeleteCompanyId(null);
+    }
+  };
+
+  const confirmDeleteCompany = (companyId: string) => {
+    setDeleteCompanyId(companyId);
+    setShowDeleteCompanyDialog(true);
   };
 
   const generateFallbackCode = () => {
@@ -574,6 +608,15 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
                             Features
                           </Button>
                         )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => confirmDeleteCompany(company.id)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -790,6 +833,30 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Company Confirmation Dialog */}
+      <AlertDialog open={showDeleteCompanyDialog} onOpenChange={setShowDeleteCompanyDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Company</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this company? This action cannot be undone.
+              All associated users, invites, and data will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteCompanyId(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteCompanyId && deleteCompany(deleteCompanyId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Company
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
