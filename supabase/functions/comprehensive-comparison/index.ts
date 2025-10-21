@@ -311,8 +311,54 @@ COMPARISON RULES:
 - **Legal Defense Costs**: Inside or outside the limit?
 - **Subjectivities**: Any pre-binding conditions
 
+**PREMIUM EXTRACTION - CRITICAL:**
+You MUST extract and normalize premium information for each carrier. This is ALWAYS shown at the top of comparisons:
+- annual_premium OR total_payable (these are the same thing - the final amount the client pays)
+- base_premium_by_section (itemized breakdown by cover section if available)
+- ipt (Insurance Premium Tax)
+- fees (array of any additional fees like policy admin fees)
+- annual_total (total including IPT and fees)
+- currency (default GBP)
+
+For Hiscox format: Look for "Annual premium", "Insurance Premium Tax (IPT)", "Annual total"
+For CFC format: Look for "TOTAL PAYABLE", "Premium breakdown" with sections, "Insurance Premium Tax", "Policy Administration Fee"
+
 OUTPUT FORMAT:
+Return a JSON object with this structure:
 {
+  "insurers": [
+    {
+      "insurer_name": "CFC",
+      "premiums": {
+        "total_payable": 75986.00,
+        "annual_premium": 75986.00,
+        "annual_total": 75986.00,
+        "ipt": 7986.00,
+        "base_premium_by_section": {
+          "professional_indemnity": 58398.00,
+          "general_liability": 1800.00,
+          "property": 3752.00,
+          "employers_liability": 2600.00
+        },
+        "fees": [
+          {"name": "Policy Administration Fee", "amount": 1450.00}
+        ],
+        "currency": "GBP"
+      }
+    },
+    {
+      "insurer_name": "Hiscox", 
+      "premiums": {
+        "annual_premium": 65952.65,
+        "ipt": 7914.34,
+        "annual_total": 73866.99,
+        "total_payable": 73866.99,
+        "base_premium_by_section": {},
+        "fees": [],
+        "currency": "GBP"
+      }
+    }
+  ],
   "product_comparisons": [
     {
       "product": "Professional Indemnity",

@@ -184,6 +184,93 @@ const DeepComparison = ({ insurers }: DeepComparisonProps) => {
         </CardHeader>
       </Card>
 
+      {/* Premium Comparison - ALWAYS AT TOP */}
+      <Card className="border-yellow-200 bg-yellow-50/30">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <DollarSign className="h-5 w-5 text-yellow-600" />
+            <span>Premium Comparison</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {insurerResults.map((insurer: any) => (
+              <Card key={insurer.insurer_name} className="bg-white border-2">
+                <CardHeader>
+                  <CardTitle className="text-lg">{insurer.insurer_name}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {/* Total Payable - HIGHLIGHTED */}
+                  <div className="bg-yellow-100 border-2 border-yellow-400 rounded-lg p-4">
+                    <div className="text-sm text-muted-foreground mb-1">
+                      {insurer.premiums?.annual_premium ? 'Annual Premium' : 'Total Payable'}
+                    </div>
+                    <div className="text-3xl font-bold text-yellow-900">
+                      {formatCurrency(
+                        insurer.premiums?.annual_premium || insurer.premiums?.total_payable, 
+                        insurer.premiums?.currency
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Premium Breakdown */}
+                  <div className="space-y-2 text-sm">
+                    {insurer.premiums?.base_premium_by_section && 
+                      Object.keys(insurer.premiums.base_premium_by_section).length > 0 && (
+                      <div className="space-y-1">
+                        <div className="font-medium text-xs text-muted-foreground uppercase">Premium Breakdown</div>
+                        {Object.entries(insurer.premiums.base_premium_by_section).map(([section, amount]: [string, any]) => (
+                          <div key={section} className="flex justify-between items-center py-1 border-b">
+                            <span className="text-muted-foreground capitalize">
+                              {section.replace(/_/g, ' ')}
+                            </span>
+                            <span className="font-mono">
+                              {formatCurrency(amount, insurer.premiums?.currency)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* IPT */}
+                    {insurer.premiums?.ipt && (
+                      <div className="flex justify-between items-center py-1 border-b">
+                        <span className="text-muted-foreground">Insurance Premium Tax</span>
+                        <span className="font-mono">
+                          {formatCurrency(insurer.premiums.ipt, insurer.premiums?.currency)}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Fees */}
+                    {insurer.premiums?.fees && insurer.premiums.fees.length > 0 && 
+                      insurer.premiums.fees.map((fee: any, idx: number) => (
+                        <div key={idx} className="flex justify-between items-center py-1 border-b">
+                          <span className="text-muted-foreground">{fee.name || 'Fee'}</span>
+                          <span className="font-mono">
+                            {formatCurrency(fee.amount, insurer.premiums?.currency)}
+                          </span>
+                        </div>
+                      ))
+                    }
+
+                    {/* Annual Total (if different from total_payable) */}
+                    {insurer.premiums?.annual_total && insurer.premiums.annual_total !== insurer.premiums.annual_premium && (
+                      <div className="flex justify-between items-center py-2 border-t-2 font-semibold">
+                        <span>Annual Total</span>
+                        <span className="font-mono text-lg">
+                          {formatCurrency(insurer.premiums.annual_total, insurer.premiums?.currency)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Delta Summary */}
       <Card className="border-blue-200 bg-blue-50/30">
         <CardHeader>
