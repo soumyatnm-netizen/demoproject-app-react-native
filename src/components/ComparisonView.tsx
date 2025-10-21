@@ -617,60 +617,53 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
           <CardContent>
             <div className="space-y-6">
               {/* Total Payable / Annualised Premium - Highlighted */}
-              <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background border-2 border-primary/20 rounded-lg p-6">
-                <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
+              <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background border-2 border-primary/20 rounded-lg p-6 mb-6">
+                <h3 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                  <TrendingUp className="h-6 w-6 text-primary" />
                   Total Payable / Annualised Premium
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {selectedQuotes.map(quoteId => {
                     const quote = filteredQuotes.find(q => q.id === quoteId);
                     if (!quote) return null;
                     
-                    const isLowest = comparisonData.premiumAnalysis?.lowest === quote.premium_amount;
+                    // Calculate which is lowest
+                    const allPremiums = selectedQuotes
+                      .map(id => filteredQuotes.find(q => q.id === id)?.premium_amount)
+                      .filter(p => p != null) as number[];
+                    const lowestPremium = allPremiums.length > 0 ? Math.min(...allPremiums) : null;
+                    const isLowest = lowestPremium !== null && quote.premium_amount === lowestPremium;
                     
                     return (
-                      <Card key={quote.id} className={`${isLowest ? 'ring-2 ring-green-500 bg-green-50/50 dark:bg-green-950/20' : ''}`}>
+                      <Card 
+                        key={quote.id} 
+                        className={`transition-all ${isLowest ? 'ring-2 ring-green-500 shadow-lg scale-105 bg-green-50/50 dark:bg-green-950/30' : 'bg-card'}`}
+                      >
                         <CardContent className="pt-6">
-                          <div className="text-center space-y-2">
-                            <h4 className="font-bold text-lg">{quote.insurer_name}</h4>
-                            <div className={`text-3xl font-bold ${isLowest ? 'text-green-600 dark:text-green-400' : ''}`}>
-                              {quote.premium_currency} {quote.premium_amount?.toLocaleString() || 'N/A'}
+                          <div className="text-center space-y-3">
+                            <h4 className="font-bold text-xl">{quote.insurer_name}</h4>
+                            <div className={`text-4xl font-bold ${isLowest ? 'text-green-600 dark:text-green-400' : 'text-foreground'}`}>
+                              {quote.premium_currency || '£'} {quote.premium_amount?.toLocaleString() || 'N/A'}
                             </div>
-                            {isLowest && (
-                              <Badge className="bg-green-600">Best Value</Badge>
+                            {isLowest && quote.premium_amount && (
+                              <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                                ✓ Best Value
+                              </Badge>
                             )}
-                            <p className="text-sm text-muted-foreground">{quote.product_type || 'Professional Indemnity'}</p>
+                            {!quote.premium_amount && (
+                              <Badge variant="secondary">
+                                No premium data
+                              </Badge>
+                            )}
+                            <p className="text-sm text-muted-foreground">
+                              {quote.product_type || 'Professional Indemnity'}
+                            </p>
                           </div>
                         </CardContent>
                       </Card>
                     );
                   })}
                 </div>
-                {comparisonData.premiumAnalysis && (
-                  <div className="mt-4 pt-4 border-t border-primary/20">
-                    <div className="grid grid-cols-3 gap-4 text-center text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Lowest</p>
-                        <p className="font-semibold">
-                          £{comparisonData.premiumAnalysis.lowest?.toLocaleString() || 'N/A'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Average</p>
-                        <p className="font-semibold">
-                          £{comparisonData.premiumAnalysis.average ? Math.round(comparisonData.premiumAnalysis.average).toLocaleString() : 'N/A'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Highest</p>
-                        <p className="font-semibold">
-                          £{comparisonData.premiumAnalysis.highest?.toLocaleString() || 'N/A'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
 
               <Separator />
