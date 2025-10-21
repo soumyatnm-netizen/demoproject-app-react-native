@@ -36,6 +36,11 @@ interface BrokerProfileData {
   is_active?: boolean;
 }
 
+interface CompanyData {
+  id: string;
+  name: string;
+}
+
 interface SensitiveData {
   phone: string | null;
   personal_address: string | null;
@@ -46,6 +51,8 @@ interface SensitiveData {
 const BrokerProfile = () => {
   const [profile, setProfile] = useState<BrokerProfileData | null>(null);
   const [sensitiveData, setSensitiveData] = useState<SensitiveData | null>(null);
+  const [userEmail, setUserEmail] = useState<string>('');
+  const [companyData, setCompanyData] = useState<CompanyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -75,6 +82,9 @@ const BrokerProfile = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No authenticated user');
 
+      // Store user email
+      setUserEmail(user.email || '');
+
       // Fetch basic profile data
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
@@ -85,6 +95,19 @@ const BrokerProfile = () => {
       if (profileError) throw profileError;
 
       setProfile(profileData as BrokerProfileData);
+
+      // Fetch company data if company_id exists
+      if (profileData.company_id) {
+        const { data: company, error: companyError } = await supabase
+          .from('broker_companies')
+          .select('id, name')
+          .eq('id', profileData.company_id)
+          .single();
+
+        if (!companyError && company) {
+          setCompanyData(company);
+        }
+      }
 
       // Fetch sensitive data separately
       const { data: sensitiveDataResult, error: sensitiveError } = await supabase
@@ -216,8 +239,12 @@ const BrokerProfile = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+              <Mail className="h-4 w-4" />
+              <span>{userEmail || 'No email'}</span>
+            </div>
+            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
               <Building2 className="h-4 w-4" />
-              <span>{profileData.company_name || 'No company set'}</span>
+              <span>{companyData?.name || 'No company set'}</span>
             </div>
             <div className="flex items-center space-x-2 text-sm text-muted-foreground">
               <Calendar className="h-4 w-4" />
@@ -248,6 +275,18 @@ const BrokerProfile = () => {
               <CardDescription>Update your personal details</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={userEmail}
+                  disabled
+                  className="bg-muted"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Email cannot be changed from this screen</p>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="first_name">First Name</Label>
@@ -268,12 +307,14 @@ const BrokerProfile = () => {
               </div>
               
               <div>
-                <Label htmlFor="company_name">Company Name</Label>
+                <Label htmlFor="company_name">Company/Organisation Name</Label>
                 <Input
                   id="company_name"
-                  value={profileData.company_name}
-                  onChange={(e) => setProfileData({ ...profileData, company_name: e.target.value })}
+                  value={companyData?.name || 'No company assigned'}
+                  disabled
+                  className="bg-muted"
                 />
+                <p className="text-xs text-muted-foreground mt-1">Contact your administrator to change company assignment</p>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
