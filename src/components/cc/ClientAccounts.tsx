@@ -343,13 +343,19 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
   return (
     <div className="space-y-6">
       {/* Pending Invites Section */}
-      {pendingInvites.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Pending Invitations</CardTitle>
-            <CardDescription>{pendingInvites.length} active invite(s) waiting to be used</CardDescription>
-          </CardHeader>
-          <CardContent>
+      <Card>
+        <CardHeader>
+          <CardTitle>Pending Invitations</CardTitle>
+          <CardDescription>
+            {pendingInvites.length === 0 
+              ? "No pending invitations at the moment" 
+              : `${pendingInvites.length} active invite(s) waiting to be used`}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {pendingInvites.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">No pending invites</p>
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -391,8 +397,9 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
                         variant="ghost"
                         size="sm"
                         onClick={() => confirmDeleteInvite(invite.id)}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
-                        <Trash2 className="h-4 w-4 mr-2 text-destructive" />
+                        <Trash2 className="h-4 w-4 mr-2" />
                         Delete
                       </Button>
                     </TableCell>
@@ -400,9 +407,9 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       {/* Companies Section */}
       <Card>
@@ -666,8 +673,9 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
                         variant="ghost"
                         size="sm"
                         onClick={() => confirmDeleteInvite(invite.id)}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
-                        <Trash2 className="h-4 w-4 mr-2 text-destructive" />
+                        <Trash2 className="h-4 w-4 mr-2" />
                         Delete
                       </Button>
                     </TableCell>
