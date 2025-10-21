@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Building2, Users, Key, Copy, Check, Settings, Mail, Eye } from "lucide-react";
+import { Plus, Building2, Users, Key, Copy, Check, Settings, Mail, Eye, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface ClientAccountsProps {
@@ -28,6 +29,8 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
   const [companyInvites, setCompanyInvites] = useState<any[]>([]);
   const [companyUsers, setCompanyUsers] = useState<any[]>([]);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [deleteInviteId, setDeleteInviteId] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   
   // Form states
   const [companyName, setCompanyName] = useState("");
@@ -247,14 +250,26 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
         description: "Invite deleted successfully",
       });
 
+      // Refresh all invite lists
       loadPendingInvites();
+      if (selectedCompany) {
+        loadCompanyInvites(selectedCompany.id);
+      }
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setShowDeleteDialog(false);
+      setDeleteInviteId(null);
     }
+  };
+
+  const confirmDeleteInvite = (inviteId: string) => {
+    setDeleteInviteId(inviteId);
+    setShowDeleteDialog(true);
   };
 
   const generateFallbackCode = () => {
@@ -375,8 +390,9 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => deleteInvite(invite.id)}
+                        onClick={() => confirmDeleteInvite(invite.id)}
                       >
+                        <Trash2 className="h-4 w-4 mr-2 text-destructive" />
                         Delete
                       </Button>
                     </TableCell>
@@ -649,11 +665,9 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          deleteInvite(invite.id);
-                          loadCompanyInvites(selectedCompany.id);
-                        }}
+                        onClick={() => confirmDeleteInvite(invite.id)}
                       >
+                        <Trash2 className="h-4 w-4 mr-2 text-destructive" />
                         Delete
                       </Button>
                     </TableCell>
@@ -748,6 +762,30 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Invite</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this invitation? This action cannot be undone.
+              The invite code will be permanently removed and can no longer be used.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteInviteId(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteInviteId && deleteInvite(deleteInviteId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
