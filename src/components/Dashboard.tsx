@@ -289,25 +289,27 @@ const Dashboard = ({ onBack }: DashboardProps) => {
             </CardContent>
           </Card>
 
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow bg-gradient-to-br from-secondary/5 to-secondary/10 border-secondary/20" onClick={() => setCurrentView('admin-portal')}>
-            <CardHeader>
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-secondary/10 rounded-lg">
-                  <Building2 className="h-6 w-6 text-secondary" />
+          {(userProfile?.role === 'company_admin' || userProfile?.role === 'CC_STAFF') && (
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow bg-gradient-to-br from-secondary/5 to-secondary/10 border-secondary/20" onClick={() => setCurrentView('admin-portal')}>
+              <CardHeader>
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-secondary/10 rounded-lg">
+                    <Building2 className="h-6 w-6 text-secondary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl">Admin Portal</CardTitle>
+                    <CardDescription>Team management, appetite guides, and system administration</CardDescription>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-xl">Admin Portal</CardTitle>
-                  <CardDescription>Team management, appetite guides, and system administration</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                  <Badge variant="outline">Team Management</Badge>
+                  <Badge variant="outline">Appetite Guides</Badge>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                <Badge variant="outline">Team Management</Badge>
-                <Badge variant="outline">Appetite Guides</Badge>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Quick Stats */}

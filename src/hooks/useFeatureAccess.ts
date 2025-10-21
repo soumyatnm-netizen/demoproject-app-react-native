@@ -56,10 +56,15 @@ export const useFeatureAccess = () => {
   };
 
   const hasFeature = (featureName: string): boolean => {
-    // If no feature record exists, default to enabled (true)
+    // If user has no company, deny all features except basic ones
+    if (!companyId) {
+      return false;
+    }
+    
+    // If no feature record exists, default to disabled (false) for security
     // If a record exists, use the enabled value from the database
     const feature = features[featureName];
-    return feature !== undefined ? feature : true;
+    return feature !== undefined ? feature : false;
   };
 
   const checkFeature = async (featureName: string): Promise<boolean> => {
