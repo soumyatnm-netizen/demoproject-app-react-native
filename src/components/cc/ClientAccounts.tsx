@@ -63,15 +63,38 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
 
   const loadPendingInvites = async () => {
     try {
-      const { data, error } = await supabase
+      // First get the invites
+      const { data: invites, error: invitesError } = await supabase
         .from('company_invites')
-        .select('*, broker_companies(name)')
+        .select('*')
         .is('used_at', null)
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setPendingInvites(data || []);
+      if (invitesError) throw invitesError;
+
+      if (!invites || invites.length === 0) {
+        setPendingInvites([]);
+        return;
+      }
+
+      // Then get company names separately
+      const companyIds = [...new Set(invites.map(inv => inv.company_id))];
+      const { data: companiesData, error: companiesError } = await supabase
+        .from('broker_companies')
+        .select('id, name')
+        .in('id', companyIds);
+
+      if (companiesError) throw companiesError;
+
+      // Map company names to invites
+      const companiesMap = new Map(companiesData?.map(c => [c.id, c.name]) || []);
+      const invitesWithCompanyNames = invites.map(invite => ({
+        ...invite,
+        company_name: companiesMap.get(invite.company_id) || 'Unknown',
+      }));
+
+      setPendingInvites(invitesWithCompanyNames);
     } catch (error) {
       console.error('Error loading pending invites:', error);
     }
@@ -269,7 +292,7 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
                 {pendingInvites.map((invite) => (
                   <TableRow key={invite.id}>
                     <TableCell>{invite.email}</TableCell>
-                    <TableCell>{invite.broker_companies?.name || 'Unknown'}</TableCell>
+                    <TableCell>{invite.company_name || 'Unknown'}</TableCell>
                     <TableCell>
                       <Badge variant="outline">{invite.role}</Badge>
                     </TableCell>
