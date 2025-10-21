@@ -43,31 +43,33 @@ export const DocumentUpload = ({ open, onOpenChange, onClientExtracted }: Docume
       date_established: "",
       organisation_type: "",
       website: "",
-      wage_roll: ""
+      wage_roll: "",
+      policy_renewal_date: ""
     };
 
     // Helper to prioritize non-empty values
     const pickBestValue = (values: any[]) => {
-      return values.find(v => v && v !== "" && v !== "N/A") || "";
+      return values.find(v => v && v !== "" && v !== "N/A" && v !== null) || "";
     };
 
-    // Merge each field, prioritizing populated data
-    merged.client_name = pickBestValue(dataArray.map(d => d.client_name || d["Business/Client name"]));
-    merged.industry = pickBestValue(dataArray.map(d => d.industry || d["Industry"]));
-    merged.revenue_band = pickBestValue(dataArray.map(d => d.revenue_band || d["Revenue Band"]));
-    merged.employee_count = pickBestValue(dataArray.map(d => d.employee_count || d["Employee Count"] || d["Total number of employees"]));
-    merged.contact_email = pickBestValue(dataArray.map(d => d.contact_email || d["Contact Email"]));
-    merged.contact_phone = pickBestValue(dataArray.map(d => d.contact_phone || d["Contact Phone"]));
-    merged.main_address = pickBestValue(dataArray.map(d => d.main_address || d["Main address"]));
-    merged.postcode = pickBestValue(dataArray.map(d => d.postcode || d["Postcode"]));
-    merged.date_established = pickBestValue(dataArray.map(d => d.date_established || d["Date business established"]));
-    merged.organisation_type = pickBestValue(dataArray.map(d => d.organisation_type || d["Type of organisation"]));
-    merged.website = pickBestValue(dataArray.map(d => d.website || d["Website"]));
-    merged.wage_roll = pickBestValue(dataArray.map(d => d.wage_roll || d["Total wage roll"]));
+    // Merge each field, prioritizing populated data (now using snake_case from API)
+    merged.client_name = pickBestValue(dataArray.map(d => d.client_name));
+    merged.industry = pickBestValue(dataArray.map(d => d.industry));
+    merged.revenue_band = pickBestValue(dataArray.map(d => d.revenue_band));
+    merged.employee_count = pickBestValue(dataArray.map(d => d.employee_count));
+    merged.contact_email = pickBestValue(dataArray.map(d => d.contact_email));
+    merged.contact_phone = pickBestValue(dataArray.map(d => d.contact_phone));
+    merged.main_address = pickBestValue(dataArray.map(d => d.main_address));
+    merged.postcode = pickBestValue(dataArray.map(d => d.postcode));
+    merged.date_established = pickBestValue(dataArray.map(d => d.date_established));
+    merged.organisation_type = pickBestValue(dataArray.map(d => d.organisation_type));
+    merged.website = pickBestValue(dataArray.map(d => d.website));
+    merged.wage_roll = pickBestValue(dataArray.map(d => d.wage_roll));
+    merged.policy_renewal_date = pickBestValue(dataArray.map(d => d.policy_renewal_date));
 
     // Merge coverage requirements arrays
     const allCoverages = dataArray.flatMap(d => {
-      const coverage = d.coverage_requirements || d["Coverage Requirements"] || [];
+      const coverage = d.coverage_requirements || [];
       if (Array.isArray(coverage)) return coverage;
       if (typeof coverage === 'string') return coverage.split(',').map(s => s.trim());
       return [];

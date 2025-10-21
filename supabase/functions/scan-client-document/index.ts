@@ -26,6 +26,16 @@ interface ClientExtractedData {
   years_experience?: number;
   total_employees?: number;
   wage_roll?: number;
+  policy_renewal_date?: string;
+  current_broker?: string;
+  current_carrier?: string;
+  current_premium_total?: number;
+  claims_free?: boolean;
+  recent_claims_details?: string;
+  revenue_split_geography?: Record<string, number>;
+  activity_split?: Record<string, number>;
+  sells_in_us?: boolean;
+  notes?: string;
   income_breakdown?: {
     last_year?: number;
     current_year_expectation?: number;
@@ -116,68 +126,49 @@ serve(async (req) => {
 
     // Helpers
     const buildPrompt = () => `
-    You are an advanced document analysis AI with OCR and handwriting recognition capabilities. Extract client/business information from this document, which may contain:
-    - Printed text from insurance policies or quotes
-    - Handwritten notes and forms
-    - Scanned documents with mixed content
-    - Business cards or contact information sheets
+    You are an advanced document analysis AI with OCR and handwriting recognition capabilities. Extract client/business information from this document.
 
-    **HANDWRITING RECOGNITION**: If this is a handwritten document, carefully read and transcribe all handwritten text, including:
-    - Names, addresses, and contact details
-    - Business information and notes
-    - Numbers, dates, and financial figures
-    - Any crossed-out or corrected information (use the corrected version)
+    **CRITICAL**: Return field names in snake_case format. Use these exact field names:
 
-    Extract the following information if available in the document:
+    REQUIRED FIELDS (use snake_case):
+    - client_name: Business/Client name
+    - contact_email: Email address
+    - contact_phone: Phone number
+    - coverage_requirements: Array of coverage types needed
+    - industry: Industry/sector
+    - employee_count: Number of employees (as number)
+    - revenue_band: Revenue range (format: "1-5m" for £1M-£5M)
+    - main_address: Full street address
+    - postcode: Postal/ZIP code
 
-    REQUIRED FIELDS:
-    - Business/Client name (may be handwritten)
-    - Contact Email 
-    - Contact Phone 
-    - Coverage Requirements (as array)
-    - Risk Profile (low/medium/high)
-    - Industry
-    - Employee Count (number)
-    - Revenue Band
-    - Main address
-    - Postcode
+    OPTIONAL FIELDS (use snake_case):
+    - date_established: When business was established (YYYY-MM-DD format)
+    - organisation_type: Type of org (Ltd, PLC, Partnership, etc.)
+    - website: Company website URL
+    - wage_roll: Total annual wage roll in £
+    - policy_renewal_date: When policy renews (YYYY-MM-DD) - look for "Renewal Date", "Policy Expires", "Expiry Date"
+    - current_broker: Name of current insurance broker
+    - current_carrier: Current insurance company/underwriter
+    - current_premium_total: Total annual premium (number only, no currency symbols)
+    - claims_free: true if no recent claims, false if has claims, null if unknown
+    - recent_claims_details: Description of any recent claims
+    - revenue_split_geography: Object with percentages by region {"UK": 50, "EU": 30, "US": 20}
+    - activity_split: Object with percentages by channel {"retail": 40, "online": 60}
+    - sells_in_us: true/false - whether they sell in US market
+    - notes: Any additional relevant information
+    - risk_profile: "low", "medium", or "high"
 
-    OPTIONAL FIELDS:
-    - Date business established
-    - Type of organisation (Ltd, PLC, etc.)
-    - Website
-    - Relevant years of experience
-    - Total number of employees
-    - Total wage roll
-    - Income breakdown (last year, current year expectation, next 12 months estimate)
-    - Customer location & jurisdiction breakdown (UK, EU, USA/Canada, Rest of world percentages)
-    - USA/Canada specific: subsidiaries, income, largest contracts (customer name, work, length, value)
-    - Policy renewal date (look for "Renewal Date", "Policy Expires", "Expiry Date", "Valid Until" - format as YYYY-MM-DD)
-    - Current Broker (name of current insurance broker if mentioned)
-    - Current Carrier/Underwriter (current insurance company/carrier)
-    - Current Premium Total (total premium across all policies - extract number only)
-    - Claims Free (Yes/No - whether client is claims-free or has no recent claims)
-    - Recent Claims Details (details of any recent claims mentioned)
-    - Revenue/Turnover Split by Geography (percentages for UK, EU, US, APAC, Other regions)
-    - Activity Split (percentages for sales channels: e-commerce, retail, wholesale, B2B, other)
-    - Sells in US (Yes/No - whether they sell products/services in US market)
+    **EXTRACTION RULES**:
+    1. Use exact snake_case field names as shown above
+    2. For dates, always use YYYY-MM-DD format
+    3. For numbers, extract digits only (no currency symbols or commas)
+    4. For booleans, use true/false/null
+    5. For arrays, return [] if empty
+    6. Use null for missing fields
+    7. For percentages objects, ensure they add up to 100 or leave as null
+    8. Look carefully for policy renewal dates - they may be in headers, footers, or summary sections
 
-    **IMPORTANT**: 
-    - For handwritten text, be extra careful with letter recognition (e.g., distinguish between 'a' and 'o', '1' and 'l', '5' and 'S')
-    - If handwriting is unclear, make your best interpretation but note uncertainty in the field name with a "?" 
-    - Extract information from any format: forms, notes, business cards, letters, etc.
-    - Look for policy renewal dates, expiry dates - these might be labeled as "Renewal Date", "Policy Expires", "Expiry Date", "Valid Until", or similar
-    - For geography and activity splits, extract percentages if available. If only mentioned without percentages, estimate based on context or leave null
-    - For claims free status, look for phrases like "no claims", "claims free", "clean record", etc.
-
-    Return ONLY a valid JSON object with the extracted data. Use null for fields that cannot be found. 
-    For arrays, return empty arrays if no data found.
-    For revenue_band, use format like "1-5m" for £1M - £5M.
-    For risk_profile, return one of: "low", "medium", "high".
-    For coverage_requirements, return as array of strings.
-    For dates including renewal_date, use format: "YYYY-MM-DD"
-    For boolean fields (claims_free, sells_in_us), return true, false, or null
-    For split percentages, use format: {"UK": 50, "EU": 30, "US": 20} (must add up to 100 or leave null)
+    Return ONLY a valid JSON object with snake_case field names. No explanation, just the JSON.
     `;
 
     const mime = (document.file_type || '').toLowerCase();
@@ -327,58 +318,74 @@ serve(async (req) => {
       }
 
     } else if (filename.endsWith('.pdf') || mime === 'application/pdf') {
-      // PDF FLOW: Parse with Gemini (OpenAI vision doesn't support PDFs)
+      // PDF FLOW: Use OpenAI with specialized PDF parsing instructions
       console.log('Starting PDF processing for file:', document.filename);
       
-      // Get Lovable AI key for Gemini
-      const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
-      if (!lovableApiKey) {
-        throw new Error('Lovable AI key not configured');
-      }
-
       const arrayBuffer = await fileData.arrayBuffer();
       const bytes = new Uint8Array(arrayBuffer);
-      let binaryString = '';
-      const chunkSize = 8192;
-      for (let i = 0; i < bytes.length; i += chunkSize) {
-        const sub = bytes.subarray(i, i + chunkSize);
-        for (let j = 0; j < sub.length; j++) binaryString += String.fromCharCode(sub[j]);
-      }
-      const base64Data = btoa(binaryString);
-
-      console.log('Calling Gemini with PDF, size:', base64Data.length);
-
-      const geminiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${lovableApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: buildPrompt() },
-                { type: 'image_url', image_url: { url: `data:application/pdf;base64,${base64Data}` } }
-              ]
-            }
-          ],
-          max_tokens: 2000,
-          temperature: 0.1
-        }),
+      
+      // Try text extraction first
+      console.log('Attempting PDF text extraction...');
+      const text = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+      
+      // Extract readable text (filter out binary junk)
+      const lines = text.split('\n').filter(line => {
+        // Keep lines that have at least some readable ASCII characters
+        const readableChars = line.match(/[a-zA-Z0-9]/g);
+        return readableChars && readableChars.length > 3;
       });
-
-      if (!geminiResponse.ok) {
-        const err = await geminiResponse.text();
-        console.error('Gemini (PDF) error:', err);
+      
+      const cleanText = lines.join('\n').slice(0, 20000);
+      
+      console.log('Extracted text length:', cleanText.length);
+      console.log('Text preview:', cleanText.substring(0, 500));
+      
+      if (cleanText.length < 50) {
+        // If text extraction failed, try image-based approach with base64
+        console.log('Text extraction insufficient, trying image-based approach...');
+        let binaryString = '';
+        const chunkSize = 8192;
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+          const sub = bytes.subarray(i, i + chunkSize);
+          for (let j = 0; j < sub.length; j++) binaryString += String.fromCharCode(sub[j]);
+        }
+        const base64Data = btoa(binaryString);
         
-        // Fallback: Try extracting text with simple regex and send to OpenAI
-        console.log('Attempting text extraction fallback...');
-        const text = new TextDecoder().decode(bytes);
-        const cleanText = text.replace(/[^\x20-\x7E\n\r]/g, ' ').slice(0, 10000);
+        // Use GPT-4o (supports PDF as base64 image)
+        const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o',
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { type: 'text', text: buildPrompt() },
+                  { type: 'image_url', image_url: { url: `data:application/pdf;base64,${base64Data}` } }
+                ]
+              }
+            ],
+            max_tokens: 2000,
+            temperature: 0.1
+          }),
+        });
         
+        if (!openAIResponse.ok) {
+          const err = await openAIResponse.text();
+          console.error('OpenAI (PDF image) error:', err);
+          await supabase.from('documents').update({ status: 'error', processing_error: 'Failed to parse PDF' }).eq('id', documentId);
+          return new Response(JSON.stringify({ success: false, error: 'Failed to parse PDF document.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+        }
+        
+        const openAIResult = await openAIResponse.json();
+        extractedText = openAIResult.choices?.[0]?.message?.content || null;
+      } else {
+        // Use extracted text with GPT-4o-mini (cheaper, faster)
+        console.log('Using extracted text with GPT-4o-mini...');
         const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -388,8 +395,8 @@ serve(async (req) => {
           body: JSON.stringify({
             model: 'gpt-4o-mini',
             messages: [
-              { role: 'system', content: 'Extract structured client details from provided text. Always return JSON only.' },
-              { role: 'user', content: `${buildPrompt()}\n\nDocument Text:\n${cleanText}` }
+              { role: 'system', content: 'You are a precise data extraction AI. Extract structured client information from the document text. Return ONLY valid JSON with snake_case field names.' },
+              { role: 'user', content: `${buildPrompt()}\n\n=== DOCUMENT TEXT ===\n${cleanText}` }
             ],
             max_tokens: 2000,
             temperature: 0.1
@@ -397,15 +404,14 @@ serve(async (req) => {
         });
 
         if (!openAIResponse.ok) {
-          await supabase.from('documents').update({ status: 'error', processing_error: 'AI failed to analyze PDF' }).eq('id', documentId);
+          const err = await openAIResponse.text();
+          console.error('OpenAI (PDF text) error:', err);
+          await supabase.from('documents').update({ status: 'error', processing_error: 'AI failed to analyze PDF text' }).eq('id', documentId);
           return new Response(JSON.stringify({ success: false, error: 'AI failed to analyze PDF document.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
         }
 
         const openAIResult = await openAIResponse.json();
         extractedText = openAIResult.choices?.[0]?.message?.content || null;
-      } else {
-        const geminiResult = await geminiResponse.json();
-        extractedText = geminiResult.choices?.[0]?.message?.content || null;
       }
 
     } else {
