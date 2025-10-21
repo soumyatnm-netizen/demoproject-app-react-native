@@ -32,7 +32,7 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
   
   // Invite form states
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState("BROKER");
+  const [inviteRole, setInviteRole] = useState("broker");
   
   useEffect(() => {
     loadCompanies();
@@ -338,8 +338,8 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="BROKER">Broker</SelectItem>
-                  <SelectItem value="ADMIN">Admin</SelectItem>
+                  <SelectItem value="broker">Broker</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
               </Select>
             </div>
