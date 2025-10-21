@@ -267,22 +267,31 @@ const Dashboard = ({ onBack }: DashboardProps) => {
 
       <div className="container mx-auto px-4 py-8">
         {/* Portal Access Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20" onClick={() => setCurrentView('broker-portal')}>
-            <CardHeader>
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <Target className="h-6 w-6 text-primary" />
+        <div className={`grid gap-6 mb-8 ${
+          (userProfile?.role === 'company_admin' || userProfile?.role === 'CC_STAFF') 
+            ? 'grid-cols-1 md:grid-cols-2' 
+            : 'grid-cols-1 max-w-4xl mx-auto'
+        }`}>
+          <Card 
+            className="cursor-pointer hover:shadow-lg transition-shadow bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20" 
+            onClick={() => setCurrentView('broker-portal')}
+          >
+            <CardHeader className="pb-4">
+              <div className="flex items-start sm:items-center gap-4 flex-col sm:flex-row">
+                <div className="p-3 sm:p-4 bg-primary/10 rounded-lg flex-shrink-0">
+                  <Target className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
                 </div>
-                <div>
-                  <CardTitle className="text-xl">Broker Portal</CardTitle>
-                  <CardDescription>Instant quote comparison, client management, and market intelligence</CardDescription>
+                <div className="flex-1">
+                  <CardTitle className="text-2xl sm:text-3xl mb-2">Broker Portal</CardTitle>
+                  <CardDescription className="text-base sm:text-lg">
+                    Instant quote comparison, client management, and market intelligence
+                  </CardDescription>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="flex justify-center">
-                <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 text-lg px-4 py-2 font-semibold">
+            <CardContent className="pt-0">
+              <div className="flex justify-center sm:justify-start">
+                <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 text-base sm:text-lg px-6 py-3 font-semibold">
                   ⚡ Instant Quote Comparison
                 </Badge>
               </div>
@@ -290,22 +299,27 @@ const Dashboard = ({ onBack }: DashboardProps) => {
           </Card>
 
           {(userProfile?.role === 'company_admin' || userProfile?.role === 'CC_STAFF') && (
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow bg-gradient-to-br from-secondary/5 to-secondary/10 border-secondary/20" onClick={() => setCurrentView('admin-portal')}>
-              <CardHeader>
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-secondary/10 rounded-lg">
-                    <Building2 className="h-6 w-6 text-secondary" />
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-shadow bg-gradient-to-br from-secondary/5 to-secondary/10 border-secondary/20" 
+              onClick={() => setCurrentView('admin-portal')}
+            >
+              <CardHeader className="pb-4">
+                <div className="flex items-start sm:items-center gap-4 flex-col sm:flex-row">
+                  <div className="p-3 sm:p-4 bg-secondary/10 rounded-lg flex-shrink-0">
+                    <Building2 className="h-8 w-8 sm:h-10 sm:w-10 text-secondary" />
                   </div>
-                  <div>
-                    <CardTitle className="text-xl">Admin Portal</CardTitle>
-                    <CardDescription>Team management, appetite guides, and system administration</CardDescription>
+                  <div className="flex-1">
+                    <CardTitle className="text-2xl sm:text-3xl mb-2">Admin Portal</CardTitle>
+                    <CardDescription className="text-base sm:text-lg">
+                      Team management, appetite guides, and system administration
+                    </CardDescription>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                  <Badge variant="outline">Team Management</Badge>
-                  <Badge variant="outline">Appetite Guides</Badge>
+              <CardContent className="pt-0">
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="text-sm">Team Management</Badge>
+                  <Badge variant="outline" className="text-sm">Appetite Guides</Badge>
                 </div>
               </CardContent>
             </Card>
