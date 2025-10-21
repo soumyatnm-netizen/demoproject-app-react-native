@@ -153,17 +153,31 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
 
       const email = inviteEmail.toLowerCase().trim();
 
-      // Delete any existing pending invites for this email/company to avoid duplicates
-      const { error: deleteError } = await supabase
+      // First check if there's an existing pending invite
+      const { data: existingInvites, error: checkError } = await supabase
         .from('company_invites')
-        .delete()
+        .select('id')
         .eq('company_id', selectedCompany.id)
         .eq('email', email)
         .is('used_at', null);
 
-      if (deleteError) {
-        console.warn('Error deleting existing invites:', deleteError);
-        // Continue anyway - we'll handle duplicates below
+      if (checkError) {
+        console.warn('Error checking existing invites:', checkError);
+      }
+
+      // If there are existing invites, delete them first
+      if (existingInvites && existingInvites.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('company_invites')
+          .delete()
+          .eq('company_id', selectedCompany.id)
+          .eq('email', email)
+          .is('used_at', null);
+
+        if (deleteError) {
+          console.warn('Error deleting existing invites:', deleteError);
+          // Continue anyway - maybe the constraint will handle it
+        }
       }
 
       // Generate new invite code
