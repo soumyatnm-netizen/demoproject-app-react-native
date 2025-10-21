@@ -21,7 +21,7 @@ const AVAILABLE_FEATURES = [
   { id: 'white_label', name: 'White Label', tier: 'enterprise' },
 ];
 
-const FeaturesManagement = () => {
+const FeaturesManagement = ({ selectedCompanyId }: { selectedCompanyId?: string | null }) => {
   const { toast } = useToast();
   const [companies, setCompanies] = useState<any[]>([]);
   const [selectedCompany, setSelectedCompany] = useState<string>("");
@@ -31,6 +31,12 @@ const FeaturesManagement = () => {
   useEffect(() => {
     loadCompanies();
   }, []);
+
+  useEffect(() => {
+    if (selectedCompanyId && companies.length > 0) {
+      setSelectedCompany(selectedCompanyId);
+    }
+  }, [selectedCompanyId, companies]);
 
   useEffect(() => {
     if (selectedCompany) {

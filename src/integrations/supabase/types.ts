@@ -1795,6 +1795,10 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: boolean
       }
+      check_company_feature: {
+        Args: { p_company_id: string; p_feature_name: string }
+        Returns: boolean
+      }
       cleanup_expired_access_sessions: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -1898,6 +1902,14 @@ export type Database = {
           recommended_premium_range: Json
           risk_assessment: string
           underwriter_name: string
+        }[]
+      }
+      get_company_features: {
+        Args: { p_company_id: string }
+        Returns: {
+          enabled: boolean
+          feature: string
+          tier: string
         }[]
       }
       get_masked_sensitive_data: {

@@ -8,10 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Building2, Users, Key, Copy, Check } from "lucide-react";
+import { Plus, Building2, Users, Key, Copy, Check, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const ClientAccounts = () => {
+interface ClientAccountsProps {
+  onManageFeatures?: (companyId: string) => void;
+}
+
+const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
   const { toast } = useToast();
   const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -276,17 +280,29 @@ const ClientAccounts = () => {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedCompany(company);
-                          setShowInviteDialog(true);
-                        }}
-                      >
-                        <Key className="h-4 w-4 mr-2" />
-                        Invite
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedCompany(company);
+                            setShowInviteDialog(true);
+                          }}
+                        >
+                          <Key className="h-4 w-4 mr-2" />
+                          Invite
+                        </Button>
+                        {onManageFeatures && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onManageFeatures(company.id)}
+                          >
+                            <Settings className="h-4 w-4 mr-2" />
+                            Features
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

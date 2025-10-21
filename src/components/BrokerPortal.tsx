@@ -5,7 +5,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Users, Mail, Target, FileText, TrendingUp, BookOpen, Sword, User, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import ClientManagement from "./broker/ClientManagement";
 import InsurerMatching from "./broker/InsurerMatching";
 import EmailIntegration from "./broker/EmailIntegration";
@@ -17,6 +18,7 @@ import DocumentManagement from "./broker/DocumentManagement";
 import MarketIntelligenceDashboard from "./MarketIntelligenceDashboard";
 import CategoryManager from "./broker/CategoryManager";
 import AttackingBrokerIntelligence from "./AttackingBrokerIntelligence";
+import ComingSoonAlert from "./ComingSoonAlert";
 
 interface BrokerPortalProps {
   onBack: () => void;
@@ -39,6 +41,7 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("instant-comparison");
   const { toast } = useToast();
+  const { features, loading: featuresLoading, hasFeature } = useFeatureAccess();
 
   useEffect(() => {
     fetchBrokerStats();
@@ -108,7 +111,7 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
     }
   };
 
-  if (loading) {
+  if (loading || featuresLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -223,7 +226,11 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
           </TabsList>
 
           <TabsContent value="instant-comparison">
-            <InstantQuoteComparison />
+            {hasFeature('quote_comparison') || hasFeature('document_processing') ? (
+              <InstantQuoteComparison />
+            ) : (
+              <ComingSoonAlert featureName="Quote Comparison" />
+            )}
           </TabsContent>
 
           <TabsContent value="clients">
@@ -238,10 +245,18 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
                 <TabsTrigger value="categories">Categories</TabsTrigger>
               </TabsList>
               <TabsContent value="documents">
-                <DocumentManagement />
+                {hasFeature('document_processing') ? (
+                  <DocumentManagement />
+                ) : (
+                  <ComingSoonAlert featureName="Document Processing" />
+                )}
               </TabsContent>
               <TabsContent value="appetites">
-                <AppetiteGuidesViewer />
+                {hasFeature('appetite_guides') ? (
+                  <AppetiteGuidesViewer />
+                ) : (
+                  <ComingSoonAlert featureName="Appetite Guides" />
+                )}
               </TabsContent>
               <TabsContent value="categories">
                 <CategoryManager />
@@ -250,15 +265,27 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
           </TabsContent>
 
           <TabsContent value="matching">
-            <InsurerMatching />
+            {hasFeature('underwriter_matching') ? (
+              <InsurerMatching />
+            ) : (
+              <ComingSoonAlert featureName="Insurer Matching" />
+            )}
           </TabsContent>
 
           <TabsContent value="attack-intel">
-            <AttackingBrokerIntelligence />
+            {hasFeature('placement_tracking') || hasFeature('predictive_analytics') ? (
+              <AttackingBrokerIntelligence />
+            ) : (
+              <ComingSoonAlert featureName="Attack Intelligence" />
+            )}
           </TabsContent>
 
           <TabsContent value="market-intel">
-            <MarketIntelligenceDashboard />
+            {hasFeature('market_intelligence') ? (
+              <MarketIntelligenceDashboard />
+            ) : (
+              <ComingSoonAlert featureName="Market Intelligence" />
+            )}
           </TabsContent>
 
           <TabsContent value="profile">

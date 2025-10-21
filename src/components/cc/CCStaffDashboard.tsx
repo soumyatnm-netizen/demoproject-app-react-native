@@ -19,6 +19,7 @@ const CCStaffDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("accounts");
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
 
   useEffect(() => {
     checkAccess();
@@ -126,11 +127,14 @@ const CCStaffDashboard = () => {
           </TabsList>
 
           <TabsContent value="accounts">
-            <ClientAccounts />
+            <ClientAccounts onManageFeatures={(companyId) => {
+              setSelectedCompanyId(companyId);
+              setActiveTab('features');
+            }} />
           </TabsContent>
 
           <TabsContent value="features">
-            <FeaturesManagement />
+            <FeaturesManagement selectedCompanyId={selectedCompanyId} />
           </TabsContent>
 
           <TabsContent value="analytics">
