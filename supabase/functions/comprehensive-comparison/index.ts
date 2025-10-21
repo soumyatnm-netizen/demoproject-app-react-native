@@ -11,6 +11,9 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const startTime = Date.now();
+  let success = true;
+
   try {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
@@ -347,6 +350,15 @@ DISCLAIMERS:
 
     console.log('Comprehensive analysis complete');
 
+    // Record processing time
+    const duration = Date.now() - startTime;
+    await supabase.from('processing_metrics').insert({
+      operation_type: 'comprehensive_comparison',
+      duration_ms: duration,
+      success: true,
+      metadata: { document_count: documents.length }
+    });
+
     return new Response(
       JSON.stringify({ 
         success: true,
@@ -356,7 +368,25 @@ DISCLAIMERS:
     );
 
   } catch (error) {
+    success = false;
     console.error('Error in comprehensive-comparison:', error);
+    
+    // Record failed processing time
+    const duration = Date.now() - startTime;
+    try {
+      const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+      const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+      await supabase.from('processing_metrics').insert({
+        operation_type: 'comprehensive_comparison',
+        duration_ms: duration,
+        success: false,
+        metadata: { error: error.message }
+      });
+    } catch (logError) {
+      console.error('Failed to log metrics:', logError);
+    }
+    
     return new Response(
       JSON.stringify({ 
         error: error.message,

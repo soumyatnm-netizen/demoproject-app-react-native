@@ -12,6 +12,9 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const startTime = Date.now();
+  let success = true;
+
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
       auth: {
@@ -136,6 +139,15 @@ Deno.serve(async (req) => {
 
     console.log('Comparison analysis completed successfully')
 
+    // Record processing time
+    const duration = Date.now() - startTime;
+    await supabase.from('processing_metrics').insert({
+      operation_type: 'generate_comparison',
+      duration_ms: duration,
+      success: true,
+      metadata: { quote_count: quotes.length }
+    });
+
     return new Response(
       JSON.stringify(comparisonResults),
       { 
@@ -147,7 +159,28 @@ Deno.serve(async (req) => {
     )
 
   } catch (error) {
+    success = false;
     console.error('Error in generate-comparison function:', error)
+    
+    // Record failed processing time
+    const duration = Date.now() - startTime;
+    try {
+      const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      });
+      await supabase.from('processing_metrics').insert({
+        operation_type: 'generate_comparison',
+        duration_ms: duration,
+        success: false,
+        metadata: { error: error.message }
+      });
+    } catch (logError) {
+      console.error('Failed to log metrics:', logError);
+    }
+    
     return new Response(
       JSON.stringify({ 
         error: 'Internal server error during comparison generation' 

@@ -13,7 +13,8 @@ const SystemAnalytics = () => {
     totalDocuments: 0,
     totalQuotes: 0,
     totalPlacements: 0,
-    avgScanTime: 0,
+    avgComparisonTime: 0,
+    p95ComparisonTime: 0,
     documentsToday: 0,
   });
   const [loading, setLoading] = useState(true);
@@ -99,6 +100,19 @@ const SystemAnalytics = () => {
         .sort((a: any, b: any) => b.count - a.count)
         .slice(0, 10);
 
+      // Get processing time stats for comparisons
+      const { data: processingStats } = await supabase
+        .rpc('get_processing_time_stats', { days_back: 30 });
+
+      const comparisonStats = processingStats?.find(
+        (stat: any) => 
+          stat.operation_type === 'comprehensive_comparison' || 
+          stat.operation_type === 'generate_comparison'
+      );
+
+      const avgComparisonMs = comparisonStats?.avg_duration_ms || 0;
+      const p95ComparisonMs = comparisonStats?.p95_duration_ms || 0;
+
       // Activity over last 30 days
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
       const { data: activityDocs } = await supabase
@@ -123,7 +137,8 @@ const SystemAnalytics = () => {
         totalDocuments: docCount || 0,
         totalQuotes: quoteCount || 0,
         totalPlacements: placementCount || 0,
-        avgScanTime: 2.3, // Placeholder
+        avgComparisonTime: avgComparisonMs / 1000, // Convert to seconds
+        p95ComparisonTime: p95ComparisonMs / 1000, // Convert to seconds
         documentsToday: todayCount || 0,
       });
 
@@ -190,13 +205,15 @@ const SystemAnalytics = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Scan Time</CardTitle>
+            <CardTitle className="text-sm font-medium">Avg Comparison Time</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.avgScanTime}s</div>
+            <div className="text-2xl font-bold">
+              {stats.avgComparisonTime > 0 ? `${stats.avgComparisonTime.toFixed(1)}s` : 'N/A'}
+            </div>
             <p className="text-xs text-muted-foreground">
-              P95: 4.2s
+              P95: {stats.p95ComparisonTime > 0 ? `${stats.p95ComparisonTime.toFixed(1)}s` : 'N/A'}
             </p>
           </CardContent>
         </Card>

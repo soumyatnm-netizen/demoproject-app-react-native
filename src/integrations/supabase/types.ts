@@ -1014,6 +1014,33 @@ export type Database = {
           },
         ]
       }
+      processing_metrics: {
+        Row: {
+          created_at: string | null
+          duration_ms: number
+          id: string
+          metadata: Json | null
+          operation_type: string
+          success: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          duration_ms: number
+          id?: string
+          metadata?: Json | null
+          operation_type: string
+          success?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          duration_ms?: number
+          id?: string
+          metadata?: Json | null
+          operation_type?: string
+          success?: boolean | null
+        }
+        Relationships: []
+      }
       profile_access_audit: {
         Row: {
           access_reason: string | null
@@ -1916,6 +1943,15 @@ export type Database = {
           total_placements: number
           underwriter_name: string
           win_rate_percentage: number
+        }[]
+      }
+      get_processing_time_stats: {
+        Args: { days_back?: number }
+        Returns: {
+          avg_duration_ms: number
+          count: number
+          operation_type: string
+          p95_duration_ms: number
         }[]
       }
       get_sensitive_data_with_consent: {
