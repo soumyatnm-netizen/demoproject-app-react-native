@@ -36,6 +36,7 @@ interface ClientExtractedData {
   activity_split?: Record<string, number>;
   sells_in_us?: boolean;
   notes?: string;
+  geographies?: string[];
   income_breakdown?: {
     last_year?: number;
     current_year_expectation?: number;
@@ -140,6 +141,7 @@ serve(async (req) => {
     - revenue_band: Revenue range (format: "1-5m" for £1M-£5M)
     - main_address: Full street address (may be labeled "Insured premises", "Business address", "Registered address")
     - postcode: Postal/ZIP code
+    - geographies: **ARRAY of geographic regions** where business operates - Look for: UK, EU, US, USA, North America, Asia Pacific, ROW (Rest of World), etc. Examples: ["UK", "EU", "US", "ROW"]
 
     OPTIONAL FIELDS (use snake_case):
     - date_established: When business was established (YYYY-MM-DD format)
@@ -175,6 +177,13 @@ serve(async (req) => {
        - Crisis containment / Management liability
     4. Include ALL coverage types found in the table, even if value is "Included" or "£0"
     5. Return as array of strings: ["Professional indemnity", "Public liability", "Cyber insurance"]
+
+    **CRITICAL EXTRACTION RULES FOR GEOGRAPHIES**:
+    1. Look for mentions of where the business operates or has customers
+    2. Common terms: "operates in", "trading in", "customers in", "revenue from", "business locations"
+    3. Extract regions like: UK, EU, Europe, US, USA, North America, APAC, Asia Pacific, ROW (Rest of World), Middle East, Africa, Latin America
+    4. Also check for specific countries if mentioned
+    5. Return as array: ["UK", "EU", "US"] or ["UK", "Europe", "North America"]
 
     **OTHER EXTRACTION RULES**:
     1. Use exact snake_case field names as shown above

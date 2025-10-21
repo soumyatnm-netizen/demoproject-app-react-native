@@ -155,7 +155,8 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
     current_premium_total: "",
     claims_free: null as boolean | null,
     recent_claims_details: "",
-    sells_in_us: null as boolean | null
+    sells_in_us: null as boolean | null,
+    geographies: ""
   });
 
   useEffect(() => {
@@ -241,7 +242,8 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
           email: newClient.contact_email,
           phone: newClient.contact_phone
         },
-        notes: newClient.notes
+        notes: newClient.notes,
+        geographies: newClient.geographies.split(',').map(s => s.trim()).filter(Boolean)
       };
 
       // Get user's company_id
@@ -296,7 +298,8 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
         current_premium_total: "",
         claims_free: null,
         recent_claims_details: "",
-        sells_in_us: null
+        sells_in_us: null,
+        geographies: ""
       });
       fetchClients();
       onStatsUpdate();
@@ -331,13 +334,14 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
       organisation_type: extractedData["Type of organisation"] || extractedData.organisation_type || "",
       website: extractedData["Website"] || extractedData.website || "",
       wage_roll: (extractedData["Total wage roll"] || extractedData.wage_roll)?.toString() || "",
-      renewal_date: extractedData["Policy renewal date"] || extractedData.renewal_date || "",
+      renewal_date: extractedData["Policy renewal date"] || extractedData.renewal_date || extractedData.policy_renewal_date || "",
       current_broker: extractedData.current_broker || "",
       current_carrier: extractedData.current_carrier || "",
       current_premium_total: extractedData.current_premium_total?.toString() || "",
       claims_free: extractedData.claims_free ?? null,
       recent_claims_details: extractedData.recent_claims_details || "",
-      sells_in_us: extractedData.sells_in_us ?? null
+      sells_in_us: extractedData.sells_in_us ?? null,
+      geographies: Array.isArray(extractedData.geographies) ? extractedData.geographies.join(', ') : extractedData.geographies || ""
     };
 
     setNewClient(mappedClient);
@@ -371,7 +375,10 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
       wage_roll: client.report_data?.wage_roll?.toString() || '',
       report_title: client.report_title,
       report_status: client.report_status || 'draft',
-      renewal_date: client.renewal_date || ''
+      renewal_date: client.renewal_date || '',
+      geographies: Array.isArray(client.report_data?.geographies) 
+        ? client.report_data.geographies.join(', ')
+        : client.report_data?.geographies || ''
     });
     setShowClientDetails(true);
   };
@@ -403,7 +410,10 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
         wage_roll: selectedClient.report_data?.wage_roll?.toString() || '',
         report_title: selectedClient.report_title,
         report_status: selectedClient.report_status || 'draft',
-        renewal_date: selectedClient.renewal_date || ''
+        renewal_date: selectedClient.renewal_date || '',
+        geographies: Array.isArray(selectedClient.report_data?.geographies) 
+          ? selectedClient.report_data.geographies.join(', ')
+          : selectedClient.report_data?.geographies || ''
       });
     }
   };
@@ -430,7 +440,8 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
         date_established: editingClientData.date_established,
         organisation_type: editingClientData.organisation_type,
         website: editingClientData.website,
-        wage_roll: editingClientData.wage_roll
+        wage_roll: editingClientData.wage_roll,
+        geographies: editingClientData.geographies.split(',').map((s: string) => s.trim()).filter(Boolean)
       };
 
       const { error } = await supabase
@@ -621,6 +632,17 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                   onChange={(e) => setNewClient({ ...newClient, employee_count: e.target.value })}
                   placeholder="50"
                 />
+              </div>
+
+              <div>
+                <Label htmlFor="geographies">Geographies</Label>
+                <Input
+                  id="geographies"
+                  value={newClient.geographies}
+                  onChange={(e) => setNewClient({ ...newClient, geographies: e.target.value })}
+                  placeholder="UK, EU, US, ROW"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Separate multiple locations with commas (e.g., UK, EU, US, ROW)</p>
               </div>
 
               <div>
@@ -1026,6 +1048,23 @@ const ClientManagement = ({ onStatsUpdate }: ClientManagementProps) => {
                         />
                       ) : (
                         <p className="text-sm">{selectedClient.report_data?.employee_count || 'N/A'}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Geographies</Label>
+                      {isEditingClient ? (
+                        <Input
+                          value={editingClientData.geographies}
+                          onChange={(e) => setEditingClientData({...editingClientData, geographies: e.target.value})}
+                          className="mt-1"
+                          placeholder="UK, EU, US, ROW"
+                        />
+                      ) : (
+                        <p className="text-sm">{
+                          Array.isArray(selectedClient.report_data?.geographies) 
+                            ? selectedClient.report_data.geographies.join(', ') 
+                            : selectedClient.report_data?.geographies || 'N/A'
+                        }</p>
                       )}
                     </div>
                     <div>
