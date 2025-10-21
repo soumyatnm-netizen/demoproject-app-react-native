@@ -248,7 +248,7 @@ Return as valid JSON object.`;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`[extract-quote] Extraction attempt ${attempt}/${maxRetries} using Lovable AI (Gemini 2.5 Flash)`);
+        console.log(`[extract-quote] Extraction attempt ${attempt}/${maxRetries} using Lovable AI (GPT-4o-mini)`);
         
         extractRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
@@ -257,7 +257,7 @@ Return as valid JSON object.`;
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash', // Optimized for speed and document extraction
+            model: 'openai/gpt-4o-mini', // GPT-4o-mini supports PDF processing reliably
             messages: [
               { role: 'system', content: systemPrompt },
               {
@@ -356,7 +356,7 @@ Return as valid JSON object.`;
             documentId,
             filename: document.filename,
             processedAt: new Date().toISOString(),
-            model: extractData.model || 'google/gemini-2.5-flash',
+            model: extractData.model || 'openai/gpt-4o-mini',
             usage: extractData.usage,
             timing: {
               total_ms: parseInt(totalTime),

@@ -103,7 +103,7 @@ RULES:
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`[Preflight] Classification attempt ${attempt}/${maxRetries} using Lovable AI (Gemini 2.5 Flash)`);
+        console.log(`[Preflight] Classification attempt ${attempt}/${maxRetries} using Lovable AI (GPT-4o-mini)`);
         
         completionResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
@@ -112,7 +112,7 @@ RULES:
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'openai/gpt-4o-mini',
             messages: [
               {
                 role: 'user',
