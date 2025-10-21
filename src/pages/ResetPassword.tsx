@@ -172,16 +172,13 @@ const ResetPassword = () => {
       setSuccess(true);
       toast({
         title: "Password Updated Successfully",
-        description: "Your password has been reset. Redirecting to login...",
+        description: "Your password has been reset. You can now log in with your new password.",
       });
 
       // Clear URL hash for security
       window.history.pushState({}, document.title, window.location.pathname);
       
-      // Sign out and redirect to home/login
-      await supabase.auth.signOut();
-
-      // Redirect to home after 2 seconds
+      // Redirect to home after 2 seconds (keep user logged in)
       setTimeout(() => {
         navigate('/', { replace: true });
       }, 2000);
@@ -230,7 +227,7 @@ const ResetPassword = () => {
             </div>
             <CardTitle>Password Reset Successful</CardTitle>
             <CardDescription>
-              Your password has been updated. Redirecting you to the login page...
+              Your password has been updated. Redirecting you to the dashboard...
             </CardDescription>
           </CardHeader>
         </Card>
