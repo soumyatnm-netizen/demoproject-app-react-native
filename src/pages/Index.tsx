@@ -121,9 +121,9 @@ const Index = () => {
 
           <div className="grid md:grid-cols-3 gap-8">
             <Card className="text-center flex flex-col h-full">
-              <CardHeader className="p-8 space-y-6 flex-1 flex flex-col">
+              <CardHeader className="p-8 space-y-6 flex flex-col">
                 <Upload className="h-16 w-16 text-primary mx-auto" />
-                <div className="space-y-3 flex-1 flex flex-col justify-center">
+                <div className="space-y-3">
                   <CardTitle className="text-2xl">1. Create Client Profile</CardTitle>
                   <CardDescription className="text-base leading-relaxed">
                     CoverCompass Market Intelligence will automatically match potential insurers using live appetite guides and CoverCompass placement data.
@@ -133,9 +133,9 @@ const Index = () => {
             </Card>
 
             <Card className="text-center flex flex-col h-full">
-              <CardHeader className="p-8 space-y-6 flex-1 flex flex-col">
+              <CardHeader className="p-8 space-y-6 flex flex-col">
                 <Eye className="h-16 w-16 text-primary mx-auto" />
-                <div className="space-y-3 flex-1 flex flex-col justify-center">
+                <div className="space-y-3">
                   <CardTitle className="text-2xl">2. Upload 1-5 Quotes</CardTitle>
                   <CardDescription className="text-base leading-relaxed">
                     Upload PDF quotes from different underwriters. CoverCompassAI analyses schedules, limits, inner limits, exclusions, subjectives, enhancements, and core wording.
@@ -145,9 +145,9 @@ const Index = () => {
             </Card>
 
             <Card className="text-center flex flex-col h-full">
-              <CardHeader className="p-8 space-y-6 flex-1 flex flex-col">
+              <CardHeader className="p-8 space-y-6 flex flex-col">
                 <Download className="h-16 w-16 text-primary mx-auto" />
-                <div className="space-y-3 flex-1 flex flex-col justify-center">
+                <div className="space-y-3">
                   <CardTitle className="text-2xl">3. Instant Comparison Reports</CardTitle>
                   <CardDescription className="text-base leading-relaxed">
                     Get quotes ranked from best to worst with highlighted strengths, concerns, and clear recommendations for quick decision-making.
