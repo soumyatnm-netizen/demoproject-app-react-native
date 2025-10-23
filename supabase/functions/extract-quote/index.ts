@@ -135,7 +135,7 @@ Extract with HIGH CONFIDENCE (Target >95%):
 **PRICING (High Priority)**
 - Premium_Net: Net premium amount (Currency format: "GBP 65,952.65")
 - Premium_IPT: Insurance Premium Tax (Currency)
-- Premium_Total_Annual: Total annual premium payable (Currency)
+- Premium_Total_Annual: Total annual premium payable - **CRITICAL: Look for "TOTAL PAYABLE" or "ANNUAL TOTAL" labels** (Currency)
 - Policy_Admin_Fee: Policy admin fee if separate (Currency) [Medium Priority]
 
 **LIMITS (High Priority)**
