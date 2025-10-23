@@ -73,3 +73,6 @@ verify_jwt = true
 
 [functions.batch-process-appetites]
 verify_jwt = true
+
+[functions.attack-intelligence]
+verify_jwt = true

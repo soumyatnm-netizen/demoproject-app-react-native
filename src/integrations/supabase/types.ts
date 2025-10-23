@@ -462,7 +462,7 @@ export type Database = {
           file_id: string | null
           file_path: string | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           success: boolean
           user_agent: string | null
@@ -475,7 +475,7 @@ export type Database = {
           file_id?: string | null
           file_path?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           metadata?: Json | null
           success?: boolean
           user_agent?: string | null
@@ -488,7 +488,7 @@ export type Database = {
           file_id?: string | null
           file_path?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           metadata?: Json | null
           success?: boolean
           user_agent?: string | null
@@ -498,6 +498,7 @@ export type Database = {
       }
       gap_analyses: {
         Row: {
+          attack_intelligence: Json | null
           attack_strategy: string | null
           company_id: string | null
           comparison_id: string | null
@@ -508,11 +509,13 @@ export type Database = {
           incumbent_quote_id: string | null
           key_weaknesses: string[] | null
           opportunity_score: number
+          recommended_carriers: Json | null
           switch_evidence: Json | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          attack_intelligence?: Json | null
           attack_strategy?: string | null
           company_id?: string | null
           comparison_id?: string | null
@@ -523,11 +526,13 @@ export type Database = {
           incumbent_quote_id?: string | null
           key_weaknesses?: string[] | null
           opportunity_score: number
+          recommended_carriers?: Json | null
           switch_evidence?: Json | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          attack_intelligence?: Json | null
           attack_strategy?: string | null
           company_id?: string | null
           comparison_id?: string | null
@@ -538,6 +543,7 @@ export type Database = {
           incumbent_quote_id?: string | null
           key_weaknesses?: string[] | null
           opportunity_score?: number
+          recommended_carriers?: Json | null
           switch_evidence?: Json | null
           updated_at?: string
           user_id?: string
@@ -638,7 +644,7 @@ export type Database = {
         Row: {
           failure_reason: string | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           login_time: string
           portal_type: Database["public"]["Enums"]["portal_type"]
           success: boolean
@@ -648,7 +654,7 @@ export type Database = {
         Insert: {
           failure_reason?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           login_time?: string
           portal_type: Database["public"]["Enums"]["portal_type"]
           success?: boolean
@@ -658,7 +664,7 @@ export type Database = {
         Update: {
           failure_reason?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           login_time?: string
           portal_type?: Database["public"]["Enums"]["portal_type"]
           success?: boolean
@@ -865,7 +871,7 @@ export type Database = {
           data_type: string
           fields_accessed: string[] | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           purpose: string | null
           risk_score: number | null
@@ -884,7 +890,7 @@ export type Database = {
           data_type: string
           fields_accessed?: string[] | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           metadata?: Json | null
           purpose?: string | null
           risk_score?: number | null
@@ -903,7 +909,7 @@ export type Database = {
           data_type?: string
           fields_accessed?: string[] | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           metadata?: Json | null
           purpose?: string | null
           risk_score?: number | null
@@ -1175,7 +1181,7 @@ export type Database = {
           accessing_user_id: string
           created_at: string | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           user_agent: string | null
         }
         Insert: {
@@ -1186,7 +1192,7 @@ export type Database = {
           accessing_user_id: string
           created_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           user_agent?: string | null
         }
         Update: {
@@ -1197,7 +1203,7 @@ export type Database = {
           accessing_user_id?: string
           created_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           user_agent?: string | null
         }
         Relationships: []
@@ -1382,7 +1388,7 @@ export type Database = {
           accessed_user_id: string
           accessing_user_id: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           session_id: string | null
           user_agent: string | null
         }
@@ -1394,7 +1400,7 @@ export type Database = {
           accessed_user_id: string
           accessing_user_id: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           session_id?: string | null
           user_agent?: string | null
         }
@@ -1406,7 +1412,7 @@ export type Database = {
           accessed_user_id?: string
           accessing_user_id?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           session_id?: string | null
           user_agent?: string | null
         }
@@ -1421,7 +1427,7 @@ export type Database = {
           expires_at: string
           hr_user_id: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           purpose: string
           revoked_at: string | null
           session_token: string
@@ -1436,7 +1442,7 @@ export type Database = {
           expires_at: string
           hr_user_id: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           purpose: string
           revoked_at?: string | null
           session_token: string
@@ -1451,7 +1457,7 @@ export type Database = {
           expires_at?: string
           hr_user_id?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           purpose?: string
           revoked_at?: string | null
           session_token?: string
@@ -1936,34 +1942,16 @@ export type Database = {
         Args: { p_analysis_criteria?: Json; p_quote_id: string }
         Returns: Json
       }
-      can_access_profile: {
-        Args: { target_user_id: string }
-        Returns: boolean
-      }
+      can_access_profile: { Args: { target_user_id: string }; Returns: boolean }
       check_company_feature: {
         Args: { p_company_id: string; p_feature_name: string }
         Returns: boolean
       }
-      cleanup_expired_access_sessions: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      cleanup_expired_security_data: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      cleanup_old_audit_data: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      cleanup_old_policy_cache: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      cleanup_sensitive_audit_logs: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      cleanup_expired_access_sessions: { Args: never; Returns: undefined }
+      cleanup_expired_security_data: { Args: never; Returns: undefined }
+      cleanup_old_audit_data: { Args: never; Returns: undefined }
+      cleanup_old_policy_cache: { Args: never; Returns: undefined }
+      cleanup_sensitive_audit_logs: { Args: never; Returns: undefined }
       create_market_intelligence: {
         Args: {
           p_appetite_score?: number
@@ -1987,28 +1975,13 @@ export type Database = {
         }
         Returns: string
       }
-      expire_old_consents: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      generate_company_code: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_invite_code: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_secure_invite_code: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_unique_company_code: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      expire_old_consents: { Args: never; Returns: undefined }
+      generate_company_code: { Args: never; Returns: string }
+      generate_invite_code: { Args: never; Returns: string }
+      generate_secure_invite_code: { Args: never; Returns: string }
+      generate_unique_company_code: { Args: never; Returns: string }
       get_accessible_sensitive_data: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           created_at: string
           emergency_contact: Json
@@ -2021,7 +1994,7 @@ export type Database = {
         }[]
       }
       get_accessible_team_members: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           company_id: string
           created_at: string
@@ -2155,22 +2128,13 @@ export type Database = {
           user_id: string
         }[]
       }
-      get_user_company_id: {
-        Args: { user_id: string }
-        Returns: string
-      }
-      get_user_org: {
-        Args: { p_user_id: string }
-        Returns: string
-      }
+      get_user_company_id: { Args: { user_id: string }; Returns: string }
+      get_user_org: { Args: { p_user_id: string }; Returns: string }
       get_user_portal_access: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["portal_type"]
       }
-      get_user_role: {
-        Args: { p_user_id: string }
-        Returns: string
-      }
+      get_user_role: { Args: { p_user_id: string }; Returns: string }
       grant_sensitive_data_consent: {
         Args: {
           consent_type: string
@@ -2188,30 +2152,15 @@ export type Database = {
         Args: { consent_type: string; target_user_id: string }
         Returns: boolean
       }
-      is_cc_staff: {
-        Args: { p_user_id: string }
-        Returns: boolean
-      }
-      is_company_admin: {
-        Args: { user_id: string }
-        Returns: boolean
-      }
-      is_hr_admin: {
-        Args: { user_id: string }
-        Returns: boolean
-      }
-      is_org_admin: {
-        Args: { p_user_id: string }
-        Returns: boolean
-      }
+      is_cc_staff: { Args: { p_user_id: string }; Returns: boolean }
+      is_company_admin: { Args: { user_id: string }; Returns: boolean }
+      is_hr_admin: { Args: { user_id: string }; Returns: boolean }
+      is_org_admin: { Args: { p_user_id: string }; Returns: boolean }
       is_same_company_user: {
         Args: { target_user_id: string }
         Returns: boolean
       }
-      is_super_admin: {
-        Args: { user_id: string }
-        Returns: boolean
-      }
+      is_super_admin: { Args: { user_id: string }; Returns: boolean }
       log_file_access: {
         Args: {
           p_action_type: string

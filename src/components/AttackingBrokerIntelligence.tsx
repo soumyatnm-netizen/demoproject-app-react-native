@@ -23,6 +23,19 @@ interface StructuredQuote {
   created_at: string;
 }
 
+interface AttackPoint {
+  issue: string;
+  section: string;
+  impact: string;
+  evidence: string;
+  broker_talking_point: string;
+}
+
+interface AttackIntelligence {
+  attack_intelligence: AttackPoint[];
+  client_summary: string;
+}
+
 interface GapAnalysis {
   id: string;
   incumbent_quote_id: string;
@@ -33,6 +46,7 @@ interface GapAnalysis {
   switch_evidence: any;
   attack_strategy: string;
   recommended_carriers: any[];
+  attack_intelligence?: AttackIntelligence;
   created_at: string;
 }
 
@@ -125,24 +139,47 @@ const AttackingBrokerIntelligence = () => {
         throw new Error('User profile or company not found');
       }
 
-      // Generate gap analysis using AI logic
+      // Call AI-powered attack intelligence edge function
+      toast({
+        title: "Analyzing...",
+        description: "AI is scanning the document for weaknesses and gaps",
+      });
+
+      const { data: aiAnalysis, error: aiError } = await supabase.functions.invoke('attack-intelligence', {
+        body: {
+          documentId: selectedIncumbent.id,
+          documentType: 'structured_quote'
+        }
+      });
+
+      if (aiError) throw aiError;
+      if (!aiAnalysis?.success) throw new Error('AI analysis failed');
+
+      // Generate traditional gap analysis for additional context
       const gapAnalysis = await generateGapAnalysis(selectedIncumbent);
+
+      // Combine AI intelligence with traditional analysis
+      const combinedAnalysis = {
+        ...gapAnalysis,
+        attack_intelligence: aiAnalysis.analysis
+      };
 
       // Save to database
       const { data: analysis, error } = await supabase
         .from('gap_analyses')
-        .insert({
+        .insert([{
           user_id: user.id,
           company_id: profile.company_id,
           incumbent_quote_id: selectedIncumbent.id,
-          coverage_gaps: gapAnalysis.gaps,
-          opportunity_score: gapAnalysis.opportunityScore,
-          key_weaknesses: gapAnalysis.weaknesses,
-          competitive_advantages: gapAnalysis.advantages,
-          switch_evidence: gapAnalysis.evidence,
-          attack_strategy: gapAnalysis.strategy,
-          recommended_carriers: gapAnalysis.recommendedCarriers
-        })
+          coverage_gaps: combinedAnalysis.gaps,
+          opportunity_score: combinedAnalysis.opportunityScore,
+          key_weaknesses: combinedAnalysis.weaknesses,
+          competitive_advantages: combinedAnalysis.advantages,
+          switch_evidence: combinedAnalysis.evidence,
+          attack_strategy: combinedAnalysis.strategy,
+          recommended_carriers: combinedAnalysis.recommendedCarriers,
+          attack_intelligence: aiAnalysis.analysis
+        }] as any)
         .select()
         .single();
 
@@ -150,15 +187,23 @@ const AttackingBrokerIntelligence = () => {
 
       toast({
         title: "Analysis Complete",
-        description: `Gap analysis generated with ${gapAnalysis.opportunityScore}% opportunity score`,
+        description: `Found ${aiAnalysis.analysis.attack_intelligence.length} attack points with ${gapAnalysis.opportunityScore}% opportunity score`,
       });
 
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error analysing gaps:', error);
+      
+      let errorMessage = "Failed to analyse gaps";
+      if (error.message?.includes('Rate limit')) {
+        errorMessage = "Rate limit exceeded. Please try again in a few moments.";
+      } else if (error.message?.includes('Payment required')) {
+        errorMessage = "AI credits exhausted. Please add credits to continue.";
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to analyse gaps",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -467,6 +512,9 @@ const AttackingBrokerIntelligence = () => {
       <div className="space-y-4">
         {gapAnalyses.map((analysis) => {
           const incumbentQuote = quotes.find(q => q.id === analysis.incumbent_quote_id);
+          const hasAttackIntel = analysis.attack_intelligence && 
+                                 analysis.attack_intelligence.attack_intelligence && 
+                                 analysis.attack_intelligence.attack_intelligence.length > 0;
           
           return (
             <Card key={analysis.id} className="border-l-4 border-l-orange-500">
@@ -603,6 +651,79 @@ const AttackingBrokerIntelligence = () => {
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* AI-Generated Attack Intelligence */}
+                {hasAttackIntel && (
+                  <div className="mt-6 space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium flex items-center gap-2">
+                        <Sword className="h-4 w-4 text-orange-600" />
+                        AI-Identified Attack Points
+                      </h4>
+                      <Badge variant="outline" className="text-orange-600 border-orange-600">
+                        {analysis.attack_intelligence.attack_intelligence.length} weaknesses found
+                      </Badge>
+                    </div>
+
+                    <div className="space-y-4">
+                      {analysis.attack_intelligence.attack_intelligence.map((point: AttackPoint, i: number) => (
+                        <Card key={i} className="border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50">
+                          <CardContent className="p-4">
+                            <div className="flex items-start gap-3">
+                              <div className="mt-1 bg-orange-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                                {i + 1}
+                              </div>
+                              <div className="flex-1 space-y-3">
+                                <div>
+                                  <div className="flex items-start justify-between gap-2 mb-1">
+                                    <h5 className="font-semibold text-sm">{point.issue}</h5>
+                                    <Badge variant="secondary" className="text-xs">
+                                      {point.section}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">{point.impact}</p>
+                                </div>
+
+                                <div className="bg-white p-3 rounded border border-orange-100">
+                                  <div className="text-xs font-medium text-orange-700 mb-1">Evidence:</div>
+                                  <p className="text-xs text-muted-foreground italic">{point.evidence}</p>
+                                </div>
+
+                                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 rounded border border-green-200">
+                                  <div className="text-xs font-medium text-green-700 mb-1 flex items-center gap-1">
+                                    <Target className="h-3 w-3" />
+                                    Broker Talking Point:
+                                  </div>
+                                  <p className="text-xs text-green-900 font-medium">{point.broker_talking_point}</p>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+
+                    {/* Client-Friendly Summary */}
+                    {analysis.attack_intelligence.client_summary && (
+                      <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50">
+                        <CardHeader>
+                          <CardTitle className="text-sm flex items-center gap-2">
+                            <Shield className="h-4 w-4 text-blue-600" />
+                            Client-Friendly Summary
+                          </CardTitle>
+                          <CardDescription className="text-xs">
+                            Plain English report to share with the client
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="bg-white p-4 rounded border border-blue-100">
+                            <p className="text-sm leading-relaxed">{analysis.attack_intelligence.client_summary}</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
                   </div>
                 )}
 
