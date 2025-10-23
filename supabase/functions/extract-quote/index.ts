@@ -96,18 +96,26 @@ serve(async (req) => {
       return json(req, 413, { ok: false, error: 'PDF too large (max 20MB)' });
     }
 
-    // Convert PDF to base64 for Lovable AI (chunked to avoid stack overflow)
+    // Convert PDF to base64 for Lovable AI using TextDecoder to avoid stack overflows
     stage = "encode_pdf";
     const t_encode_start = performance.now();
-    
-    // Process in chunks to avoid "Maximum call stack size exceeded"
-    const chunkSize = 8192;
-    let binaryString = '';
-    for (let i = 0; i < pdfBytes.length; i += chunkSize) {
-      const chunk = pdfBytes.subarray(i, Math.min(i + chunkSize, pdfBytes.length));
-      binaryString += String.fromCharCode.apply(null, Array.from(chunk));
+    let base64Pdf: string;
+    try {
+      const decoder = new TextDecoder('latin1');
+      const binaryString = decoder.decode(pdfBytes);
+      base64Pdf = btoa(binaryString);
+    } catch (e) {
+      console.warn('[extract-quote] TextDecoder failed, falling back to safe chunked encoding:', String(e));
+      const chunkSize = 4096;
+      let binaryString = '';
+      for (let i = 0; i < pdfBytes.length; i += chunkSize) {
+        const chunk = pdfBytes.subarray(i, Math.min(i + chunkSize, pdfBytes.length));
+        for (let j = 0; j < chunk.length; j++) {
+          binaryString += String.fromCharCode(chunk[j]);
+        }
+      }
+      base64Pdf = btoa(binaryString);
     }
-    const base64Pdf = btoa(binaryString);
     
     console.log('[extract-quote] PDF encoded in', (performance.now() - t_encode_start).toFixed(0), 'ms');
 
