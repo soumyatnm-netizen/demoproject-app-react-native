@@ -306,15 +306,16 @@ Return as valid JSON object.`;
             : { type: 'image_url', image_url: { url: `data:${document.file_type || 'application/pdf'};base64,${base64Pdf}` } }
         ];
         
+        const modelName = pagesText.length > 0 ? 'google/gemini-2.5-flash' : 'google/gemini-2.5-pro';
+        
         extractRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${lovableApiKey}`,
             'Content-Type': 'application/json',
           },
-            const modelName = pagesText.length > 0 ? 'google/gemini-2.5-flash' : 'google/gemini-2.5-pro';
-            body: JSON.stringify({
-              model: modelName,
+          body: JSON.stringify({
+            model: modelName,
             messages: [
               { role: 'system', content: systemPrompt },
               {
