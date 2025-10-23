@@ -617,7 +617,8 @@ const InstantQuoteComparison = () => {
         if (!user) throw new Error('No authenticated user');
 
         // Build a simplified comparison payload compatible with QuoteComparison view
-        const summary: any[] = (comparisonData.analysis?.comparison_summary || []) as any[];
+        // comparisonData is the analysis object, not {analysis: {...}}
+        const summary: any[] = (comparisonData.comparison_summary || []) as any[];
         const simpleComparison = summary.map((r: any) => ({
           insurer: r.insurer_name || r.insurer || 'Unknown',
           premium: Number(r.premium_amount) || 0,

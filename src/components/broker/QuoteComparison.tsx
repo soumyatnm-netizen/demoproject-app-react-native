@@ -243,8 +243,56 @@ const QuoteComparison = () => {
   const viewSavedComparison = (comparison: SavedComparison) => {
     setIsViewingMode(true);
     setViewingComparison(comparison);
-    setComparisonData(comparison.comparison_data);
-    setSelectedQuotes(comparison.quote_ids);
+    
+    // If comparison has data, use it directly
+    if (comparison.comparison_data && Array.isArray(comparison.comparison_data) && comparison.comparison_data.length > 0) {
+      setComparisonData(comparison.comparison_data);
+      setSelectedQuotes(comparison.quote_ids);
+    } else {
+      // If no comparison data, try to regenerate from quote_ids
+      setSelectedQuotes(comparison.quote_ids);
+      // The useEffect will trigger generateComparison, but we need to allow it in viewing mode
+      // Actually, let's fetch and regenerate the comparison
+      regenerateComparison(comparison.quote_ids);
+    }
+  };
+  
+  const regenerateComparison = async (quoteIds: string[]) => {
+    try {
+      const selectedQuoteData = quotes.filter(q => quoteIds.includes(q.id));
+      
+      if (selectedQuoteData.length === 0) {
+        toast({
+          title: "Cannot Load Comparison",
+          description: "The quotes for this comparison are no longer available.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const comparison = selectedQuoteData.map(quote => {
+        const coverageScore = Math.min(100, (quote.premium_amount / 10000) * 100);
+        const premiumScore = Math.max(0, 100 - (quote.premium_amount / 1000));
+        const overallScore = (premiumScore + coverageScore) / 2;
+
+        return {
+          insurer: quote.insurer_name,
+          premium: quote.premium_amount,
+          coverage: Math.floor(coverageScore),
+          deductible: quote.deductible_amount || 0,
+          score: Math.floor(overallScore)
+        };
+      });
+
+      setComparisonData(comparison);
+    } catch (error) {
+      console.error('Error regenerating comparison:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load comparison data",
+        variant: "destructive",
+      });
+    }
   };
 
   const deleteSavedComparison = async (comparisonId: string) => {
