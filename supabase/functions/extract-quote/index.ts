@@ -1,5 +1,4 @@
 console.log("[extract-quote] boot");
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 
@@ -49,10 +48,10 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
 
-    if (!openAIApiKey) {
-      return json(req, 500, { ok: false, error: 'OPENAI_API_KEY not configured' });
+    if (!lovableApiKey) {
+      return json(req, 500, { ok: false, error: 'LOVABLE_API_KEY not configured' });
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -97,35 +96,18 @@ serve(async (req) => {
       return json(req, 413, { ok: false, error: 'PDF too large (max 20MB)' });
     }
 
-    // Upload to OpenAI
-    stage = "upload_openai";
-    const t_upload_start = performance.now();
-    const pdfFile = new File([pdfBytes], document.filename || 'quote.pdf', { type: 'application/pdf' });
-    const formData = new FormData();
-    formData.append('file', pdfFile);
-    formData.append('purpose', 'assistants');
+    // Convert PDF to base64 for Lovable AI
+    stage = "encode_pdf";
+    const t_encode_start = performance.now();
+    const base64Pdf = btoa(String.fromCharCode(...pdfBytes));
+    console.log('[extract-quote] PDF encoded in', (performance.now() - t_encode_start).toFixed(0), 'ms');
 
-    const upRes = await fetch('https://api.openai.com/v1/files', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${openAIApiKey}` },
-      body: formData
-    });
-    
-    const upText = await upRes.text();
-    if (!upRes.ok) {
-      console.error('[extract-quote] Upload error:', upText.slice(0, 400));
-      return json(req, upRes.status, { ok: false, stage: 'upload', error: upText.slice(0, 400) });
-    }
-    
-    const uploadData = JSON.parse(upText);
-    const fileId = uploadData.id;
-    console.log('[extract-quote] Uploaded to OpenAI:', fileId, 'in', (performance.now() - t_upload_start).toFixed(0), 'ms');
-
-    // Extract quote with focused schema
+    // Extract quote with Gemini 2.5 Pro
     stage = "extract";
     const t_extract_start = performance.now();
     
-    const systemPrompt = "You are a CoverCompass specialist insurance document analyzer. Extract all fields with maximum precision from insurance quotes. Target >95% confidence for all extractions. Return only valid JSON.";
+    const systemPrompt = "You are a CoverCompass specialist insurance document analyzer. Extract all fields with maximum precision from insurance quotes. Target >95% confidence for all extractions. You must use the extract_quote_data tool to return structured data.";
+    
     const userPrompt = `Extract the following fields from this insurance quote document (Quote Schedule). Be thorough and precise.
 
 **PHASE 1: STRUCTURED DATA EXTRACTION (QUOTES)**
@@ -253,9 +235,39 @@ CRITICAL INSTRUCTIONS:
 7. For Property: Security warranties and unoccupied exclusions are CRITICAL
 8. Provide evidence trail for all key extractions
 
+
 Return as valid JSON object.`;
 
-    // Retry logic for OpenAI API calls
+    // Define tool for structured output
+    const extractTool = {
+      type: "function" as const,
+      function: {
+        name: "extract_quote_data",
+        description: "Extract structured data from insurance quote document",
+        parameters: {
+          type: "object",
+          properties: {
+            Insurer_Name: { type: "string" },
+            Client_Name: { type: "string" },
+            Product_Type: { type: "string" },
+            Industry: { type: "string" },
+            Policy_Number: { type: "string" },
+            Quote_Reference: { type: "string" },
+            Quote_Date: { type: "string" },
+            Policy_Start_Date: { type: "string" },
+            Policy_End_Date: { type: "string" },
+            Premium_Total_Annual: { type: "number" },
+            Premium_Currency: { type: "string" },
+            Coverage_Summary: { type: "object" },
+            Inclusions: { type: "array", items: { type: "string" } },
+            Exclusions_Summary: { type: "array", items: { type: "string" } },
+          },
+          required: ["Insurer_Name", "Client_Name", "Product_Type", "Premium_Total_Annual"]
+        }
+      }
+    };
+
+    // Retry logic for Lovable AI API calls
     let extractRes;
     let lastError;
     const maxRetries = 3;
@@ -264,27 +276,31 @@ Return as valid JSON object.`;
       try {
         console.log(`[extract-quote] Extraction attempt ${attempt}/${maxRetries}`);
         
-        extractRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        extractRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${openAIApiKey}`,
+            'Authorization': `Bearer ${lovableApiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'gpt-4o-mini',
+            model: 'google/gemini-2.5-pro',
             messages: [
               { role: 'system', content: systemPrompt },
               {
                 role: 'user',
                 content: [
                   { type: 'text', text: userPrompt },
-                  { type: 'file', file: { file_id: fileId } }
+                  { 
+                    type: 'image_url',
+                    image_url: {
+                      url: `data:application/pdf;base64,${base64Pdf}`
+                    }
+                  }
                 ]
               }
             ],
-            temperature: 0,
-            max_tokens: 4000,
-            response_format: { type: 'json_object' }
+            tools: [extractTool],
+            tool_choice: { type: "function", function: { name: "extract_quote_data" } }
           }),
         });
 
@@ -294,12 +310,35 @@ Return as valid JSON object.`;
           const errorData = JSON.parse(extractText);
           lastError = errorData;
           
+          // Check for rate limit (429) or payment required (402)
+          if (extractRes.status === 429) {
+            console.error(`[extract-quote] Rate limit on attempt ${attempt}:`, extractText.slice(0, 400));
+            if (attempt < maxRetries) {
+              const waitTime = Math.pow(2, attempt) * 1000;
+              console.log(`[extract-quote] Retrying in ${waitTime}ms...`);
+              await new Promise(resolve => setTimeout(resolve, waitTime));
+              continue;
+            }
+            return json(req, 429, { 
+              ok: false, 
+              stage: 'extract', 
+              error: 'Rate limit exceeded. Please try again later.'
+            });
+          }
+          
+          if (extractRes.status === 402) {
+            return json(req, 402, { 
+              ok: false, 
+              stage: 'extract', 
+              error: 'AI credits exhausted. Please add credits to continue.'
+            });
+          }
+          
           // Check if it's a server error (5xx) that we should retry
           if (extractRes.status >= 500 && extractRes.status < 600) {
             console.error(`[extract-quote] Server error on attempt ${attempt}:`, extractText.slice(0, 400));
             
             if (attempt < maxRetries) {
-              // Exponential backoff: 2s, 4s, 8s
               const waitTime = Math.pow(2, attempt) * 1000;
               console.log(`[extract-quote] Retrying in ${waitTime}ms...`);
               await new Promise(resolve => setTimeout(resolve, waitTime));
@@ -319,11 +358,16 @@ Return as valid JSON object.`;
 
         // Success - parse and return
         const extractData = JSON.parse(extractText);
-        const content = extractData.choices[0].message.content;
-        const structured = typeof content === 'string' ? JSON.parse(content) : content;
         
+        // Extract tool call result
+        const toolCall = extractData.choices[0].message.tool_calls?.[0];
+        if (!toolCall || toolCall.function.name !== 'extract_quote_data') {
+          throw new Error('No valid tool call in response');
+        }
+        
+        const structured = JSON.parse(toolCall.function.arguments);
         console.log('[extract-quote] Extracted in', (performance.now() - t_extract_start).toFixed(0), 'ms');
-        console.log('[extract-quote] Usage:', JSON.stringify(extractData.usage));
+        console.log('[extract-quote] Usage:', JSON.stringify(extractData.usage || {}));
 
         // Save to structured_quotes table
         stage = "save_quote";
@@ -367,8 +411,7 @@ Return as valid JSON object.`;
             usage: extractData.usage,
             timing: {
               total_ms: parseInt(totalTime),
-              fetch_ms: parseInt((t_fetch_start - t0).toFixed(0)),
-              upload_ms: parseInt((t_extract_start - t_upload_start).toFixed(0)),
+              encode_ms: parseInt((t_encode_start - t_fetch_start).toFixed(0)),
               extract_ms: parseInt((performance.now() - t_extract_start).toFixed(0))
             },
             attempts: attempt
