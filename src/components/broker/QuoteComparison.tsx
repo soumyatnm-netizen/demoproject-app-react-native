@@ -245,12 +245,15 @@ const QuoteComparison = () => {
     setViewingComparison(comparison);
     setActiveTab("new");
 
-    // If comparison has valid data, use it directly
+    // ALWAYS prefer comparison_data if it exists and has content
     if (comparison.comparison_data && Array.isArray(comparison.comparison_data) && comparison.comparison_data.length > 0) {
-      setSelectedQuotes(comparison.quote_ids);
+      console.log('[viewSavedComparison] Using saved comparison_data:', comparison.comparison_data);
+      setSelectedQuotes(comparison.quote_ids || []);
       setComparisonData(comparison.comparison_data);
       return;
     }
+
+    console.log('[viewSavedComparison] No comparison_data, trying to rebuild from quote_ids:', comparison.quote_ids);
 
     // Otherwise try to rebuild from the stored IDs (supports both quote IDs and document IDs)
     try {
@@ -264,6 +267,7 @@ const QuoteComparison = () => {
 
       // If nothing, try interpreting them as document_ids
       if (!sqById || sqById.length === 0) {
+        console.log('[viewSavedComparison] No results by ID, trying by document_id');
         const { data: sqByDoc, error: errByDoc } = await supabase
           .from('structured_quotes')
           .select('*')
@@ -273,6 +277,7 @@ const QuoteComparison = () => {
       }
 
       if (!sqById || sqById.length === 0) {
+        console.error('[viewSavedComparison] No quotes found in database');
         setComparisonData([]);
         toast({
           title: "Cannot Load Comparison",

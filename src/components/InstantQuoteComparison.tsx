@@ -617,8 +617,10 @@ const InstantQuoteComparison = () => {
         if (!user) throw new Error('No authenticated user');
 
         // Build a simplified comparison payload compatible with QuoteComparison view
-        // comparisonData is the analysis object, not {analysis: {...}}
-        const summary: any[] = (comparisonData.comparison_summary || []) as any[];
+        // Use analysisWithWarnings (the fresh data) not comparisonData (old state)
+        const summary: any[] = (analysisWithWarnings.comparison_summary || []) as any[];
+        console.log('[Auto-save] Comparison summary:', summary);
+        
         const simpleComparison = summary.map((r: any) => ({
           insurer: r.insurer_name || r.insurer || 'Unknown',
           premium: Number(r.premium_amount) || 0,
@@ -626,6 +628,8 @@ const InstantQuoteComparison = () => {
           deductible: 0,
           score: Math.round(Number(r.overall_score) || 0),
         }));
+
+        console.log('[Auto-save] Simple comparison to save:', simpleComparison);
 
         const uploadedQuoteDocIds = (uploadedDocs || [])
           .filter((d: any) => d.type === 'Quote')
