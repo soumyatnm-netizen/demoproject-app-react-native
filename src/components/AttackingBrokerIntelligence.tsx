@@ -5,9 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Target, TrendingUp, AlertTriangle, CheckCircle, Zap, Sword, Shield } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Target, TrendingUp, AlertTriangle, CheckCircle, Zap, Sword, Shield, Upload, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useDropzone } from "react-dropzone";
 
 interface StructuredQuote {
   id: string;
@@ -60,41 +62,45 @@ interface RecommendedCarrier {
 }
 
 const AttackingBrokerIntelligence = () => {
-  const [quotes, setQuotes] = useState<StructuredQuote[]>([]);
   const [gapAnalyses, setGapAnalyses] = useState<GapAnalysis[]>([]);
+  const [clients, setClients] = useState<Array<{ id: string; client_name: string }>>([]);
   const [selectedClient, setSelectedClient] = useState<string>("");
-  const [clientQuotes, setClientQuotes] = useState<StructuredQuote[]>([]);
-  const [selectedIncumbent, setSelectedIncumbent] = useState<StructuredQuote | null>(null);
-  const [analyzingGaps, setAnalyzingGaps] = useState(false);
-  const [customStrategy, setCustomStrategy] = useState("");
+  const [newClientName, setNewClientName] = useState("");
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [processingStep, setProcessingStep] = useState("");
   const { toast } = useToast();
-
-  // Get unique client names
-  const uniqueClients = Array.from(new Set(quotes.map(q => q.client_name).filter(Boolean)));
 
   useEffect(() => {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    if (selectedClient) {
-      const filtered = quotes.filter(q => q.client_name === selectedClient);
-      setClientQuotes(filtered);
-      setSelectedIncumbent(null);
-    } else {
-      setClientQuotes([]);
-    }
-  }, [selectedClient, quotes]);
-
   const fetchData = async () => {
     try {
-      // Fetch structured quotes (potential incumbents)
-      const { data: quotesData, error: quotesError } = await supabase
-        .from('structured_quotes')
-        .select('*')
+      // Fetch unique client names from documents
+      const { data: clientData, error: clientError } = await supabase
+        .from('documents')
+        .select('id, filename')
         .order('created_at', { ascending: false });
 
-      if (quotesError) throw quotesError;
+      if (clientError) throw clientError;
+
+      // Extract client names from filenames (assuming format: ClientName_DocumentType.pdf)
+      const uniqueClients = Array.from(
+        new Set(
+          (clientData || [])
+            .map((doc: any) => {
+              const name = doc.filename.split('_')[0] || doc.filename.split('.')[0];
+              return name;
+            })
+            .filter(Boolean)
+        )
+      ).map((name, idx) => ({
+        id: `client-${idx}`,
+        client_name: name as string
+      }));
+
+      setClients(uniqueClients);
 
       // Fetch existing gap analyses
       const { data: gapData, error: gapError } = await supabase
@@ -104,20 +110,10 @@ const AttackingBrokerIntelligence = () => {
 
       if (gapError) throw gapError;
 
-      setQuotes(quotesData || []);
-      // Map to handle potentially missing recommended_carriers field
       setGapAnalyses((gapData || []).map((gap: any) => ({
         ...gap,
         recommended_carriers: gap.recommended_carriers || []
       })) as GapAnalysis[]);
-      
-      // Show helpful message if no quotes available
-      if (!quotesData || quotesData.length === 0) {
-        toast({
-          title: "No Quotes Available",
-          description: "Upload and process quotes via Instant Comparison first to use Attack Intelligence",
-        });
-      }
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
@@ -128,15 +124,47 @@ const AttackingBrokerIntelligence = () => {
     }
   };
 
-  const analyseGaps = async () => {
-    if (!selectedIncumbent) return;
+  const onDrop = (acceptedFiles: File[]) => {
+    if (acceptedFiles.length > 0) {
+      setUploadedFile(acceptedFiles[0]);
+    }
+  };
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'application/pdf': ['.pdf'],
+      'application/msword': ['.doc'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
+    },
+    maxFiles: 1
+  });
+
+  const analyzeDocument = async () => {
+    if (!uploadedFile) {
+      toast({
+        title: "No File",
+        description: "Please upload a document first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const clientName = selectedClient === 'new' ? newClientName : selectedClient;
+    if (!clientName) {
+      toast({
+        title: "No Client",
+        description: "Please select or enter a client name",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
-      setAnalyzingGaps(true);
+      setAnalyzing(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Get user's company_id
       const { data: profile } = await supabase
         .from('profiles')
         .select('company_id')
@@ -147,15 +175,48 @@ const AttackingBrokerIntelligence = () => {
         throw new Error('User profile or company not found');
       }
 
-      // Call AI-powered attack intelligence edge function
-      toast({
-        title: "Analyzing...",
-        description: "AI is scanning the document for weaknesses and gaps",
+      // Step 1: Upload document
+      setProcessingStep("Uploading document...");
+      const fileExt = uploadedFile.name.split('.').pop();
+      const fileName = `${clientName}_${Date.now()}.${fileExt}`;
+      const filePath = `${profile.company_id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(filePath, uploadedFile);
+
+      if (uploadError) throw uploadError;
+
+      // Step 2: Create document record
+      const { data: docData, error: docError } = await supabase
+        .from('documents')
+        .insert({
+          user_id: user.id,
+          company_id: profile.company_id,
+          filename: uploadedFile.name,
+          file_type: uploadedFile.type,
+          file_size: uploadedFile.size,
+          storage_path: filePath,
+          status: 'uploaded'
+        })
+        .select()
+        .single();
+
+      if (docError) throw docError;
+
+      // Step 3: Process document to extract data
+      setProcessingStep("Extracting quote data...");
+      const { data: extractData, error: extractError } = await supabase.functions.invoke('extract-quote', {
+        body: { documentId: docData.id }
       });
 
+      if (extractError) throw extractError;
+
+      // Step 4: Run attack intelligence analysis
+      setProcessingStep("Analyzing for weaknesses...");
       const { data: aiAnalysis, error: aiError } = await supabase.functions.invoke('attack-intelligence', {
         body: {
-          documentId: selectedIncumbent.id,
+          documentId: extractData.quoteId,
           documentType: 'structured_quote'
         }
       });
@@ -163,46 +224,44 @@ const AttackingBrokerIntelligence = () => {
       if (aiError) throw aiError;
       if (!aiAnalysis?.success) throw new Error('AI analysis failed');
 
-      // Generate traditional gap analysis for additional context
-      const gapAnalysis = await generateGapAnalysis(selectedIncumbent);
+      // Step 5: Calculate opportunity score and save
+      setProcessingStep("Finalizing analysis...");
+      const opportunityScore = Math.min(
+        50 + (aiAnalysis.analysis.attack_intelligence.length * 8),
+        95
+      );
 
-      // Combine AI intelligence with traditional analysis
-      const combinedAnalysis = {
-        ...gapAnalysis,
-        attack_intelligence: aiAnalysis.analysis
-      };
-
-      // Save to database
-      const { data: analysis, error } = await supabase
+      const { error: saveError } = await supabase
         .from('gap_analyses')
         .insert([{
           user_id: user.id,
           company_id: profile.company_id,
-          incumbent_quote_id: selectedIncumbent.id,
-          coverage_gaps: combinedAnalysis.gaps,
-          opportunity_score: combinedAnalysis.opportunityScore,
-          key_weaknesses: combinedAnalysis.weaknesses,
-          competitive_advantages: combinedAnalysis.advantages,
-          switch_evidence: combinedAnalysis.evidence,
-          attack_strategy: combinedAnalysis.strategy,
-          recommended_carriers: combinedAnalysis.recommendedCarriers,
+          incumbent_quote_id: extractData.quoteId,
+          coverage_gaps: { attack_points: aiAnalysis.analysis.attack_intelligence },
+          opportunity_score: opportunityScore,
+          key_weaknesses: aiAnalysis.analysis.attack_intelligence.map((a: AttackPoint) => a.issue).slice(0, 6),
+          competitive_advantages: ["AI-identified weaknesses", "Comprehensive evidence", "Clear broker talking points"],
+          switch_evidence: { client_summary: aiAnalysis.analysis.client_summary },
+          attack_strategy: aiAnalysis.analysis.client_summary,
           attack_intelligence: aiAnalysis.analysis
-        }] as any)
-        .select()
-        .single();
+        }] as any);
 
-      if (error) throw error;
+      if (saveError) throw saveError;
 
       toast({
         title: "Analysis Complete",
-        description: `Found ${aiAnalysis.analysis.attack_intelligence.length} attack points with ${gapAnalysis.opportunityScore}% opportunity score`,
+        description: `Found ${aiAnalysis.analysis.attack_intelligence.length} attack points with ${opportunityScore}% opportunity score`,
       });
 
+      // Reset form and refresh
+      setUploadedFile(null);
+      setSelectedClient("");
+      setNewClientName("");
       fetchData();
     } catch (error: any) {
-      console.error('Error analysing gaps:', error);
+      console.error('Error analyzing document:', error);
       
-      let errorMessage = "Failed to analyse gaps";
+      let errorMessage = "Failed to analyze document";
       if (error.message?.includes('Rate limit')) {
         errorMessage = "Rate limit exceeded. Please try again in a few moments.";
       } else if (error.message?.includes('Payment required')) {
@@ -215,7 +274,8 @@ const AttackingBrokerIntelligence = () => {
         variant: "destructive",
       });
     } finally {
-      setAnalyzingGaps(false);
+      setAnalyzing(false);
+      setProcessingStep("");
     }
   };
 
@@ -403,7 +463,7 @@ const AttackingBrokerIntelligence = () => {
         market_data_points: (placements?.length || 0) + (marketIntel?.length || 0)
       };
 
-      const strategy = customStrategy || 
+      const strategy = 
         `Leverage the ${weaknesses.length} identified weaknesses in the current policy. ` +
         `Present ${recommendedCarriers.length} alternative carriers with proven track records. ` +
         `${marketAverage < incumbent.premium_amount ? `Emphasize potential savings of £${Math.round(incumbent.premium_amount - marketAverage).toLocaleString()}.` : ''} ` +
@@ -438,103 +498,117 @@ const AttackingBrokerIntelligence = () => {
 
   return (
     <div className="space-y-6">
-      {/* Gap Analysis Generator */}
+      {/* Document Upload & Analysis */}
       <Card className="border-orange-200 bg-gradient-to-r from-orange-50 to-red-50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sword className="h-5 w-5 text-orange-600" />
-            Attacking Broker Intelligence
+            Attack Intelligence: Document Scanner
           </CardTitle>
           <CardDescription className="text-orange-700">
-            Identify weaknesses in incumbent coverage and generate attack strategies
+            Upload a quote or policy document to identify weaknesses and attack points
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {uniqueClients.length === 0 ? (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 text-center">
-              <AlertTriangle className="h-12 w-12 text-amber-600 mx-auto mb-3" />
-              <h3 className="text-lg font-semibold text-amber-900 mb-2">No Quotes Available</h3>
-              <p className="text-amber-700 mb-4">
-                You need to upload and process quotes first before using Attack Intelligence.
-              </p>
-              <p className="text-sm text-amber-600">
-                Go to <strong>Instant Comparison</strong> or <strong>Quote Comparison</strong> to upload and process insurance quotes, then return here to analyze them.
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">1. Select Client</label>
-              <Select 
-                value={selectedClient} 
-                onValueChange={setSelectedClient}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose client" />
-                </SelectTrigger>
-                <SelectContent>
-                  {uniqueClients.map((client) => (
-                    <SelectItem key={client} value={client}>
-                      {client}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">2. Select Incumbent Policy</label>
-              <Select 
-                value={selectedIncumbent?.id || ""} 
-                onValueChange={(value) => {
-                  const quote = clientQuotes.find(q => q.id === value);
-                  setSelectedIncumbent(quote || null);
-                }}
-                disabled={!selectedClient}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={selectedClient ? "Choose policy" : "Select client first"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {clientQuotes.map((quote) => (
-                    <SelectItem key={quote.id} value={quote.id}>
-                      {quote.insurer_name} - £{quote.premium_amount?.toLocaleString()} ({quote.product_type})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-end">
-              <Button 
-                onClick={analyseGaps} 
-                disabled={!selectedIncumbent || analyzingGaps}
-                className="w-full bg-orange-600 hover:bg-orange-700"
-              >
-                {analyzingGaps ? "Analysing..." : "Analyse & Generate"}
-              </Button>
-            </div>
-          </div>
-
+        <CardContent className="space-y-6">
+          {/* Step 1: Select or Create Client */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Custom Attack Strategy (Optional)</label>
-            <Textarea
-              placeholder="Enter specific attack angles or client concerns to focus on..."
-              value={customStrategy}
-              onChange={(e) => setCustomStrategy(e.target.value)}
-              className="min-h-[80px]"
-            />
+            <label className="text-sm font-medium">Step 1: Select Client</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Select value={selectedClient} onValueChange={setSelectedClient}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose existing client or create new" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map((client) => (
+                    <SelectItem key={client.id} value={client.client_name}>
+                      {client.client_name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="new">+ Create New Client</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {selectedClient === 'new' && (
+                <Input
+                  placeholder="Enter new client name..."
+                  value={newClientName}
+                  onChange={(e) => setNewClientName(e.target.value)}
+                />
+              )}
+            </div>
           </div>
-          </>
-          )}
+
+          {/* Step 2: Upload Document */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Step 2: Upload Quote or Policy Document</label>
+            <div
+              {...getRootProps()}
+              className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                isDragActive
+                  ? 'border-orange-500 bg-orange-50'
+                  : uploadedFile
+                  ? 'border-green-500 bg-green-50'
+                  : 'border-gray-300 hover:border-orange-400'
+              }`}
+            >
+              <input {...getInputProps()} />
+              {uploadedFile ? (
+                <div className="flex items-center justify-center gap-3">
+                  <FileText className="h-8 w-8 text-green-600" />
+                  <div className="text-left">
+                    <p className="font-medium text-green-900">{uploadedFile.name}</p>
+                    <p className="text-sm text-green-600">
+                      {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setUploadedFile(null);
+                    }}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ) : (
+                <div>
+                  <Upload className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-sm text-gray-600 mb-1">
+                    {isDragActive ? 'Drop document here...' : 'Drag & drop or click to upload'}
+                  </p>
+                  <p className="text-xs text-gray-500">PDF, DOC, or DOCX (Max 20MB)</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Step 3: Analyze */}
+          <div className="flex items-center justify-between pt-4 border-t">
+            <div className="text-sm text-gray-600">
+              {processingStep && (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600"></div>
+                  <span>{processingStep}</span>
+                </div>
+              )}
+            </div>
+            <Button
+              onClick={analyzeDocument}
+              disabled={!uploadedFile || !selectedClient || analyzing}
+              className="bg-orange-600 hover:bg-orange-700"
+              size="lg"
+            >
+              {analyzing ? "Analyzing..." : "Scan for Weaknesses"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Gap Analysis Results */}
+      {/* Analysis Results */}
       <div className="space-y-4">
         {gapAnalyses.map((analysis) => {
-          const incumbentQuote = quotes.find(q => q.id === analysis.incumbent_quote_id);
           const hasAttackIntel = analysis.attack_intelligence && 
                                  analysis.attack_intelligence.attack_intelligence && 
                                  analysis.attack_intelligence.attack_intelligence.length > 0;
@@ -545,7 +619,7 @@ const AttackingBrokerIntelligence = () => {
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <h3 className="text-lg font-semibold">
-                      Attack Analysis: {incumbentQuote?.insurer_name || 'Unknown Insurer'}
+                      Attack Analysis
                     </h3>
                     <p className="text-sm text-muted-foreground">
                       Generated {new Date(analysis.created_at).toLocaleDateString()}
