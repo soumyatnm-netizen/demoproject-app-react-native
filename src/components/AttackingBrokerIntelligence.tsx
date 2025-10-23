@@ -202,7 +202,15 @@ const AttackingBrokerIntelligence = () => {
         body: { documentId: docData.id }
       });
 
-      if (extractError) throw extractError;
+      if (extractError) {
+        console.error('Extract error:', extractError);
+        throw new Error(`Failed to extract quote data: ${extractError.message}`);
+      }
+
+      if (!extractData?.ok || !extractData?.quoteId) {
+        console.error('Extract response:', extractData);
+        throw new Error('Quote extraction failed - no quote ID returned');
+      }
 
       // Step 4: Run attack intelligence analysis
       setProcessingStep("Analyzing for weaknesses...");
@@ -213,8 +221,15 @@ const AttackingBrokerIntelligence = () => {
         }
       });
 
-      if (aiError) throw aiError;
-      if (!aiAnalysis?.success) throw new Error('AI analysis failed');
+      if (aiError) {
+        console.error('AI analysis error:', aiError);
+        throw new Error(`Failed to analyze document: ${aiError.message}`);
+      }
+      
+      if (!aiAnalysis?.success || !aiAnalysis?.analysis) {
+        console.error('AI analysis response:', aiAnalysis);
+        throw new Error('AI analysis failed - no results returned');
+      }
 
       // Step 5: Calculate opportunity score and save
       setProcessingStep("Finalizing analysis...");
@@ -253,11 +268,19 @@ const AttackingBrokerIntelligence = () => {
     } catch (error: any) {
       console.error('Error analyzing document:', error);
       
-      let errorMessage = "Failed to analyze document";
-      if (error.message?.includes('Rate limit')) {
+      let errorMessage = error.message || "Failed to analyze document";
+      
+      // Check for specific error types
+      if (error.message?.includes('Rate limit') || error.message?.includes('429')) {
         errorMessage = "Rate limit exceeded. Please try again in a few moments.";
-      } else if (error.message?.includes('Payment required')) {
+      } else if (error.message?.includes('Payment required') || error.message?.includes('402')) {
         errorMessage = "AI credits exhausted. Please add credits to continue.";
+      } else if (error.message?.includes('not found')) {
+        errorMessage = "Document not found. Please try uploading again.";
+      } else if (error.message?.includes('extract')) {
+        errorMessage = `Failed to extract quote data: ${error.message}`;
+      } else if (error.message?.includes('analyze')) {
+        errorMessage = `Failed to analyze document: ${error.message}`;
       }
       
       toast({

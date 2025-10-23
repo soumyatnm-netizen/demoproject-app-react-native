@@ -325,14 +325,42 @@ Return as valid JSON object.`;
         console.log('[extract-quote] Extracted in', (performance.now() - t_extract_start).toFixed(0), 'ms');
         console.log('[extract-quote] Usage:', JSON.stringify(extractData.usage));
 
+        // Save to structured_quotes table
+        stage = "save_quote";
+        const { data: quoteData, error: quoteError } = await supabase
+          .from('structured_quotes')
+          .insert({
+            document_id: documentId,
+            user_id: document.user_id,
+            company_id: document.company_id,
+            insurer_name: structured.Insurer_Name || 'Unknown',
+            client_name: structured.Client_Name || document.filename.split('_')[0] || 'Unknown',
+            product_type: structured.Product_Type || 'Unknown',
+            industry: structured.Industry || 'Unknown',
+            premium_amount: structured.Premium_Total_Annual || 0,
+            coverage_limits: structured.Coverage_Summary || {},
+            inclusions: structured.Inclusions || [],
+            exclusions: structured.Exclusions_Summary || [],
+            policy_terms: structured
+          })
+          .select()
+          .single();
+
+        if (quoteError) {
+          console.error('[extract-quote] Error saving quote:', quoteError);
+          return json(req, 500, { ok: false, stage: 'save_quote', error: quoteError.message });
+        }
+
         const totalTime = (performance.now() - t0).toFixed(0);
         console.log('[extract-quote] Total time:', totalTime, 'ms');
 
         return json(req, 200, {
           ok: true,
+          quoteId: quoteData.id,
           result: structured,
           meta: {
             documentId,
+            quoteId: quoteData.id,
             filename: document.filename,
             processedAt: new Date().toISOString(),
             model: extractData.model,
