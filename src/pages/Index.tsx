@@ -258,10 +258,10 @@ const Index = () => {
         <div className="border-t pt-6 mt-6">
           <h4 className="text-sm font-semibold mb-2">Contact Us</h4>
           <a 
-            href="mailto:hello@covercompass.co.uk" 
+            href="mailto:james@covercompass.co.uk" 
             className="text-sm text-primary hover:underline"
           >
-            hello@covercompass.co.uk
+            james@covercompass.co.uk
           </a>
         </div>
         </div>
