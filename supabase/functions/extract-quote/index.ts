@@ -279,7 +279,7 @@ Return as valid JSON object.`;
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-pro',
+            model: 'google/gemini-2.5-flash',
             messages: [
               { role: 'system', content: systemPrompt },
               {
@@ -289,7 +289,7 @@ Return as valid JSON object.`;
                   { 
                     type: 'image_url',
                     image_url: {
-                      url: `data:application/pdf;base64,${base64Pdf}`
+                      url: `data:${document.file_type || 'application/pdf'};base64,${base64Pdf}`
                     }
                   }
                 ]
