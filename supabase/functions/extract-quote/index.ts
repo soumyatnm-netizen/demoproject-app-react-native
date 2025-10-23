@@ -119,7 +119,33 @@ serve(async (req) => {
     
     console.log('[extract-quote] PDF encoded in', (performance.now() - t_encode_start).toFixed(0), 'ms');
 
-    // Extract quote with Gemini 2.5 Pro
+    // Try to extract textual content from PDF for higher reliability
+    stage = "pdf_text";
+    let pagesText: string[] = [];
+    try {
+      const { getDocument, GlobalWorkerOptions } = await import(
+        "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.mjs"
+      );
+      GlobalWorkerOptions.workerSrc = null as unknown as string;
+      const task = getDocument({ data: pdfBytes, isEvalSupported: false, disableFontFace: true });
+      const pdfDoc = await task.promise;
+      const maxPages = Math.min(pdfDoc.numPages, 40);
+      for (let p = 1; p <= maxPages; p++) {
+        const page = await pdfDoc.getPage(p);
+        const textContent: any = await page.getTextContent();
+        const txt = (textContent.items || [])
+          .map((it: any) => (typeof it?.str === 'string' ? it.str : ''))
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (txt) pagesText.push(`Page ${p}: ${txt}`);
+      }
+      console.log('[extract-quote] Extracted text pages:', pagesText.length);
+    } catch (e) {
+      console.warn('[extract-quote] PDF text extraction skipped:', String(e));
+    }
+
+    // Extract quote with Gemini (text-first; fallback to PDF data URL)
     stage = "extract";
     const t_extract_start = performance.now();
     
@@ -272,27 +298,28 @@ Return as valid JSON object.`;
       try {
         console.log(`[extract-quote] Extraction attempt ${attempt}/${maxRetries}`);
         
+        // Prefer text content for robustness; fallback to PDF data URL if text is unavailable
+        const contentParts: any[] = [
+          { type: 'text', text: userPrompt },
+          pagesText.length > 0
+            ? { type: 'text', text: pagesText.join('\n\n').slice(0, 300000) }
+            : { type: 'image_url', image_url: { url: `data:${document.file_type || 'application/pdf'};base64,${base64Pdf}` } }
+        ];
+        
         extractRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${lovableApiKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            const modelName = pagesText.length > 0 ? 'google/gemini-2.5-flash' : 'google/gemini-2.5-pro';
+            body: JSON.stringify({
+              model: modelName,
             messages: [
               { role: 'system', content: systemPrompt },
               {
                 role: 'user',
-                content: [
-                  { type: 'text', text: userPrompt },
-                  { 
-                    type: 'image_url',
-                    image_url: {
-                      url: `data:${document.file_type || 'application/pdf'};base64,${base64Pdf}`
-                    }
-                  }
-                ]
+                content: contentParts
               }
             ],
             tools: [extractTool],
