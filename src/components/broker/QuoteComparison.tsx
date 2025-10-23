@@ -63,6 +63,7 @@ const QuoteComparison = () => {
   const [savedComparisons, setSavedComparisons] = useState<SavedComparison[]>([]);
   const [viewingComparison, setViewingComparison] = useState<SavedComparison | null>(null);
   const [activeTab, setActiveTab] = useState("new");
+  const [selectedClientFilter, setSelectedClientFilter] = useState<string>("all");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -120,7 +121,7 @@ const QuoteComparison = () => {
     }
   };
 
-  const generateComparison = () => {
+  const generateComparison = async () => {
     const selectedQuoteData = quotes.filter(q => selectedQuotes.includes(q.id));
     
     const comparison = selectedQuoteData.map(quote => {
@@ -141,6 +142,43 @@ const QuoteComparison = () => {
     });
 
     setComparisonData(comparison);
+    
+    // Automatically save the comparison
+    await saveComparisonAutomatically(selectedQuoteData, comparison);
+  };
+
+  const saveComparisonAutomatically = async (selectedQuoteData: Quote[], comparison: ComparisonData[]) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const clientName = selectedQuoteData[0]?.client_name || 'Unknown Client';
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      const { error } = await supabase
+        .from('comparisons')
+        .insert([{
+          user_id: user.id,
+          company_id: profile?.company_id,
+          name: `Comparison - ${clientName}`,
+          description: `Comparison of ${selectedQuoteData.length} quotes`,
+          client_name: clientName,
+          quote_ids: selectedQuotes,
+          comparison_data: comparison as any,
+        }]);
+
+      if (error) throw error;
+
+      // Silently refresh saved comparisons
+      fetchSavedComparisons();
+    } catch (error) {
+      console.error('Error auto-saving comparison:', error);
+    }
   };
 
   const handleQuoteSelection = (quoteId: string, selected: boolean) => {
@@ -170,50 +208,6 @@ const QuoteComparison = () => {
       style: 'currency',
       currency: currency
     }).format(amount);
-  };
-
-  const saveComparison = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('No authenticated user');
-
-      const selectedQuoteData = quotes.filter(q => selectedQuotes.includes(q.id));
-      const clientName = selectedQuoteData[0]?.client_name || 'Unknown Client';
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('company_id')
-        .eq('user_id', user.id)
-        .single();
-
-      const { error } = await supabase
-        .from('comparisons')
-        .insert([{
-          user_id: user.id,
-          company_id: profile?.company_id,
-          name: `Comparison - ${clientName}`,
-          description: `Comparison of ${selectedQuotes.length} quotes`,
-          client_name: clientName,
-          quote_ids: selectedQuotes,
-          comparison_data: comparisonData as any,
-        }]);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Comparison saved successfully",
-      });
-
-      fetchSavedComparisons();
-    } catch (error) {
-      console.error('Error saving comparison:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save comparison",
-        variant: "destructive",
-      });
-    }
   };
 
   const viewSavedComparison = (comparison: SavedComparison) => {
@@ -491,10 +485,6 @@ const QuoteComparison = () => {
             </CardHeader>
             <CardContent>
               <div className="flex space-x-4">
-                <Button onClick={saveComparison}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Save Comparison
-                </Button>
                 <Button onClick={() => downloadComparisonPDF({ 
                   id: '', 
                   name: '', 
@@ -513,6 +503,9 @@ const QuoteComparison = () => {
                   Email to Client
                 </Button>
               </div>
+              <p className="text-sm text-muted-foreground mt-3">
+                This comparison is automatically saved to Recent Comparisons
+              </p>
             </CardContent>
           </Card>
         </>
@@ -538,7 +531,7 @@ const QuoteComparison = () => {
                 <History className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-medium mb-2">No saved comparisons</h3>
                 <p className="text-muted-foreground">
-                  Your saved comparisons will appear here
+                  Your saved comparisons will appear here automatically when you generate comparisons
                 </p>
               </CardContent>
             </Card>
@@ -552,8 +545,27 @@ const QuoteComparison = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
+                  <div className="mb-4">
+                    <Select value={selectedClientFilter} onValueChange={setSelectedClientFilter}>
+                      <SelectTrigger className="w-full max-w-xs">
+                        <SelectValue placeholder="Filter by client" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Clients</SelectItem>
+                        {[...new Set(savedComparisons.map(c => c.client_name))].map((clientName) => (
+                          <SelectItem key={clientName} value={clientName}>
+                            {clientName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="space-y-3">
-                    {savedComparisons.map((comparison) => (
+                    {savedComparisons
+                      .filter(comparison => 
+                        selectedClientFilter === "all" || comparison.client_name === selectedClientFilter
+                      )
+                      .map((comparison) => (
                       <div key={comparison.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div className="flex-1">
                           <div className="flex items-center gap-3">
