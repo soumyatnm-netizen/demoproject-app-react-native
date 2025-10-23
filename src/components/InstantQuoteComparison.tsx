@@ -65,6 +65,7 @@ const InstantQuoteComparison = () => {
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [scoredRankings, setScoredRankings] = useState<QuoteRanking[]>([]);
   const [comparisonData, setComparisonData] = useState<any>(null);
+  const [extractedDocumentIds, setExtractedDocumentIds] = useState<{documentId: string, type: string, carrier: string}[]>([]);
   const [shouldCancel, setShouldCancel] = useState(false);
   const [statusLog, setStatusLog] = useState<Array<{time: string, message: string, type: 'info' | 'success' | 'error'}>>([]);
   const { toast } = useToast();
@@ -498,6 +499,14 @@ const InstantQuoteComparison = () => {
         throw new Error('No documents extracted successfully');
       }
 
+      // Track extracted document IDs for potential retry
+      const extractedIds = extractedDocs.map(doc => ({
+        documentId: doc.documentId,
+        type: doc.type,
+        carrier: doc.classification?.carrier || doc.filename.split('_')[0] || 'Unknown'
+      }));
+      setExtractedDocumentIds(extractedIds);
+
       // Track failed documents for warnings
       const failedDocs = classifiedDocs.filter(doc => 
         !extractedDocs.some(extracted => extracted.documentId === doc.documentId)
@@ -667,6 +676,206 @@ const InstantQuoteComparison = () => {
       title: "Cancelling",
       description: "Stopping analysis process...",
     });
+  };
+
+  // Retry a failed document by re-uploading and merging with existing data
+  const retryFailedDocument = async (failedDoc: any) => {
+    try {
+      // Create a file input dynamically
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.pdf';
+      input.onchange = async (e: any) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+          setIsProcessing(true);
+          addStatusLog(`🔄 Retrying extraction for ${failedDoc.filename}...`, 'info');
+
+          // Get user's profile
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error('No authenticated user');
+
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('company_id, user_id')
+            .eq('user_id', user.id)
+            .single();
+
+          if (!profile?.company_id) {
+            throw new Error('User profile or company not found');
+          }
+
+          // Upload the new file
+          const filename = `${Date.now()}_${file.name}`;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('documents')
+            .upload(`${profile.company_id}/${filename}`, file);
+
+          if (uploadError) throw uploadError;
+
+          // Create document record
+          const { data: docData, error: docError } = await supabase
+            .from('documents')
+            .insert({
+              user_id: profile.user_id,
+              company_id: profile.company_id,
+              filename: file.name,
+              file_type: file.type,
+              file_size: file.size,
+              storage_path: uploadData.path,
+              status: 'uploaded'
+            })
+            .select()
+            .single();
+
+          if (docError) throw docError;
+
+          addStatusLog(`✓ Uploaded replacement document`, 'success');
+
+          // Classify the document
+          const { data: classifyData, error: classifyError } = await supabase.functions.invoke(
+            'preflight-classify',
+            { body: { documentId: docData.id } }
+          );
+
+          if (classifyError) throw classifyError;
+
+          const classification = classifyData.classification;
+          addStatusLog(`✓ Classified as ${classification.type}`, 'success');
+
+          // Extract data
+          const functionName = classification.type === 'Quote' ? 'extract-quote' : 'extract-wording';
+          const { data: extractData, error: extractError } = await supabase.functions.invoke(
+            functionName,
+            { body: { documentId: docData.id } }
+          );
+
+          if (extractError) throw extractError;
+          if (!extractData?.ok) throw new Error('Extraction failed');
+
+          addStatusLog(`✓ Extracted data successfully`, 'success');
+
+          // Fetch previously extracted data from database
+          const previousDocIds = extractedDocumentIds.map(d => d.documentId);
+          
+          // Fetch quotes
+          const { data: previousQuotes, error: quotesError } = await supabase
+            .from('structured_quotes')
+            .select('*')
+            .in('document_id', previousDocIds.filter(id => 
+              extractedDocumentIds.find(d => d.documentId === id && d.type === 'Quote')
+            ));
+
+          if (quotesError) throw quotesError;
+
+          // Fetch wordings
+          const { data: previousWordings, error: wordingsError } = await supabase
+            .from('policy_wordings')
+            .select('*')
+            .in('document_id', previousDocIds.filter(id => 
+              extractedDocumentIds.find(d => d.documentId === id && d.type === 'PolicyWording')
+            ));
+
+          if (wordingsError) throw wordingsError;
+
+          addStatusLog(`✓ Retrieved ${previousQuotes?.length || 0} previous quotes and ${previousWordings?.length || 0} previous wordings`, 'success');
+
+          // Build documents array for comparison (previous + new)
+          const allDocuments = [
+            ...(previousQuotes || []).map(q => ({
+              carrier_name: q.insurer_name,
+              document_type: 'Quote',
+              filename: q.insurer_name,
+              document_id: q.document_id
+            })),
+            ...(previousWordings || []).map(w => ({
+              carrier_name: w.insurer_name,
+              document_type: 'PolicyWording',
+              filename: w.insurer_name,
+              document_id: w.document_id
+            })),
+            {
+              carrier_name: classification.carrier || file.name.split('_')[0] || 'Unknown',
+              document_type: classification.type,
+              filename: file.name,
+              document_id: docData.id
+            }
+          ];
+
+          addStatusLog(`🔄 Re-running comparison with all ${allDocuments.length} documents...`, 'info');
+
+          // Run comprehensive comparison with all data
+          const selectedClientData = clients.find(c => c.id === selectedClient);
+          const { data: newComparisonData, error: comparisonError } = await supabase.functions.invoke(
+            'comprehensive-comparison',
+            {
+              body: {
+                client_name: selectedClientData?.client_name || 'Unknown Client',
+                client_ref: `CC-${Date.now()}`,
+                industry: selectedClientData?.industry || 'Professional Services',
+                jurisdiction: 'UK',
+                broker_name: 'CoverCompass',
+                priority_metrics: ['Premium(Total)', 'CoverageTrigger', 'Limits', 'Deductible', 'Exclusions'],
+                documents: allDocuments
+              }
+            }
+          );
+
+          if (comparisonError) throw comparisonError;
+          if (!newComparisonData?.analysis) throw new Error('Comparison failed');
+
+          // Update extracted IDs to include the new document
+          setExtractedDocumentIds([
+            ...extractedDocumentIds,
+            {
+              documentId: docData.id,
+              type: classification.type,
+              carrier: classification.carrier || 'Unknown'
+            }
+          ]);
+
+          // Update comparison data (remove the failed document from the list)
+          const updatedAnalysis = {
+            ...newComparisonData.analysis,
+            failed_documents: (comparisonData.failed_documents || []).filter(
+              (fd: any) => fd.filename !== failedDoc.filename
+            )
+          };
+
+          setComparisonData(updatedAnalysis);
+          setRankings(newComparisonData.analysis.comparison_summary || []);
+          setScoredRankings(newComparisonData.analysis.comparison_summary || []);
+
+          addStatusLog(`✅ Successfully integrated replacement document`, 'success');
+
+          toast({
+            title: "Document Retry Successful",
+            description: `${file.name} has been processed and comparison updated`,
+          });
+
+        } catch (error: any) {
+          console.error('Retry error:', error);
+          addStatusLog(`❌ Retry failed: ${error.message}`, 'error');
+          toast({
+            title: "Retry Failed",
+            description: error.message,
+            variant: "destructive",
+          });
+        } finally {
+          setIsProcessing(false);
+        }
+      };
+      input.click();
+    } catch (error: any) {
+      console.error('Retry setup error:', error);
+      toast({
+        title: "Error",
+        description: "Could not initiate retry",
+        variant: "destructive",
+      });
+    }
   };
 
   const getRankIcon = (position: number) => {
@@ -1771,6 +1980,16 @@ const InstantQuoteComparison = () => {
                             Type: {doc.type} • Carrier: {doc.carrier}
                           </div>
                         </div>
+                        <Button
+                          onClick={() => retryFailedDocument(doc)}
+                          disabled={isProcessing}
+                          size="sm"
+                          variant="outline"
+                          className="border-amber-300 hover:bg-amber-100 text-amber-900 flex-shrink-0"
+                        >
+                          <Upload className="h-3 w-3 mr-1" />
+                          Re-upload
+                        </Button>
                       </li>
                     ))}
                   </ul>
