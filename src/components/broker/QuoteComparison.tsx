@@ -160,24 +160,48 @@ const QuoteComparison = () => {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      const { error } = await supabase
+      console.log('[saveComparisonAutomatically] Profile:', profile);
+      console.log('[saveComparisonAutomatically] Saving comparison with data:', {
+        user_id: user.id,
+        company_id: profile?.company_id,
+        name: `Comparison - ${clientName}`,
+        quote_ids: selectedQuotes,
+      });
+
+      const { data, error } = await supabase
         .from('comparisons')
         .insert([{
           user_id: user.id,
-          company_id: profile?.company_id,
+          company_id: profile?.company_id || null,
           name: `Comparison - ${clientName}`,
           description: `Comparison of ${selectedQuoteData.length} quotes`,
           client_name: clientName,
           quote_ids: selectedQuotes,
           comparison_data: comparison as any,
-        }]);
+        }])
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[saveComparisonAutomatically] Insert error:', error);
+        throw error;
+      }
 
-      // Silently refresh saved comparisons
-      fetchSavedComparisons();
+      console.log('[saveComparisonAutomatically] Successfully saved:', data);
+
+      // Refresh saved comparisons
+      await fetchSavedComparisons();
+      
+      toast({
+        title: "Comparison Saved",
+        description: "Your comparison has been saved to Recent Comparisons",
+      });
     } catch (error) {
       console.error('Error auto-saving comparison:', error);
+      toast({
+        title: "Save Warning",
+        description: "Comparison generated but couldn't be saved. Please check your profile setup.",
+        variant: "destructive",
+      });
     }
   };
 
