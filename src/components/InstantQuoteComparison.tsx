@@ -618,12 +618,40 @@ const InstantQuoteComparison = () => {
 
         // Build a simplified comparison payload compatible with QuoteComparison view
         // Use analysisWithWarnings (the fresh data) not comparisonData (old state)
-        const summary: any[] = (analysisWithWarnings.comparison_summary || []) as any[];
+        let summary: any[] = (analysisWithWarnings.comparison_summary || []) as any[];
         console.log('[Auto-save] Comparison summary:', summary);
         
-        const simpleComparison = summary.map((r: any) => ({
+        // Fallback: if no comparison_summary present (e.g., comprehensive-comparison output),
+        // derive a minimal summary from insurers or product comparisons
+        if (!summary || summary.length === 0) {
+          const insurers = (analysisWithWarnings as any)?.insurers || [];
+          if (Array.isArray(insurers) && insurers.length > 0) {
+            summary = insurers.map((i: any) => ({
+              insurer_name: i.insurer_name || i.carrier || 'Unknown',
+              premium_amount: Number(
+                i.premiums?.total_payable ??
+                i.premiums?.annual_total ??
+                i.premiums?.annual_premium ??
+                0
+              ),
+              coverage_score: 0,
+              overall_score: 0,
+            }));
+          } else if (Array.isArray((analysisWithWarnings as any)?.product_comparisons)) {
+            const first = (analysisWithWarnings as any).product_comparisons[0];
+            summary = (first?.carrier_results || []).map((cr: any) => ({
+              insurer_name: cr.carrier || 'Unknown',
+              premium_amount: Number(cr.premiums?.total_payable ?? 0),
+              coverage_score: 0,
+              overall_score: 0,
+            }));
+          }
+          console.log('[Auto-save] Built fallback summary from analysis:', summary);
+        }
+        
+        const simpleComparison = (summary || []).map((r: any) => ({
           insurer: r.insurer_name || r.insurer || 'Unknown',
-          premium: Number(r.premium_amount) || 0,
+          premium: Number(r.premium_amount) || Number(r.premium) || 0,
           coverage: Math.round(Number(r.coverage_score) || 0),
           deductible: 0,
           score: Math.round(Number(r.overall_score) || 0),
@@ -635,13 +663,19 @@ const InstantQuoteComparison = () => {
           .filter((d: any) => d.type === 'Quote')
           .map((d: any) => d.documentId);
 
+        const extractedQuoteDocIds = (extractedDocs || [])
+          .filter((d: any) => d.type === 'Quote')
+          .map((d: any) => d.documentId);
+
+        const quoteDocIds = uploadedQuoteDocIds.length > 0 ? uploadedQuoteDocIds : extractedQuoteDocIds;
+
         // Map document IDs to structured quote IDs for proper linking in Recent Comparisons
         const { data: structuredRows, error: sqErr } = await supabase
           .from('structured_quotes')
           .select('id, document_id')
-          .in('document_id', uploadedQuoteDocIds);
+          .in('document_id', quoteDocIds);
         if (sqErr) console.warn('[Auto-save] structured_quotes lookup error:', sqErr);
-        const quoteIds = (structuredRows?.map((r: any) => r.id) || uploadedQuoteDocIds);
+        const quoteIds = (structuredRows?.map((r: any) => r.id) || quoteDocIds);
 
         const nameClient = selectedClientData?.client_name || 'Unknown Client';
         const desc = `Instant comparison of ${quoteCount} quotes${wordingCount > 0 ? ` and ${wordingCount} wordings` : ''}`;
