@@ -601,6 +601,49 @@ const InstantQuoteComparison = () => {
         description: successMessage,
       });
 
+      // Auto-save this Instant Comparison to the 'comparisons' table so it appears in
+      // the Quote Comparison -> Recent Comparisons list
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('No authenticated user');
+
+        // Build a simplified comparison payload compatible with QuoteComparison view
+        const summary: any[] = (comparisonData.analysis?.comparison_summary || []) as any[];
+        const simpleComparison = summary.map((r: any) => ({
+          insurer: r.insurer_name || r.insurer || 'Unknown',
+          premium: Number(r.premium_amount) || 0,
+          coverage: Math.round(Number(r.coverage_score) || 0),
+          deductible: 0,
+          score: Math.round(Number(r.overall_score) || 0),
+        }));
+
+        const quoteIds = (uploadedDocs || [])
+          .filter((d: any) => d.type === 'Quote')
+          .map((d: any) => d.documentId);
+
+        const nameClient = selectedClientData?.client_name || 'Unknown Client';
+        const desc = `Instant comparison of ${quoteCount} quotes${wordingCount > 0 ? ` and ${wordingCount} wordings` : ''}`;
+
+        const { error: insertError } = await supabase
+          .from('comparisons')
+          .insert([
+            {
+              user_id: user.id,
+              company_id: profile.company_id,
+              name: `Instant Comparison - ${nameClient}`,
+              description: desc,
+              client_name: nameClient,
+              quote_ids: quoteIds,
+              comparison_data: simpleComparison as any,
+            },
+          ]);
+
+        if (insertError) throw insertError;
+        addStatusLog('💾 Saved to Recent Comparisons', 'success');
+      } catch (saveErr: any) {
+        console.error('Auto-save comparison failed:', saveErr);
+        addStatusLog('⚠️ Could not auto-save comparison', 'error');
+      }
     } catch (error) {
       console.error('Analysis error:', error);
       addStatusLog(`❌ Fatal error: ${error.message}`, 'error');
