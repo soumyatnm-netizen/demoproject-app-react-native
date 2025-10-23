@@ -119,7 +119,7 @@ serve(async (req) => {
     
     console.log('[extract-quote] PDF encoded in', (performance.now() - t_encode_start).toFixed(0), 'ms');
 
-    // Try to extract textual content from PDF for higher reliability
+    // Extract textual content from PDF (Gemini cannot process PDFs as images)
     stage = "pdf_text";
     let pagesText: string[] = [];
     try {
@@ -130,19 +130,34 @@ serve(async (req) => {
       const task = getDocument({ data: pdfBytes, isEvalSupported: false, disableFontFace: true });
       const pdfDoc = await task.promise;
       const maxPages = Math.min(pdfDoc.numPages, 40);
+      console.log(`[extract-quote] Extracting text from ${maxPages} pages...`);
+      
       for (let p = 1; p <= maxPages; p++) {
         const page = await pdfDoc.getPage(p);
         const textContent: any = await page.getTextContent();
-        const txt = (textContent.items || [])
+        const txt = (textContent?.items || [])
           .map((it: any) => (typeof it?.str === 'string' ? it.str : ''))
           .join(' ')
           .replace(/\s+/g, ' ')
           .trim();
-        if (txt) pagesText.push(`Page ${p}: ${txt}`);
+        if (txt) pagesText.push(`--- Page ${p} ---\n${txt}`);
       }
-      console.log('[extract-quote] Extracted text pages:', pagesText.length);
+      console.log('[extract-quote] Extracted text from', pagesText.length, 'pages, total length:', pagesText.join('').length);
     } catch (e) {
-      console.warn('[extract-quote] PDF text extraction skipped:', String(e));
+      console.error('[extract-quote] PDF text extraction failed:', String(e));
+      return json(req, 500, { 
+        ok: false, 
+        stage: 'pdf_text', 
+        error: `Failed to extract text from PDF: ${String(e)}. Please ensure the document contains extractable text.` 
+      });
+    }
+
+    if (pagesText.length === 0) {
+      return json(req, 422, { 
+        ok: false, 
+        stage: 'pdf_text', 
+        error: 'No text content found in PDF. The document may be image-based or corrupt. Please use a text-based PDF.' 
+      });
     }
 
     // Extract quote with Gemini (text-first; fallback to PDF data URL)
@@ -298,15 +313,12 @@ Return as valid JSON object.`;
       try {
         console.log(`[extract-quote] Extraction attempt ${attempt}/${maxRetries}`);
         
-        // Prefer text content for robustness; fallback to PDF data URL if text is unavailable
+        // Use extracted text content (PDF data URLs not supported by Gemini)
+        const fullText = pagesText.join('\n\n');
         const contentParts: any[] = [
           { type: 'text', text: userPrompt },
-          pagesText.length > 0
-            ? { type: 'text', text: pagesText.join('\n\n').slice(0, 300000) }
-            : { type: 'image_url', image_url: { url: `data:${document.file_type || 'application/pdf'};base64,${base64Pdf}` } }
+          { type: 'text', text: fullText.slice(0, 300000) } // Limit to 300k chars
         ];
-        
-        const modelName = pagesText.length > 0 ? 'google/gemini-2.5-flash' : 'google/gemini-2.5-pro';
         
         extractRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
@@ -315,7 +327,7 @@ Return as valid JSON object.`;
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: modelName,
+            model: 'google/gemini-2.5-flash',
             messages: [
               { role: 'system', content: systemPrompt },
               {
