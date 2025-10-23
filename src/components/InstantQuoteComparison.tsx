@@ -1796,6 +1796,162 @@ const InstantQuoteComparison = () => {
             </Card>
           )}
 
+          {/* Total Payable & Annual Comparison */}
+          {comparisonData.comparison_summary && comparisonData.comparison_summary.length > 0 && (
+            <Card className="border-2 border-primary">
+              <CardHeader className="bg-gradient-to-r from-primary/10 to-background">
+                <CardTitle className="text-2xl flex items-center space-x-2">
+                  <DollarSign className="h-6 w-6" />
+                  <span>Total Payable & Annual Comparison</span>
+                </CardTitle>
+                <CardDescription>
+                  Total annual premium comparison across all underwriters
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {comparisonData.comparison_summary
+                    .filter((item: any) => item.premium_amount)
+                    .sort((a: any, b: any) => {
+                      const aAmount = typeof a.premium_amount === 'string' 
+                        ? parseFloat(a.premium_amount.replace(/[^0-9.]/g, '')) || 0
+                        : Number(a.premium_amount) || 0;
+                      const bAmount = typeof b.premium_amount === 'string'
+                        ? parseFloat(b.premium_amount.replace(/[^0-9.]/g, '')) || 0
+                        : Number(b.premium_amount) || 0;
+                      return aAmount - bAmount;
+                    })
+                    .map((item: any, idx: number) => {
+                      const premiumAmount = typeof item.premium_amount === 'string'
+                        ? parseFloat(item.premium_amount.replace(/[^0-9.]/g, '')) || 0
+                        : Number(item.premium_amount) || 0;
+                      
+                      const allPremiums = comparisonData.comparison_summary
+                        .filter((i: any) => i.premium_amount)
+                        .map((i: any) => {
+                          const amt = typeof i.premium_amount === 'string'
+                            ? parseFloat(i.premium_amount.replace(/[^0-9.]/g, '')) || 0
+                            : Number(i.premium_amount) || 0;
+                          return amt;
+                        });
+                      
+                      const minPremium = Math.min(...allPremiums);
+                      const isBestValue = premiumAmount === minPremium;
+                      
+                      const insurerInfo = getInsurerInfo(item.insurer_name || item.insurer || 'Unknown');
+                      
+                      return (
+                        <Card 
+                          key={idx} 
+                          className={`relative overflow-hidden transition-all hover:shadow-lg ${
+                            isBestValue ? 'border-2 border-green-500 bg-green-50/50' : 'border'
+                          }`}
+                        >
+                          {isBestValue && (
+                            <div className="absolute top-2 right-2">
+                              <Badge className="bg-green-600 text-white">Best Value</Badge>
+                            </div>
+                          )}
+                          <CardContent className="pt-6">
+                            <div className="flex items-center space-x-3 mb-4">
+                              {insurerInfo.logo ? (
+                                <img 
+                                  src={insurerInfo.logo} 
+                                  alt={insurerInfo.altText}
+                                  className="h-10 w-10 object-contain"
+                                />
+                              ) : (
+                                <div className="h-10 w-10 bg-primary/10 rounded flex items-center justify-center">
+                                  <span className="text-sm font-medium text-primary">
+                                    {(item.insurer_name || item.insurer || 'UK').substring(0, 2).toUpperCase()}
+                                  </span>
+                                </div>
+                              )}
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-lg">
+                                  {item.insurer_name || item.insurer || 'Unknown'}
+                                </h4>
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <div className="bg-primary/5 rounded-lg p-4 border border-primary/20">
+                                <p className="text-sm text-muted-foreground mb-1">Total Annual Premium</p>
+                                <p className="text-3xl font-bold text-primary">
+                                  {typeof item.premium_amount === 'string' 
+                                    ? item.premium_amount 
+                                    : `£${premiumAmount.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                  }
+                                </p>
+                              </div>
+                              
+                              {item.overall_score && (
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-muted-foreground">Overall Score:</span>
+                                  <Badge variant="secondary">
+                                    {Math.round(Number(item.overall_score) || 0)}/100
+                                  </Badge>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                </div>
+                
+                {/* Summary Stats */}
+                {(() => {
+                  const premiums = comparisonData.comparison_summary
+                    .filter((i: any) => i.premium_amount)
+                    .map((i: any) => {
+                      const amt = typeof i.premium_amount === 'string'
+                        ? parseFloat(i.premium_amount.replace(/[^0-9.]/g, '')) || 0
+                        : Number(i.premium_amount) || 0;
+                      return amt;
+                    });
+                  
+                  if (premiums.length > 1) {
+                    const minPremium = Math.min(...premiums);
+                    const maxPremium = Math.max(...premiums);
+                    const avgPremium = premiums.reduce((a, b) => a + b, 0) / premiums.length;
+                    const saving = maxPremium - minPremium;
+                    
+                    return (
+                      <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="bg-muted/30 rounded-lg p-4 border">
+                          <p className="text-xs text-muted-foreground mb-1">Lowest Premium</p>
+                          <p className="text-lg font-bold text-green-600">
+                            £{minPremium.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                        <div className="bg-muted/30 rounded-lg p-4 border">
+                          <p className="text-xs text-muted-foreground mb-1">Highest Premium</p>
+                          <p className="text-lg font-bold text-red-600">
+                            £{maxPremium.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                        <div className="bg-muted/30 rounded-lg p-4 border">
+                          <p className="text-xs text-muted-foreground mb-1">Average Premium</p>
+                          <p className="text-lg font-bold">
+                            £{avgPremium.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                        <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                          <p className="text-xs text-green-700 mb-1">Potential Saving</p>
+                          <p className="text-lg font-bold text-green-700">
+                            £{saving.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Product Comparisons */}
           {comparisonData.product_comparisons && comparisonData.product_comparisons.length > 0 && (
             <div className="space-y-6">
