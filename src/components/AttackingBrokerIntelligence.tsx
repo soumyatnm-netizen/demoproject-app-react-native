@@ -77,28 +77,20 @@ const AttackingBrokerIntelligence = () => {
 
   const fetchData = async () => {
     try {
-      // Fetch unique client names from documents
+      // Fetch clients from client_reports table
       const { data: clientData, error: clientError } = await supabase
-        .from('documents')
-        .select('id, filename')
+        .from('client_reports')
+        .select('id, client_name')
         .order('created_at', { ascending: false });
 
       if (clientError) throw clientError;
 
-      // Extract client names from filenames (assuming format: ClientName_DocumentType.pdf)
+      // Get unique clients
       const uniqueClients = Array.from(
-        new Set(
-          (clientData || [])
-            .map((doc: any) => {
-              const name = doc.filename.split('_')[0] || doc.filename.split('.')[0];
-              return name;
-            })
-            .filter(Boolean)
-        )
-      ).map((name, idx) => ({
-        id: `client-${idx}`,
-        client_name: name as string
-      }));
+        new Map(
+          (clientData || []).map((client: any) => [client.client_name, client])
+        ).values()
+      );
 
       setClients(uniqueClients);
 
