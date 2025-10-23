@@ -110,6 +110,14 @@ const AttackingBrokerIntelligence = () => {
         ...gap,
         recommended_carriers: gap.recommended_carriers || []
       })) as GapAnalysis[]);
+      
+      // Show helpful message if no quotes available
+      if (!quotesData || quotesData.length === 0) {
+        toast({
+          title: "No Quotes Available",
+          description: "Upload and process quotes via Instant Comparison first to use Attack Intelligence",
+        });
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
@@ -442,7 +450,20 @@ const AttackingBrokerIntelligence = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {uniqueClients.length === 0 ? (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 text-center">
+              <AlertTriangle className="h-12 w-12 text-amber-600 mx-auto mb-3" />
+              <h3 className="text-lg font-semibold text-amber-900 mb-2">No Quotes Available</h3>
+              <p className="text-amber-700 mb-4">
+                You need to upload and process quotes first before using Attack Intelligence.
+              </p>
+              <p className="text-sm text-amber-600">
+                Go to <strong>Instant Comparison</strong> or <strong>Quote Comparison</strong> to upload and process insurance quotes, then return here to analyze them.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">1. Select Client</label>
               <Select 
@@ -505,6 +526,8 @@ const AttackingBrokerIntelligence = () => {
               className="min-h-[80px]"
             />
           </div>
+          </>
+          )}
         </CardContent>
       </Card>
 
