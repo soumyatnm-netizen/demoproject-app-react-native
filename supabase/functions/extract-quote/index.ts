@@ -106,135 +106,114 @@ serve(async (req) => {
     stage = "extract";
     const t_extract_start = performance.now();
     
-    const systemPrompt = "You are a CoverCompass specialist insurance document analyzer. Extract all fields with maximum precision from insurance quotes. Target >95% confidence for all extractions. You must use the extract_quote_data tool to return structured data.";
+    const systemPrompt = "You are a CoverCompass specialist insurance document analyzer. Extract ONLY actual values as stated in the document. Never infer missing cover - only flag what's explicitly absent. You must use the extract_quote_data tool to return structured data with exact verbatim values and page references.";
     
-    const userPrompt = `Extract the following fields from this insurance quote document (Quote Schedule). Be thorough and precise.
+    const userPrompt = `OBJECTIVE: Extract only the actual values of limits, deductibles/excesses, retroactive dates, indemnity periods, territorial/jurisdiction restrictions, subjectivities, sub-limits, and extensions exactly as written in the quote or policy wording.
 
-**PHASE 1: STRUCTURED DATA EXTRACTION (QUOTES)**
+EXTRACTION RULES:
 
-Extract with HIGH CONFIDENCE (Target >95%):
+1. EXACT DATA CAPTURE
+   - Always extract stated figures verbatim (e.g. "GBP 25,000 deductible each and every claim")
+   - Include the basis (e.g. "each and every claim", "aggregate", "costs inclusive")
+   - Include section title (e.g. "Insuring Clause 5.D: Crisis Communication Costs")
+   - Provide page reference + verbatim snippet for evidence
 
-**PRICING (High Priority)**
-- Premium_Net: Net premium amount (Currency format: "GBP 65,952.65")
-- Premium_IPT: Insurance Premium Tax (Currency)
-- Premium_Total_Annual: Total annual premium payable - **CRITICAL: Look for "TOTAL PAYABLE" or "ANNUAL TOTAL" labels** (Currency)
-- Policy_Admin_Fee: Policy admin fee if separate (Currency) [Medium Priority]
+2. DO NOT INFER "MISSING COVER"
+   - If a limit isn't separately itemised (e.g. AI liability inside PI), record as part of main section
+   - Use "No cover given" ONLY if document explicitly states it or section is entirely absent
+   - Never assume something is excluded just because standalone sub-limit is not shown
 
-**LIMITS (High Priority)**
-- Limit_Indemnity_PI_E&O: Professional Indemnity/Errors & Omissions limit (Currency, e.g., "GBP 5,000,000")
-- Limit_Indemnity_Cyber_Overall: Overall Cyber Insurance limit (Currency)
-- Limit_Indemnity_PL_Products: Public/Products Liability limit (Currency)
-- Limit_Indemnity_Crime_Theft: Crime/Employee Theft limit (Currency)
-- Limit_Basis: Is limit "aggregate" or "any one claim"? Specify for each coverage type
+3. SUB-LIMIT RECOGNITION
+   - Differentiate between headline limits (e.g. Cyber £5m e&e) and small sub-limits (e.g. Post-Breach Remediation £50k)
+   - Do NOT replace a £5m limit with a £50k sub-limit
+   - Show both: headline_limit AND sub_limits array
 
-**DEDUCTIBLES (High Priority)**
-- Deductible_PI_Standard: PI deductible per claim/loss (Currency)
-- Deductible_Cyber_FirstParty: Cyber first-party losses/BI deductible (Currency)
-- Deductible_Crime_Standard: Crime/theft deductible (Currency)
-- Deductible_Basis: Per claim, per loss, costs-inclusive/exclusive? Specify
+4. SPECIAL CONDITIONS & SUBJECTIVITIES
+   - Capture ALL mandatory requirements (e.g. incident response app registration) with deadlines
+   - Store verbatim wording in subjectivities array
 
-**DATES (High Priority)**
-- Policy_Period_Start: Policy inception date (YYYY-MM-DD)
-- Policy_Period_Expiry: Policy expiry date (YYYY-MM-DD)
-- Quote_Expiry_Date: Quote validity expiry date (YYYY-MM-DD) [Medium Priority]
+5. RETROACTIVE DATE
+   - Always capture retroactive dates as written
+   - If unlimited or "none stated", record "unlimited"
 
-**COVERAGE DETAILS**
-- Coverage_Type: List of all coverage types included (e.g., ["Professional Indemnity", "Cyber & Data", "Crime"])
-- Costs_Inclusive: Are defence costs inside or outside the limit? Specify per coverage
-- Territorial_Limits: Geographic coverage (e.g., "Worldwide excluding USA/Canada")
-- Jurisdiction: Governing law (e.g., "England and Wales")
+6. INDEMNITY PERIODS & TIME FRANCHISE
+   - Extract exact months/hours
+   - Do not assume industry norms; only capture what is printed
 
-**INNER LIMITS & SUB-LIMITS**
-Extract ALL sublimits mentioned:
-- inner_limits: Array of objects:
-  [
-    { 
-      "coverage_name": "Legal Expenses", 
-      "limit": 100000, 
-      "currency": "GBP", 
-      "applies_to": "per claim",
-      "description": "Legal defence costs"
-    },
-    { 
-      "coverage_name": "Crisis Management", 
-      "limit": 50000, 
-      "currency": "GBP", 
-      "applies_to": "aggregate",
-      "description": "PR and crisis response"
-    }
-  ]
+7. PROPERTY/BI/EXTENSIONS
+   - Capture each extension separately (e.g. denial of access, suppliers failure, utilities outage)
+   - Record their sub-limits exactly
 
-**CYBER-SPECIFIC DETAILS (If Applicable)**
-- Cyber_BI_Indemnity_Period: Business Interruption coverage period (e.g., "90 days", "365 days")
-- Cyber_BI_Time_Excess: BI time excess (e.g., "8 hours", "24 hours")
-- Cyber_AICOW_Limit: Additional Increased Cost of Working limit
-- Cyber_Operational_Error_Limit: Operational error coverage limit
-- Cyber_Dependent_BI_Limit: Dependent business interruption limit
-- Cyber_Crime_Limit: Cyber crime limit
-- Cyber_Crime_Excess: Cyber crime excess/deductible
-- Cyber_Security_Requirements: Minimum security conditions (MFA, EDR, patching, etc.)
+8. ERP / RUN-OFF TERMS
+   - Record availability, duration, and cost basis (e.g. "12 months at 100% of annual premium")
 
-**PROPERTY-SPECIFIC DETAILS (If Applicable)**
-- Property_Sum_Insured_Buildings: Buildings sum insured
-- Property_Sum_Insured_Contents: Contents sum insured
-- Property_Sum_Insured_Stock: Stock sum insured
-- Property_Excess: Standard excess amount
-- Property_Excess_Subsidence: Subsidence-specific excess
-- Property_Cover_Type: "All Risks", "Named Perils", "Specified Cover"
-- Property_Valuation_Basis: "Reinstatement", "Indemnity", "First Loss"
-- Property_BI_Period: Business Interruption indemnity period
-- Property_Security_Requirements: Security warranties (alarm type, locks, etc.)
-- Property_Unoccupied_Exclusion: Days before unoccupied property exclusion applies
-
-**SUBJECTIVITIES (Critical)**
-Extract ALL pre-binding conditions that must be satisfied:
-- subjectivities: Array of objects:
-  [
+EXPECTED OUTPUT STRUCTURE:
+{
+  "Insurer_Name": "string",
+  "Client_Name": "string",
+  "Product_Type": "string",
+  "Industry": "string",
+  "Policy_Number": "string",
+  "Quote_Reference": "string",
+  "Quote_Date": "YYYY-MM-DD",
+  "Policy_Start_Date": "YYYY-MM-DD",
+  "Policy_End_Date": "YYYY-MM-DD",
+  "Premium_Total_Annual": number,
+  "Premium_Currency": "GBP",
+  "professional_indemnity": {
+    "limit": "GBP 5,000,000 e&e",
+    "deductible": "GBP 25,000 e&e incl costs",
+    "retroactive_date": "01 Aug 2023",
+    "source": {"page": 12, "snippet": "Deductible: GBP25,000 each and every claim"}
+  },
+  "cyber": {
+    "headline_limit": "GBP 5,000,000 e&e",
+    "deductible": "GBP 25,000 e&e incl costs",
+    "sub_limits": [
+      {"coverage": "Post-Breach Remediation", "limit": "GBP 50,000", "deductible": "GBP 0"}
+    ]
+  },
+  "crime": {
+    "funds_transfer_fraud": {"limit": "GBP 100,000", "deductible": "GBP 1,000"},
+    "customer_payment_fraud": {"limit": "GBP 50,000", "deductible": "GBP 1,000"}
+  },
+  "business_interruption": {
+    "indemnity_period": "12 months",
+    "time_franchise": "8 hours",
+    "extensions": [
+      {"coverage": "suppliers failure", "limit": "GBP 25,000"},
+      {"coverage": "utilities outage >24h", "limit": "GBP 25,000"}
+    ]
+  },
+  "property": {
+    "buildings": "No cover given",
+    "general_contents": "GBP 1,101,585 aggregate"
+  },
+  "territorial_limits": "Worldwide excl. USA/Canada",
+  "subjectivities": [
     {
-      "title": "Brief description",
-      "category": "documentation|risk_improvement|financial|security|survey|other",
-      "is_mandatory": true,
-      "verbatim_excerpt": "Exact text from document",
-      "deadline_days": Number of days if specified,
-      "page_ref": "Page X"
+      "requirement": "Download & register incident response mobile app",
+      "deadline": "30 days post-binding",
+      "page_ref": 3,
+      "verbatim_excerpt": "exact text from document"
     }
+  ],
+  "erp": {
+    "duration": "12 months",
+    "cost": "100% of annual premium"
+  },
+  "Inclusions": ["coverage1", "coverage2"],
+  "Exclusions_Summary": ["exclusion1", "exclusion2"],
+  "attack_points": [
+    {"issue": "Unusually high deductible", "value": "GBP 50,000", "benchmark": "Typical: GBP 10,000-25,000"}
   ]
+}
 
-**EXCLUSIONS & CONDITIONS**
-- exclusions_noted: Array of key exclusions
-- conditions_warranties_noted: Array of conditions precedent and warranties
-- endorsements_noted: Array of endorsements/modifications
-
-**KEY TERMS**
-- broker_commission: Commission % or amount
-- payment_terms: Payment schedule
-- premium_adjustability: Can premium be adjusted?
-- retro_date: Retroactive date if applicable
-
-**EVIDENCE TRAIL**
-- evidence: Document where ALL key data points were found:
-  [
-    {
-      "field": "Premium_Total_Annual",
-      "value": "GBP 65,952.65",
-      "snippet": "exact text from document",
-      "page_ref": "Page 2"
-    }
-  ]
-
-**OUTPUT FORMAT:**
-Return a comprehensive JSON object with ALL fields above. Use null for fields not found. Include confidence scores where data is ambiguous.
-
-CRITICAL INSTRUCTIONS:
-1. Extract EVERY monetary value with exact currency
-2. Distinguish between aggregate vs any-one-claim limits
-3. Distinguish between costs-inclusive vs costs-exclusive
-4. Flag ALL subjectivities as these are binding conditions
-5. Note all security requirements as these are potential claim declinature risks
-6. For Cyber: BI period and time excess are CRITICAL - extract precisely
-7. For Property: Security warranties and unoccupied exclusions are CRITICAL
-8. Provide evidence trail for all key extractions
-
+QUALITY CHECKS:
+- Cross-check that every headline £5m limit is still recorded, even if sub-limits exist
+- Highlight "No cover given" explicitly where the quote states it
+- Flag unusually high deductibles (>£25k), short BI periods (<24m), or low crime/fraud limits (<£250k) in "attack_points" array
+- Base only on extracted values, not assumptions
 
 Return as valid JSON object.`;
 
