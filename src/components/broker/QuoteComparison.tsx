@@ -64,6 +64,7 @@ const QuoteComparison = () => {
   const [viewingComparison, setViewingComparison] = useState<SavedComparison | null>(null);
   const [activeTab, setActiveTab] = useState("new");
   const [selectedClientFilter, setSelectedClientFilter] = useState<string>("all");
+  const [isViewingMode, setIsViewingMode] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -72,7 +73,8 @@ const QuoteComparison = () => {
   }, []);
 
   useEffect(() => {
-    if (selectedQuotes.length > 0) {
+    // Only generate and save new comparison if user is manually selecting quotes (not viewing a saved one)
+    if (selectedQuotes.length > 0 && !isViewingMode) {
       generateComparison();
     }
   }, [selectedQuotes]);
@@ -206,6 +208,10 @@ const QuoteComparison = () => {
   };
 
   const handleQuoteSelection = (quoteId: string, selected: boolean) => {
+    // Exit viewing mode when user manually selects quotes
+    setIsViewingMode(false);
+    setViewingComparison(null);
+    
     if (selected) {
       if (selectedQuotes.length < 5) {
         setSelectedQuotes([...selectedQuotes, quoteId]);
@@ -235,6 +241,7 @@ const QuoteComparison = () => {
   };
 
   const viewSavedComparison = (comparison: SavedComparison) => {
+    setIsViewingMode(true);
     setViewingComparison(comparison);
     setComparisonData(comparison.comparison_data);
     setSelectedQuotes(comparison.quote_ids);
