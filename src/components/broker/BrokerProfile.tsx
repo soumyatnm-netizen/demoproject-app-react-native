@@ -155,7 +155,7 @@ const BrokerProfile = () => {
       if (!user) throw new Error('No authenticated user');
 
       // Update basic profile data
-      const { error: profileError } = await supabase
+      const { data: updatedProfile, error: profileError } = await supabase
         .from('profiles')
         .update({
           first_name: profileData.first_name,
@@ -164,9 +164,16 @@ const BrokerProfile = () => {
           job_title: profileData.job_title,
           department: profileData.department
         })
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .select()
+        .single();
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Profile update error:', profileError);
+        throw profileError;
+      }
+
+      console.log('Profile updated:', updatedProfile);
 
       // Update sensitive data separately
       const { error: sensitiveError } = await supabase
@@ -176,15 +183,22 @@ const BrokerProfile = () => {
           phone: profileData.phone || null
         });
 
-      if (sensitiveError) throw sensitiveError;
+      if (sensitiveError) {
+        console.error('Sensitive data update error:', sensitiveError);
+        throw sensitiveError;
+      }
 
-      // Log the profile access for audit purposes
-      await supabase.rpc('log_profile_access', {
-        p_accessed_user_id: user.id,
-        p_access_type: 'update',
-        p_accessed_fields: ['first_name', 'last_name', 'company_name', 'job_title', 'department', 'phone'],
-        p_access_reason: 'User profile update'
-      });
+      // Log the profile access for audit purposes (optional - may fail if RPC doesn't exist)
+      try {
+        await supabase.rpc('log_profile_access', {
+          p_accessed_user_id: user.id,
+          p_access_type: 'update',
+          p_accessed_fields: ['first_name', 'last_name', 'company_name', 'job_title', 'department', 'phone'],
+          p_access_reason: 'User profile update'
+        });
+      } catch (rpcError) {
+        console.warn('Profile access logging failed (non-critical):', rpcError);
+      }
 
       toast({
         title: "Success",
@@ -196,7 +210,7 @@ const BrokerProfile = () => {
       console.error('Error updating profile:', error);
       toast({
         title: "Error",
-        description: "Failed to update profile",
+        description: `Failed to update profile: ${error.message}`,
         variant: "destructive",
       });
     } finally {
