@@ -627,9 +627,17 @@ const InstantQuoteComparison = () => {
           score: Math.round(Number(r.overall_score) || 0),
         }));
 
-        const quoteIds = (uploadedDocs || [])
+        const uploadedQuoteDocIds = (uploadedDocs || [])
           .filter((d: any) => d.type === 'Quote')
           .map((d: any) => d.documentId);
+
+        // Map document IDs to structured quote IDs for proper linking in Recent Comparisons
+        const { data: structuredRows, error: sqErr } = await supabase
+          .from('structured_quotes')
+          .select('id, document_id')
+          .in('document_id', uploadedQuoteDocIds);
+        if (sqErr) console.warn('[Auto-save] structured_quotes lookup error:', sqErr);
+        const quoteIds = (structuredRows?.map((r: any) => r.id) || uploadedQuoteDocIds);
 
         const nameClient = selectedClientData?.client_name || 'Unknown Client';
         const desc = `Instant comparison of ${quoteCount} quotes${wordingCount > 0 ? ` and ${wordingCount} wordings` : ''}`;

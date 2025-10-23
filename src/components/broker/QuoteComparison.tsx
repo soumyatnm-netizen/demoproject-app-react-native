@@ -240,20 +240,70 @@ const QuoteComparison = () => {
     }).format(amount);
   };
 
-  const viewSavedComparison = (comparison: SavedComparison) => {
+  const viewSavedComparison = async (comparison: SavedComparison) => {
     setIsViewingMode(true);
     setViewingComparison(comparison);
-    setSelectedQuotes(comparison.quote_ids);
-    
+    setActiveTab("new");
+
     // If comparison has valid data, use it directly
     if (comparison.comparison_data && Array.isArray(comparison.comparison_data) && comparison.comparison_data.length > 0) {
+      setSelectedQuotes(comparison.quote_ids);
       setComparisonData(comparison.comparison_data);
-    } else {
-      // Clear comparison data and show empty state
+      return;
+    }
+
+    // Otherwise try to rebuild from the stored IDs (supports both quote IDs and document IDs)
+    try {
+      // First: treat saved IDs as structured_quote IDs
+      let { data: sqById, error: errById } = await supabase
+        .from('structured_quotes')
+        .select('*')
+        .in('id', comparison.quote_ids);
+
+      if (errById) console.warn('[viewSavedComparison] sqById error:', errById);
+
+      // If nothing, try interpreting them as document_ids
+      if (!sqById || sqById.length === 0) {
+        const { data: sqByDoc, error: errByDoc } = await supabase
+          .from('structured_quotes')
+          .select('*')
+          .in('document_id', comparison.quote_ids);
+        if (errByDoc) console.warn('[viewSavedComparison] sqByDoc error:', errByDoc);
+        sqById = sqByDoc || [];
+      }
+
+      if (!sqById || sqById.length === 0) {
+        setComparisonData([]);
+        toast({
+          title: "Cannot Load Comparison",
+          description: "The quotes for this comparison are not accessible.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Build comparison data like generateComparison (but without auto-save)
+      const comparisonRows: ComparisonData[] = sqById.map((quote: any) => {
+        const coverageScore = Math.min(100, (Number(quote.premium_amount) / 10000) * 100);
+        const premiumScore = Math.max(0, 100 - (Number(quote.premium_amount) / 1000));
+        const overallScore = (premiumScore + coverageScore) / 2;
+        return {
+          insurer: quote.insurer_name,
+          premium: Number(quote.premium_amount) || 0,
+          coverage: Math.floor(coverageScore),
+          deductible: Number(quote.deductible_amount) || 0,
+          score: Math.floor(overallScore)
+        };
+      });
+
+      setSelectedQuotes(sqById.map((q: any) => q.id));
+      setComparisonData(comparisonRows);
+    } catch (e) {
+      console.error('[viewSavedComparison] rebuild error:', e);
       setComparisonData([]);
       toast({
-        title: "No Comparison Data",
-        description: "This comparison was saved without data. Please create a new comparison.",
+        title: "Error",
+        description: "Failed to load comparison data",
         variant: "destructive",
       });
     }
