@@ -31,6 +31,12 @@ const EmbedComparison = () => {
     const token = params.get('token');
     const demo = params.get('demo');
     
+    // Redirect to demo mode if no parameters provided
+    if (!token && !demo && !client) {
+      window.location.href = '/embed/comparison?token=demo-token&demo=true';
+      return;
+    }
+    
     setClientId(client || 'Demo Client');
     
     // Validate token (basic check - implement proper validation)
