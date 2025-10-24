@@ -29,8 +29,9 @@ const EmbedComparison = () => {
     const params = new URLSearchParams(window.location.search);
     const client = params.get('clientId');
     const token = params.get('token');
+    const demo = params.get('demo');
     
-    setClientId(client);
+    setClientId(client || 'Demo Client');
     
     // Validate token (basic check - implement proper validation)
     if (!token || token !== 'demo-token') {
@@ -39,13 +40,115 @@ const EmbedComparison = () => {
       return;
     }
     
-    if (client) {
+    // Use demo data if demo=true parameter is present
+    if (demo === 'true') {
+      loadDemoData();
+    } else if (client) {
       fetchQuotes(client);
     } else {
-      setError('Client ID is required');
-      setLoading(false);
+      // Default to demo data if no client specified
+      loadDemoData();
     }
   }, []);
+
+  const loadDemoData = () => {
+    // Demo quotes data for POC
+    const demoQuotes: Quote[] = [
+      {
+        id: 'demo-1',
+        insurer_name: 'Allianz',
+        product_type: 'Cyber Insurance',
+        premium_amount: 45000,
+        premium_currency: 'GBP',
+        coverage_limits: { limit: 5000000 },
+        deductible_amount: 10000,
+        inclusions: [
+          'Data breach response costs',
+          'Business interruption coverage',
+          'Cyber extortion coverage',
+          'Media liability protection',
+          'Network security liability',
+          'Crisis management support'
+        ],
+        exclusions: [
+          'War and terrorism',
+          'Prior known incidents',
+          'Unencrypted data loss'
+        ]
+      },
+      {
+        id: 'demo-2',
+        insurer_name: 'AXA',
+        product_type: 'Cyber Insurance',
+        premium_amount: 42500,
+        premium_currency: 'GBP',
+        coverage_limits: { limit: 5000000 },
+        deductible_amount: 15000,
+        inclusions: [
+          'Incident response services',
+          'Regulatory defence costs',
+          'Business interruption',
+          'Cyber crime coverage',
+          'System damage repair'
+        ],
+        exclusions: [
+          'Bodily injury claims',
+          'Property damage',
+          'Prior known vulnerabilities',
+          'Intentional acts'
+        ]
+      },
+      {
+        id: 'demo-3',
+        insurer_name: 'Hiscox',
+        product_type: 'Cyber Insurance',
+        premium_amount: 48000,
+        premium_currency: 'GBP',
+        coverage_limits: { limit: 5000000 },
+        deductible_amount: 12500,
+        inclusions: [
+          'Privacy breach costs',
+          'Network security liability',
+          'Media liability',
+          'Regulatory investigations',
+          'PR and crisis management',
+          'Forensic investigation',
+          'Legal defence costs'
+        ],
+        exclusions: [
+          'Infrastructure failure',
+          'Contractual penalties'
+        ]
+      },
+      {
+        id: 'demo-4',
+        insurer_name: 'Chubb',
+        product_type: 'Cyber Insurance',
+        premium_amount: 52000,
+        premium_currency: 'GBP',
+        coverage_limits: { limit: 10000000 },
+        deductible_amount: 25000,
+        inclusions: [
+          'First-party breach costs',
+          'Third-party liability',
+          'Regulatory fines coverage',
+          'Business interruption',
+          'Ransomware payments',
+          'System restoration',
+          'Credit monitoring services',
+          'Notification costs'
+        ],
+        exclusions: [
+          'Fraudulent transactions',
+          'Insider threats',
+          'Unpatched systems'
+        ]
+      }
+    ];
+    
+    setQuotes(demoQuotes);
+    setLoading(false);
+  };
 
   const fetchQuotes = async (clientName: string) => {
     try {
