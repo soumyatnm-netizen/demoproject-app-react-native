@@ -1,6 +1,18 @@
 console.log("[extract-quote] boot");
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+
+// Helper to convert PDF bytes to base64
+async function pdfToBase64(bytes: Uint8Array): Promise<string> {
+  const chunkSize = 8192;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
 
 function corsHeaders(req: Request) {
   const origin = req.headers.get("Origin") ?? "*";
@@ -48,10 +60,10 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
-    if (!lovableApiKey) {
-      return json(req, 500, { ok: false, error: 'LOVABLE_API_KEY not configured' });
+    if (!openAIApiKey) {
+      return json(req, 500, { ok: false, error: 'OPENAI_API_KEY not configured' });
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -96,90 +108,38 @@ serve(async (req) => {
       return json(req, 413, { ok: false, error: 'PDF too large (max 20MB)' });
     }
 
-    // Convert PDF to base64 for Lovable AI using TextDecoder to avoid stack overflows
-    stage = "encode_pdf";
-    const t_encode_start = performance.now();
-    let base64Pdf: string;
-    try {
-      const decoder = new TextDecoder('latin1');
-      const binaryString = decoder.decode(pdfBytes);
-      base64Pdf = btoa(binaryString);
-    } catch (e) {
-      console.warn('[extract-quote] TextDecoder failed, falling back to safe chunked encoding:', String(e));
-      const chunkSize = 4096;
-      let binaryString = '';
-      for (let i = 0; i < pdfBytes.length; i += chunkSize) {
-        const chunk = pdfBytes.subarray(i, Math.min(i + chunkSize, pdfBytes.length));
-        for (let j = 0; j < chunk.length; j++) {
-          binaryString += String.fromCharCode(chunk[j]);
-        }
-      }
-      base64Pdf = btoa(binaryString);
-    }
+    // Upload PDF to OpenAI for processing
+    stage = "upload_pdf";
+    const t_upload_start = performance.now();
     
-    console.log('[extract-quote] PDF encoded in', (performance.now() - t_encode_start).toFixed(0), 'ms');
+    const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const formData = new FormData();
+    formData.append('file', pdfBlob, document.filename);
+    formData.append('purpose', 'assistants');
 
-    // Extract textual content from PDF (Gemini cannot process PDFs as images)
-    stage = "pdf_text";
-    let pagesText: string[] = [];
-    try {
-      const { getDocument } = await import(
-        "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.mjs"
-      );
-      
-      // Disable web worker in edge runtime to avoid workerSrc issues
-      const task = getDocument({ 
-        data: pdfBytes, 
-        isEvalSupported: false, 
-        disableFontFace: true,
-        disableWorker: true,
-        verbosity: 0 // Reduce console noise
-      });
-      
-      const pdfDoc = await task.promise;
-      const maxPages = Math.min(pdfDoc.numPages, 40);
-      console.log(`[extract-quote] Extracting text from ${maxPages} pages...`);
-      
-      for (let p = 1; p <= maxPages; p++) {
-        try {
-          const page = await pdfDoc.getPage(p);
-          const textContent: any = await page.getTextContent();
-          
-          // Safer item processing with null guards
-          if (textContent && Array.isArray(textContent.items)) {
-            const txt = textContent.items
-              .filter((it: any) => it && typeof it.str === 'string')
-              .map((it: any) => it.str)
-              .join(' ')
-              .replace(/\s+/g, ' ')
-              .trim();
-            if (txt) pagesText.push(`--- Page ${p} ---\n${txt}`);
-          }
-        } catch (pageError) {
-          console.warn(`[extract-quote] Failed to extract page ${p}:`, String(pageError));
-          // Continue with other pages
-        }
-      }
-      
-      console.log('[extract-quote] Extracted text from', pagesText.length, 'pages, total length:', pagesText.join('').length);
-    } catch (e) {
-      console.error('[extract-quote] PDF text extraction failed:', String(e));
-      return json(req, 500, { 
-        ok: false, 
-        stage: 'pdf_text', 
-        error: `Failed to extract text from PDF: ${String(e)}. Please ensure the document contains extractable text.` 
+    const uploadRes = await fetch('https://api.openai.com/v1/files', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+      },
+      body: formData,
+    });
+
+    if (!uploadRes.ok) {
+      const errorText = await uploadRes.text();
+      console.error('[extract-quote] OpenAI upload failed:', errorText.slice(0, 400));
+      return json(req, uploadRes.status, {
+        ok: false,
+        stage: 'upload_pdf',
+        error: `Failed to upload PDF to OpenAI: ${errorText.slice(0, 200)}`
       });
     }
 
-    if (pagesText.length === 0) {
-      return json(req, 422, { 
-        ok: false, 
-        stage: 'pdf_text', 
-        error: 'No text content found in PDF. The document may be image-based or corrupt. Please use a text-based PDF.' 
-      });
-    }
+    const uploadData = await uploadRes.json();
+    const fileId = uploadData.id;
+    console.log('[extract-quote] Uploaded to OpenAI:', fileId, 'in', (performance.now() - t_upload_start).toFixed(0), 'ms');
 
-    // Extract quote with Gemini (text-first; fallback to PDF data URL)
+    // Extract quote with OpenAI using the uploaded file
     stage = "extract";
     const t_extract_start = performance.now();
     
@@ -332,26 +292,28 @@ Return as valid JSON object.`;
       try {
         console.log(`[extract-quote] Extraction attempt ${attempt}/${maxRetries}`);
         
-        // Use extracted text content (PDF data URLs not supported by Gemini)
-        const fullText = pagesText.join('\n\n');
-        const contentParts: any[] = [
-          { type: 'text', text: userPrompt },
-          { type: 'text', text: fullText.slice(0, 300000) } // Limit to 300k chars
-        ];
-        
-        extractRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        // Use OpenAI with file attachment
+        extractRes = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${lovableApiKey}`,
+            'Authorization': `Bearer ${openAIApiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'gpt-4o',
             messages: [
               { role: 'system', content: systemPrompt },
               {
                 role: 'user',
-                content: contentParts
+                content: [
+                  { type: 'text', text: userPrompt },
+                  {
+                    type: 'image_url',
+                    image_url: {
+                      url: `data:application/pdf;base64,${await pdfToBase64(pdfBytes)}`
+                    }
+                  }
+                ]
               }
             ],
             tools: [extractTool],
