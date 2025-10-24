@@ -307,12 +307,7 @@ Return as valid JSON object.`;
                 role: 'user',
                 content: [
                   { type: 'text', text: userPrompt },
-                  {
-                    type: 'image_url',
-                    image_url: {
-                      url: `data:application/pdf;base64,${await pdfToBase64(pdfBytes)}`
-                    }
-                  }
+                  { type: 'file', file: { file_id: fileId } }
                 ]
               }
             ],
@@ -428,7 +423,8 @@ Return as valid JSON object.`;
             usage: extractData.usage,
             timing: {
               total_ms: parseInt(totalTime),
-              encode_ms: parseInt((t_encode_start - t_fetch_start).toFixed(0)),
+              fetch_ms: parseInt((t_fetch_start - t0).toFixed(0)),
+              upload_ms: parseInt((t_extract_start - t_upload_start).toFixed(0)),
               extract_ms: parseInt((performance.now() - t_extract_start).toFixed(0))
             },
             attempts: attempt
