@@ -123,16 +123,16 @@ serve(async (req) => {
     stage = "pdf_text";
     let pagesText: string[] = [];
     try {
-      const { getDocument, GlobalWorkerOptions } = await import(
+      const { getDocument } = await import(
         "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.mjs"
       );
-      GlobalWorkerOptions.workerSrc = null as unknown as string;
       
-      // Safer PDF loading with error handling
+      // Disable web worker in edge runtime to avoid workerSrc issues
       const task = getDocument({ 
         data: pdfBytes, 
         isEvalSupported: false, 
         disableFontFace: true,
+        disableWorker: true,
         verbosity: 0 // Reduce console noise
       });
       
