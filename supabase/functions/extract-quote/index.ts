@@ -127,21 +127,40 @@ serve(async (req) => {
         "https://esm.sh/pdfjs-dist@3.4.120/legacy/build/pdf.mjs"
       );
       GlobalWorkerOptions.workerSrc = null as unknown as string;
-      const task = getDocument({ data: pdfBytes, isEvalSupported: false, disableFontFace: true });
+      
+      // Safer PDF loading with error handling
+      const task = getDocument({ 
+        data: pdfBytes, 
+        isEvalSupported: false, 
+        disableFontFace: true,
+        verbosity: 0 // Reduce console noise
+      });
+      
       const pdfDoc = await task.promise;
       const maxPages = Math.min(pdfDoc.numPages, 40);
       console.log(`[extract-quote] Extracting text from ${maxPages} pages...`);
       
       for (let p = 1; p <= maxPages; p++) {
-        const page = await pdfDoc.getPage(p);
-        const textContent: any = await page.getTextContent();
-        const txt = (textContent?.items || [])
-          .map((it: any) => (typeof it?.str === 'string' ? it.str : ''))
-          .join(' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-        if (txt) pagesText.push(`--- Page ${p} ---\n${txt}`);
+        try {
+          const page = await pdfDoc.getPage(p);
+          const textContent: any = await page.getTextContent();
+          
+          // Safer item processing with null guards
+          if (textContent && Array.isArray(textContent.items)) {
+            const txt = textContent.items
+              .filter((it: any) => it && typeof it.str === 'string')
+              .map((it: any) => it.str)
+              .join(' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+            if (txt) pagesText.push(`--- Page ${p} ---\n${txt}`);
+          }
+        } catch (pageError) {
+          console.warn(`[extract-quote] Failed to extract page ${p}:`, String(pageError));
+          // Continue with other pages
+        }
       }
+      
       console.log('[extract-quote] Extracted text from', pagesText.length, 'pages, total length:', pagesText.join('').length);
     } catch (e) {
       console.error('[extract-quote] PDF text extraction failed:', String(e));
