@@ -58,9 +58,11 @@ verify_jwt = true
 
 [functions.extract-quote]
 verify_jwt = true
+timeout = 300
 
 [functions.extract-wording]
 verify_jwt = true
+timeout = 300
 
 [functions.compare-insurance-docs]
 verify_jwt = true
