@@ -458,11 +458,9 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
     }
 
     try {
-      // Determine the bucket based on document type
-      const bucket = doc.type === 'quote' ? 'quote-documents' : 'policy-documents';
-      
+      // All documents are stored in the 'documents' bucket
       const { data, error } = await supabase.storage
-        .from(bucket)
+        .from('documents')
         .download(doc.storage_path);
 
       if (error) throw error;
