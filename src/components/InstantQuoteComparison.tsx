@@ -508,13 +508,34 @@ const InstantQuoteComparison = () => {
             if ((res as any)?.error) throw (res as any).error;
             return res;
           } catch (e: any) {
+            // Network flake or SDK transport issue – try a direct fetch fallback once per attempt
             lastErr = e;
+            try {
+              const { data: sessionData } = await supabase.auth.getSession();
+              const accessToken = sessionData?.session?.access_token;
+              const direct = await fetch('https://ijhiavpjobzfxoirhnux.supabase.co/functions/v1/batch-analyze-documents', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
+                  'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlqaGlhdnBqb2J6ZnhvaXJobnV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2OTg0ODgsImV4cCI6MjA3MTI3NDQ4OH0.eRjLwH8fCkqaMNnW0R248u213qcBRBLYrc9ZGiAm2Z4'
+                },
+                body: JSON.stringify({ ...basePayload, documents: docs })
+              });
+              if (direct.ok) {
+                const data = await direct.json();
+                return { data, error: null } as any;
+              }
+            } catch (_) {
+              // ignore fallback error; continue with retry/backoff
+            }
+
             const msg = e?.message || String(e);
             addStatusLog(`Retry ${attempt}/${maxAttempts} for batch due to: ${msg}`, 'error');
             if (attempt < maxAttempts) {
               const isWorkerLimit = msg?.toLowerCase?.().includes('worker_limit') || msg?.toLowerCase?.().includes('compute resources');
-              const base = isWorkerLimit ? 2000 : 500;
-              const delay = Math.pow(2, attempt) * base + Math.floor(Math.random() * 400);
+              const base = isWorkerLimit ? 2000 : 800;
+              const delay = Math.min(10000, Math.pow(2, attempt) * base + Math.floor(Math.random() * 500));
               await new Promise(r => setTimeout(r, delay));
             }
           }
