@@ -496,17 +496,36 @@ const InstantQuoteComparison = () => {
         selectedSections: selectedSections
       };
 
-      // Process both batches in parallel
+      // Robust invoker with retries for transient network errors (e.g. "Failed to fetch")
+      const callBatch = async (docs: any[]) => {
+        const maxAttempts = 3;
+        let lastErr: any = null;
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            const res = await supabase.functions.invoke('batch-analyze-documents', {
+              body: { ...basePayload, documents: docs }
+            });
+            if ((res as any)?.error) throw (res as any).error;
+            return res;
+          } catch (e: any) {
+            lastErr = e;
+            const msg = e?.message || String(e);
+            addStatusLog(`Retry ${attempt}/${maxAttempts} for batch due to: ${msg}`, 'error');
+            if (attempt < maxAttempts) {
+              await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
+            }
+          }
+        }
+        throw lastErr || new Error('Failed to call batch-analyze-documents');
+      };
+
+      // Process both batches in parallel (with per-call retries)
       const [quoteResult, wordingResult] = await Promise.allSettled([
         quoteDocs.length > 0 
-          ? supabase.functions.invoke('batch-analyze-documents', {
-              body: { ...basePayload, documents: quoteDocs }
-            })
+          ? callBatch(quoteDocs)
           : Promise.resolve({ data: null, error: null }),
         wordingDocs.length > 0
-          ? supabase.functions.invoke('batch-analyze-documents', {
-              body: { ...basePayload, documents: wordingDocs }
-            })
+          ? callBatch(wordingDocs)
           : Promise.resolve({ data: null, error: null })
       ]);
 
