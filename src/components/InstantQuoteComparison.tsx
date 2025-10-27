@@ -1941,35 +1941,6 @@ const InstantQuoteComparison = () => {
         </CardContent>
       </Card>
 
-      {/* Report Generation Section */}
-      {analysisComplete && rankings.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <FileText className="h-5 w-5" />
-              <span>Generate Client Report</span>
-            </CardTitle>
-            <CardDescription>
-              Create a professional PDF report to send to your client
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-center p-6">
-              <Button 
-                onClick={generatePDFReport}
-                size="lg"
-                className="flex items-center space-x-2"
-              >
-                <Download className="h-5 w-5" />
-                <span>Generate Report</span>
-              </Button>
-            </div>
-            <div className="text-center text-sm text-muted-foreground">
-              Includes client information, quote rankings, coverage analysis, and recommendations
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Coverage Comparison Results */}
       {analysisComplete && comparisonData && (
