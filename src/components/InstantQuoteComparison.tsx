@@ -484,7 +484,7 @@ const InstantQuoteComparison = () => {
       const quoteDocs = documentsForBatch.filter(d => d.document_type === 'Quote');
       const wordingDocs = documentsForBatch.filter(d => d.document_type === 'PolicyWording');
 
-      addStatusLog(`🔄 Processing ${quoteDocs.length} quotes and ${wordingDocs.length} wordings in 2 parallel batches...`, 'info');
+      addStatusLog(`🔄 Processing ${quoteDocs.length} quotes and ${wordingDocs.length} wordings sequentially (reduced load)...`, 'info');
 
       const selectedClientData = clients.find(c => c.id === selectedClient);
       
@@ -537,7 +537,7 @@ const InstantQuoteComparison = () => {
       }
 
       // small breather to free the worker before starting the next batch
-      await new Promise(r => setTimeout(r, 300));
+      await new Promise(r => setTimeout(r, 1200));
 
       if (wordingDocs.length > 0) {
         addStatusLog(`▶️ Analyzing ${wordingDocs.length} wording(s)...`, 'info');
