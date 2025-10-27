@@ -347,7 +347,7 @@ Return as valid JSON object with all fields.`;
             timing: {
               total_ms: parseInt(totalTime),
               fetch_ms: parseInt((t_fetch_start - t0).toFixed(0)),
-              upload_ms: parseInt((t_extract_start - t_upload_start).toFixed(0)),
+              convert_ms: parseInt((t_extract_start - t_convert_start).toFixed(0)),
               extract_ms: parseInt((performance.now() - t_extract_start).toFixed(0))
             },
             attempts: attempt
