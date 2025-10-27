@@ -15,12 +15,12 @@ serve(async (req) => {
   try {
     console.log('=== Compare Insurance Documents Function Started ===');
     
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    const geminiApiKey = Deno.env.get('GOOGLE_GEMINI_API_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!lovableApiKey) {
-      throw new Error('LOVABLE_API_KEY not configured');
+    if (!geminiApiKey) {
+      throw new Error('GOOGLE_GEMINI_API_KEY not configured');
     }
 
     if (!supabaseUrl || !supabaseKey) {
@@ -140,31 +140,48 @@ Example JSON Structure:
       console.log(`Added ${doc.filename} to comparison (${(base64Data.length / 1024).toFixed(2)} KB)`);
     }
 
-    console.log('Calling Lovable AI (Gemini 2.5 Flash) for comparison...');
+    console.log('Calling Google Gemini directly for comparison...');
 
-    // Call Lovable AI with Gemini 2.5 Flash
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    // Convert content array to Gemini format
+    const geminiParts = contentArray.map((item: any) => {
+      if (item.type === 'text') {
+        return { text: item.text };
+      } else if (item.type === 'image_url') {
+        const base64Data = item.image_url.url.split(',')[1];
+        const mimeType = item.image_url.url.split(';')[0].split(':')[1];
+        return {
+          inlineData: {
+            mimeType: mimeType,
+            data: base64Data
+          }
+        };
+      }
+      return item;
+    });
+
+    // Call Google Gemini directly
+    const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
+        contents: [
           {
             role: 'user',
-            content: contentArray
+            parts: geminiParts
           }
         ],
-        max_tokens: 4000,
-        temperature: 0.1
+        generationConfig: {
+          temperature: 0.1,
+          responseMimeType: 'application/json'
+        }
       }),
     });
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error('Lovable AI error:', errorText);
+      console.error('Gemini API error:', errorText);
       
       if (aiResponse.status === 429) {
         return new Response(
@@ -173,18 +190,11 @@ Example JSON Structure:
         );
       }
       
-      if (aiResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ ok: false, error: 'Payment required. Please add credits to your Lovable AI workspace.' }), 
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      throw new Error(`Lovable AI request failed: ${errorText}`);
+      throw new Error(`Gemini API request failed: ${errorText}`);
     }
 
     const aiResult = await aiResponse.json();
-    let comparisonText = aiResult.choices?.[0]?.message?.content;
+    let comparisonText = aiResult.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!comparisonText) {
       throw new Error('No comparison result from AI');
@@ -224,7 +234,7 @@ Example JSON Structure:
         result: comparisonData,
         meta: {
           documentsProcessed: documents.length,
-          model: 'google/gemini-2.5-flash',
+          model: 'gemini-2.0-flash-exp',
           timestamp: new Date().toISOString()
         }
       }),

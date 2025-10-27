@@ -15,12 +15,12 @@ serve(async (req) => {
   let success = true;
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const GEMINI_API_KEY = Deno.env.get('GOOGLE_GEMINI_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY not configured');
+    if (!GEMINI_API_KEY) {
+      throw new Error('GOOGLE_GEMINI_API_KEY not configured');
     }
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
@@ -520,29 +520,32 @@ DISCLAIMERS:
       documents: documentsWithContent
     };
 
-    console.log('Calling Lovable AI (Gemini 2.5 Flash) with comprehensive analysis...');
+    console.log('Calling Google Gemini directly with comprehensive analysis...');
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: masterPrompt },
-          { role: 'user', content: `Analyze these documents and return your response as a JSON object:\n\n${JSON.stringify(payload, null, 2)}` }
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { text: masterPrompt + '\n\nAnalyze these documents and return your response as a JSON object:\n\n' + JSON.stringify(payload, null, 2) }
+            ]
+          }
         ],
-        temperature: 0,
-        max_tokens: 16000,
-        response_format: { type: "json_object" }
+        generationConfig: {
+          temperature: 0,
+          responseMimeType: 'application/json'
+        }
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Lovable AI error:', errorText);
+      console.error('Gemini API error:', errorText);
       
       if (response.status === 429) {
         return new Response(
@@ -551,14 +554,7 @@ DISCLAIMERS:
         );
       }
       
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'Payment required. Please add credits to your Lovable AI workspace.' }), 
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      throw new Error(`Lovable AI error: ${response.status}`);
+      throw new Error(`Gemini API error: ${response.status}`);
     }
 
     const aiResponse = await response.json();
@@ -566,11 +562,15 @@ DISCLAIMERS:
     // Parse with better error handling
     let analysisResult;
     try {
-      analysisResult = JSON.parse(aiResponse.choices[0].message.content);
+      const contentText = aiResponse.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!contentText) {
+        throw new Error('No content in Gemini response');
+      }
+      analysisResult = JSON.parse(contentText);
     } catch (parseError) {
       console.error('JSON parse error:', parseError);
-      console.error('Raw content:', aiResponse.choices[0].message.content);
-      throw new Error(`Failed to parse AI response: ${parseError.message}`);
+      console.error('Raw content:', aiResponse.candidates?.[0]?.content?.parts?.[0]?.text);
+      throw new Error(`Failed to parse Gemini response: ${parseError.message}`);
     }
 
     console.log('Comprehensive analysis complete');

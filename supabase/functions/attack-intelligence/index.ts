@@ -5,7 +5,7 @@ console.log("Attack Intelligence function loaded")
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!
+const geminiApiKey = Deno.env.get('GOOGLE_GEMINI_API_KEY')!
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
 
     console.log('Document content retrieved, analyzing...');
 
-    // Call Lovable AI to analyze the document
+    // Call Google Gemini directly to analyze the document
     const systemPrompt = `You are an expert insurance analyst specialized in identifying policy weaknesses and gaps that brokers can use to win business from incumbent providers.
 
 Your task is to analyze insurance quotes and policy wordings to identify potential client risks, disadvantages, and opportunities for improvement.
@@ -115,26 +115,30 @@ ${documentText}
 
 Provide a detailed analysis identifying weaknesses and opportunities.`;
 
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { text: systemPrompt + '\n\n' + userPrompt }
+            ]
+          }
         ],
-        temperature: 0.7,
-        response_format: { type: "json_object" }
+        generationConfig: {
+          temperature: 0.7,
+          responseMimeType: 'application/json'
+        }
       }),
     });
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error('AI gateway error:', aiResponse.status, errorText);
+      console.error('Gemini API error:', aiResponse.status, errorText);
       
       if (aiResponse.status === 429) {
         return new Response(
@@ -143,18 +147,11 @@ Provide a detailed analysis identifying weaknesses and opportunities.`;
         );
       }
       
-      if (aiResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'Payment required. Please add credits to your Lovable AI workspace.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      throw new Error(`AI gateway error: ${aiResponse.status}`);
+      throw new Error(`Gemini API error: ${aiResponse.status}`);
     }
 
     const aiResult = await aiResponse.json();
-    const analysisText = aiResult.choices[0].message.content;
+    const analysisText = aiResult.candidates?.[0]?.content?.parts?.[0]?.text;
     
     console.log('AI analysis complete');
     
