@@ -27,10 +27,10 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    const geminiApiKey = Deno.env.get('GOOGLE_GEMINI_API_KEY');
 
-    if (!openaiApiKey) {
-      throw new Error('OPENAI_API_KEY not configured');
+    if (!geminiApiKey) {
+      throw new Error('GOOGLE_GEMINI_API_KEY not configured');
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -63,31 +63,12 @@ serve(async (req) => {
       throw new Error(`Failed to fetch PDF: ${pdfResponse.statusText}`);
     }
 
-    const pdfBytes = await pdfResponse.arrayBuffer();
+    const pdfBytes = new Uint8Array(await pdfResponse.arrayBuffer());
     console.log(`[Preflight] PDF fetched: ${pdfBytes.byteLength} bytes`);
 
-    // Upload to OpenAI
-    const formData = new FormData();
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-    formData.append('file', blob, doc.filename);
-    formData.append('purpose', 'assistants');
-
-    const uploadResponse = await fetch('https://api.openai.com/v1/files', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-      },
-      body: formData,
-    });
-
-    if (!uploadResponse.ok) {
-      const errorText = await uploadResponse.text();
-      throw new Error(`OpenAI upload failed: ${errorText}`);
-    }
-
-    const uploadData = await uploadResponse.json();
-    const fileId = uploadData.id;
-    console.log(`[Preflight] Uploaded to OpenAI: ${fileId}`);
+    // Convert to base64 for Gemini
+    const base64Pdf = btoa(String.fromCharCode(...pdfBytes));
+    console.log(`[Preflight] Converted to base64`);
 
     // Lightweight classification prompt (150-250 tokens)
     const classificationPrompt = `CoverCompass Preflight. Return JSON only.
@@ -111,39 +92,34 @@ RULES:
 - For Wordings: extract wording/form code if present
 - Use "Unknown" only when content is genuinely unclear`;
 
-    // Call OpenAI with file
-    const completionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Call Gemini with inline PDF
+    const completionResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: classificationPrompt },
-              {
-                type: 'file',
-                file: { file_id: fileId }
-              }
-            ]
-          }
-        ],
-        temperature: 0,
-        max_tokens: 300,
+        contents: [{
+          role: 'user',
+          parts: [
+            { text: classificationPrompt },
+            { inline_data: { mime_type: 'application/pdf', data: base64Pdf } }
+          ]
+        }],
+        generationConfig: {
+          temperature: 0,
+          responseMimeType: 'application/json'
+        }
       }),
     });
 
     if (!completionResponse.ok) {
       const errorText = await completionResponse.text();
-      throw new Error(`OpenAI completion failed: ${errorText}`);
+      throw new Error(`Gemini completion failed: ${errorText}`);
     }
 
     const completionData = await completionResponse.json();
-    const resultText = completionData.choices[0].message.content;
+    const resultText = completionData.candidates?.[0]?.content?.parts?.[0]?.text;
     
     console.log(`[Preflight] Raw result: ${resultText.substring(0, 500)}`);
 

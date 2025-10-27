@@ -48,12 +48,12 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    const geminiApiKey = Deno.env.get('GOOGLE_GEMINI_API_KEY');
 
-    console.log('[openai] keyPresent:', openAIApiKey ? 'yes' : 'no');
+    console.log('[gemini] keyPresent:', geminiApiKey ? 'yes' : 'no');
 
-    if (!openAIApiKey) {
-      return json(req, 500, { ok: false, error: 'OPENAI_API_KEY not configured' });
+    if (!geminiApiKey) {
+      return json(req, 500, { ok: false, error: 'GOOGLE_GEMINI_API_KEY not configured' });
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -162,53 +162,22 @@ serve(async (req) => {
     
     console.log('❌ Cache miss - proceeding with full AI analysis...');
 
-    // --- Upload to OpenAI Files API (with granular error handling) ---
-    let fileId: string | null = null;
+    // --- Convert PDF to base64 for Gemini (with granular error handling) ---
+    let base64Pdf: string;
     try {
-      const pdfFile = new File([pdfBytes], document.filename || 'policy.pdf', { type: 'application/pdf' });
-      const formData = new FormData();
-      formData.append('file', pdfFile);
-      formData.append('purpose', 'assistants');
-
-      console.log('[PW] Uploading PDF to OpenAI Files API…');
-      const upRes = await fetch('https://api.openai.com/v1/files', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${openAIApiKey}` },
-        body: formData
-      });
-      
-      const upText = await upRes.text();
-      console.log('[PW] upload status:', upRes.status, 'len:', upText.length);
-      
-      if (!upRes.ok) {
-        console.error('[PW][OpenAI Upload] error (first 400):', upText.slice(0, 400));
-        return json(req, upRes.status, { ok: false, stage: 'upload', error: upText.slice(0, 400) });
-      }
-      
-      const uploadData = JSON.parse(upText);
-      fileId = uploadData.id;
-      console.log('[PW] uploaded fileId:', fileId);
+      console.log('[PW] Converting PDF to base64 for Gemini…');
+      base64Pdf = btoa(String.fromCharCode(...pdfBytes));
+      console.log('[PW] PDF converted to base64, length:', base64Pdf.length);
     } catch (e) {
-      console.error('[PW] upload threw:', String(e), (e as any)?.stack);
-      return json(req, 500, { ok: false, stage: 'upload', error: String(e) });
+      console.error('[PW] base64 conversion threw:', String(e), (e as any)?.stack);
+      return json(req, 500, { ok: false, stage: 'conversion', error: String(e) });
     }
 
     // --- Build schema & prevalidate ---
     const schemaModule = await import("../_shared/openai-schemas.ts");
-    const { normalizeStrictJsonSchema, findFirstRequiredMismatch, assertObjectSchema } = await import("../_shared/schema-utils.ts");
     
     const POLICY_WORDING_SCHEMA = schemaModule.POLICY_WORDING_SCHEMA ?? schemaModule.default;
     console.log('[schema PW] typeof:', typeof POLICY_WORDING_SCHEMA, 'root.type:', POLICY_WORDING_SCHEMA?.type);
-    
-    const PW_STRICT = normalizeStrictJsonSchema(structuredClone(POLICY_WORDING_SCHEMA));
-    assertObjectSchema("POLICY_WORDING_SCHEMA", PW_STRICT);
-    
-    console.log('[schema PW] first keys:', Object.keys(PW_STRICT.properties || {}).slice(0, 5));
-    const mismatch = findFirstRequiredMismatch(PW_STRICT);
-    if (mismatch) {
-      console.error('[schema PW] required mismatch at:', mismatch);
-      return json(req, 500, { ok: false, stage: 'schema_precheck', error: `required mismatch at ${mismatch}` });
-    }
 
     // --- Prepare API call parameters ---
     const systemText = `You analyse insurance policy wordings for brokers. You are a critical risk analyzer identifying coverage gaps.
@@ -324,57 +293,43 @@ CRITICAL INSTRUCTION: Phase 3 Gap Analysis is THE MOST IMPORTANT part of your an
     console.log('[PW] systemText defined:', systemText ? 'yes' : 'no');
     console.log('[PW] userText defined:', userText ? 'yes' : 'no');
     
-    // --- Call Responses API (with granular error handling) ---
+    // --- Call Gemini API (with granular error handling) ---
     let respStatus = 0;
     let respText = "";
     try {
-      console.log('[PW] Calling OpenAI Responses API…');
-      const body = {
-        model: "gpt-4o-mini",
-        input: [
-          { role: "system", content: [{ type: "input_text", text: systemText }] },
-          { 
-            role: "user", 
-            content: [
-              { type: "input_text", text: userText },
-              { type: "input_file", file_id: fileId }
-            ]
-          }
-        ],
-        text: { 
-          format: { 
-            type: "json_schema", 
-            strict: true, 
-            name: "PolicyWording", 
-            schema: PW_STRICT 
-          } 
-        },
-        temperature: 0,
-        max_output_tokens: 3000
-      };
+      console.log('[PW] Calling Google Gemini API…');
 
-      console.log('[PW] Request payload size:', JSON.stringify(body).length);
-
-      const r = await fetch('https://api.openai.com/v1/responses', {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
         method: 'POST',
         headers: { 
-          'Authorization': `Bearer ${openAIApiKey}`, 
           'Content-Type': 'application/json' 
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify({
+          contents: [{
+            role: 'user',
+            parts: [
+              { text: systemText + '\n\n' + userText },
+              { inline_data: { mime_type: 'application/pdf', data: base64Pdf } }
+            ]
+          }],
+          generationConfig: {
+            temperature: 0,
+            responseMimeType: 'application/json'
+          }
+        })
       });
       
       respStatus = r.status;
       respText = await r.text();
-      console.log('[PW] responses status:', respStatus, 'len:', respText.length);
+      console.log('[PW] gemini status:', respStatus, 'len:', respText.length);
       
       if (!r.ok) {
-        console.error('[PW][OpenAI Responses] error (first 400):', respText.slice(0, 400));
-        return json(req, r.status, { ok: false, stage: 'responses', error: respText.slice(0, 400) });
+        console.error('[PW][Gemini] error (first 400):', respText.slice(0, 400));
+        return json(req, r.status, { ok: false, stage: 'gemini', error: respText.slice(0, 400) });
       }
     } catch (e) {
-      console.error('[PW] responses threw:', String(e), (e as any)?.stack);
-      return json(req, 500, { ok: false, stage: 'responses_throw', error: String(e) });
+      console.error('[PW] gemini threw:', String(e), (e as any)?.stack);
+      return json(req, 500, { ok: false, stage: 'gemini_throw', error: String(e) });
     }
 
     // --- Parse output safely ---
@@ -383,18 +338,14 @@ CRITICAL INSTRUCTION: Phase 3 Gap Analysis is THE MOST IMPORTANT part of your an
     let structured: any;
     try {
       responsesData = JSON.parse(respText);
-      outputText =
-        responsesData?.output?.[0]?.content?.[0]?.text ??
-        responsesData?.content?.[0]?.text ??
-        responsesData?.output_text ??
-        responsesData?.choices?.[0]?.message?.content;
+      outputText = responsesData?.candidates?.[0]?.content?.parts?.[0]?.text;
       
       console.log('[PW] output preview:', String(outputText).slice(0, 200));
       structured = typeof outputText === "string" ? JSON.parse(outputText) : outputText;
       
-      console.log('[PW] model:', responsesData?.model, 'usage:', JSON.stringify(responsesData?.usage ?? null));
+      console.log('[PW] model: gemini-2.5-flash');
     } catch (e) {
-      console.error('[PW] parse fail. responses status:', respStatus, 'first 400:', respText.slice(0, 400));
+      console.error('[PW] parse fail. gemini status:', respStatus, 'first 400:', respText.slice(0, 400));
       console.error('[PW] JSON.parse threw:', String(e));
       return json(req, 502, { ok: false, stage: 'parse', error: 'Model returned non-JSON or unexpected shape' });
     }

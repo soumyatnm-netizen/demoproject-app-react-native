@@ -60,10 +60,10 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    const geminiApiKey = Deno.env.get('GOOGLE_GEMINI_API_KEY');
 
-    if (!openAIApiKey) {
-      return json(req, 500, { ok: false, error: 'OPENAI_API_KEY not configured' });
+    if (!geminiApiKey) {
+      return json(req, 500, { ok: false, error: 'GOOGLE_GEMINI_API_KEY not configured' });
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -108,36 +108,12 @@ serve(async (req) => {
       return json(req, 413, { ok: false, error: 'PDF too large (max 20MB)' });
     }
 
-    // Upload PDF to OpenAI for processing
-    stage = "upload_pdf";
-    const t_upload_start = performance.now();
+    // Convert PDF to base64 for Gemini
+    stage = "convert_pdf";
+    const t_convert_start = performance.now();
     
-    const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
-    const formData = new FormData();
-    formData.append('file', pdfBlob, document.filename);
-    formData.append('purpose', 'assistants');
-
-    const uploadRes = await fetch('https://api.openai.com/v1/files', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-      },
-      body: formData,
-    });
-
-    if (!uploadRes.ok) {
-      const errorText = await uploadRes.text();
-      console.error('[extract-quote] OpenAI upload failed:', errorText.slice(0, 400));
-      return json(req, uploadRes.status, {
-        ok: false,
-        stage: 'upload_pdf',
-        error: `Failed to upload PDF to OpenAI: ${errorText.slice(0, 200)}`
-      });
-    }
-
-    const uploadData = await uploadRes.json();
-    const fileId = uploadData.id;
-    console.log('[extract-quote] Uploaded to OpenAI:', fileId, 'in', (performance.now() - t_upload_start).toFixed(0), 'ms');
+    const base64Pdf = btoa(String.fromCharCode(...pdfBytes));
+    console.log('[extract-quote] Converted to base64 in', (performance.now() - t_convert_start).toFixed(0), 'ms');
 
     // Extract quote with OpenAI using the uploaded file
     stage = "extract";
@@ -292,27 +268,24 @@ Return as valid JSON object.`;
       try {
         console.log(`[extract-quote] Extraction attempt ${attempt}/${maxRetries}`);
         
-        // Use OpenAI with file attachment
-        extractRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        // Use Google Gemini with inline PDF
+        extractRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${openAIApiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'gpt-4o',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              {
-                role: 'user',
-                content: [
-                  { type: 'text', text: userPrompt },
-                  { type: 'file', file: { file_id: fileId } }
-                ]
-              }
-            ],
-            tools: [extractTool],
-            tool_choice: { type: "function", function: { name: "extract_quote_data" } }
+            contents: [{
+              role: 'user',
+              parts: [
+                { text: systemPrompt + '\n\n' + userPrompt },
+                { inline_data: { mime_type: 'application/pdf', data: base64Pdf } }
+              ]
+            }],
+            generationConfig: {
+              temperature: 0,
+              responseMimeType: 'application/json'
+            }
           }),
         });
 
@@ -371,13 +344,13 @@ Return as valid JSON object.`;
         // Success - parse and return
         const extractData = JSON.parse(extractText);
         
-        // Extract tool call result
-        const toolCall = extractData.choices[0].message.tool_calls?.[0];
-        if (!toolCall || toolCall.function.name !== 'extract_quote_data') {
-          throw new Error('No valid tool call in response');
+        // Extract from Gemini response
+        const responseText = extractData.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!responseText) {
+          throw new Error('No content in Gemini response');
         }
         
-        const structured = JSON.parse(toolCall.function.arguments);
+        const structured = JSON.parse(responseText);
         console.log('[extract-quote] Extracted in', (performance.now() - t_extract_start).toFixed(0), 'ms');
         console.log('[extract-quote] Usage:', JSON.stringify(extractData.usage || {}));
 

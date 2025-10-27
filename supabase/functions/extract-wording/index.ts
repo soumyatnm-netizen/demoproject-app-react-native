@@ -49,10 +49,10 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    const geminiApiKey = Deno.env.get('GOOGLE_GEMINI_API_KEY');
 
-    if (!openAIApiKey) {
-      return json(req, 500, { ok: false, error: 'OPENAI_API_KEY not configured' });
+    if (!geminiApiKey) {
+      return json(req, 500, { ok: false, error: 'GOOGLE_GEMINI_API_KEY not configured' });
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -97,29 +97,11 @@ serve(async (req) => {
       return json(req, 413, { ok: false, error: 'PDF too large (max 20MB)' });
     }
 
-    // Upload to OpenAI
-    stage = "upload_openai";
-    const t_upload_start = performance.now();
-    const pdfFile = new File([pdfBytes], document.filename || 'wording.pdf', { type: 'application/pdf' });
-    const formData = new FormData();
-    formData.append('file', pdfFile);
-    formData.append('purpose', 'assistants');
-
-    const upRes = await fetch('https://api.openai.com/v1/files', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${openAIApiKey}` },
-      body: formData
-    });
-    
-    const upText = await upRes.text();
-    if (!upRes.ok) {
-      console.error('[extract-wording] Upload error:', upText.slice(0, 400));
-      return json(req, upRes.status, { ok: false, stage: 'upload', error: upText.slice(0, 400) });
-    }
-    
-    const uploadData = JSON.parse(upText);
-    const fileId = uploadData.id;
-    console.log('[extract-wording] Uploaded to OpenAI:', fileId, 'in', (performance.now() - t_upload_start).toFixed(0), 'ms');
+    // Convert to base64 for Gemini
+    stage = "convert_base64";
+    const t_convert_start = performance.now();
+    const base64Pdf = btoa(String.fromCharCode(...pdfBytes));
+    console.log('[extract-wording] Converted to base64 in', (performance.now() - t_convert_start).toFixed(0), 'ms');
 
     // Extract wording with focused schema
     stage = "extract";
@@ -287,27 +269,23 @@ Return as valid JSON object with all fields.`;
       try {
         console.log(`[extract-wording] Extraction attempt ${attempt}/${maxRetries}`);
         
-        extractRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        extractRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${openAIApiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              {
-                role: 'user',
-                content: [
-                  { type: 'text', text: userPrompt },
-                  { type: 'file', file: { file_id: fileId } }
-                ]
-              }
-            ],
-            temperature: 0,
-            max_tokens: 4000,
-            response_format: { type: 'json_object' }
+            contents: [{
+              role: 'user',
+              parts: [
+                { text: systemPrompt + '\n\n' + userPrompt },
+                { inline_data: { mime_type: 'application/pdf', data: base64Pdf } }
+              ]
+            }],
+            generationConfig: {
+              temperature: 0,
+              responseMimeType: 'application/json'
+            }
           }),
         });
 
@@ -342,7 +320,7 @@ Return as valid JSON object with all fields.`;
 
         // Success - parse and return
         const extractData = JSON.parse(extractText);
-        const content = extractData.choices[0].message.content;
+        const content = extractData.candidates?.[0]?.content?.parts?.[0]?.text;
         const structured = typeof content === 'string' ? JSON.parse(content) : content;
         
         console.log('[extract-wording] Extracted in', (performance.now() - t_extract_start).toFixed(0), 'ms');

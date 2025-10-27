@@ -17,16 +17,9 @@ serve(async (req) => {
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const openAIApiKey =
-      Deno.env.get('OPEN_AI_DOCUMENT_SCANNER') ||
-      Deno.env.get('OPENAI_DOCUMENT_SCANNER') ||
-      Deno.env.get('DOCUMENT_SCANNER_OPENAI_KEY') ||
-      Deno.env.get('DOCUMENT_SCANNER_OPEN_AI') ||
-      Deno.env.get('COVERCOMPASS_OPENAI') ||
-      Deno.env.get('COVERCOMPASS_OPEN_AI') ||
-      Deno.env.get('OPENAI_API_KEY');
+    const geminiApiKey = Deno.env.get('GOOGLE_GEMINI_API_KEY');
 
-    if (!supabaseUrl || !supabaseKey || !openAIApiKey) {
+    if (!supabaseUrl || !supabaseKey || !geminiApiKey) {
       throw new Error('Missing required environment variables');
     }
 
@@ -128,27 +121,25 @@ IMPORTANT: For geography and activity splits, extract percentages (must add up t
     const mimeType = document.file_type || 'application/pdf';
     const dataUrl = `data:${mimeType};base64,${base64Data}`;
 
-    console.log('Calling OpenAI with file size:', base64Data.length, 'mime type:', mimeType);
+    console.log('Calling Gemini with file size:', base64Data.length, 'mime type:', mimeType);
 
-    const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: extractionPrompt },
-              { type: 'image_url', image_url: { url: dataUrl } }
-            ]
-          }
-        ],
-        max_tokens: 2000,
-        temperature: 0.1
+        contents: [{
+          role: 'user',
+          parts: [
+            { text: extractionPrompt },
+            { inline_data: { mime_type: mimeType, data: base64Data } }
+          ]
+        }],
+        generationConfig: {
+          temperature: 0.1,
+          responseMimeType: 'application/json'
+        }
       }),
     });
 
@@ -160,7 +151,7 @@ IMPORTANT: For geography and activity splits, extract percentages (must add up t
     }
 
     const aiResult = await aiResponse.json();
-    const extractedText = aiResult.choices?.[0]?.message?.content || null;
+    const extractedText = aiResult.candidates?.[0]?.content?.parts?.[0]?.text || null;
 
     if (!extractedText) {
       throw new Error('No content extracted from AI');

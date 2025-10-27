@@ -35,16 +35,16 @@ serve(async (req) => {
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    const geminiApiKey = Deno.env.get('GOOGLE_GEMINI_API_KEY');
 
-    console.log('[openai] keyPresent:', openAIApiKey ? 'yes' : 'no');
+    console.log('[gemini] keyPresent:', geminiApiKey ? 'yes' : 'no');
 
     if (!supabaseUrl || !supabaseKey) {
       return json(req, 500, { ok: false, error: 'Missing Supabase environment variables' });
     }
 
-    if (!openAIApiKey) {
-      return json(req, 500, { ok: false, error: 'OPENAI_API_KEY not configured' });
+    if (!geminiApiKey) {
+      return json(req, 500, { ok: false, error: 'GOOGLE_GEMINI_API_KEY not configured' });
     }
 
     // Validate request input with strict schema
@@ -111,112 +111,61 @@ serve(async (req) => {
       return json(req, 413, { ok: false, error: 'PDF too large (max 30MB)' });
     }
 
-    // Upload PDF to OpenAI Files API
-    const pdfFile = new File([pdfBytes], document.filename || 'document.pdf', { type: 'application/pdf' });
-    const formData = new FormData();
-    formData.append('file', pdfFile);
-    formData.append('purpose', 'assistants');
-
-    console.log('Uploading PDF to OpenAI Files API...');
-    const uploadResponse = await fetch('https://api.openai.com/v1/files', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${openAIApiKey}` },
-      body: formData
-    });
-
-    const uploadText = await uploadResponse.text();
-    if (!uploadResponse.ok) {
-      console.error('[OpenAI] Upload error:', uploadText.slice(0, 400));
-      return json(req, 500, { ok: false, error: `OpenAI upload failed: ${uploadText.slice(0, 400)}` });
-    }
-
-    const uploadData = JSON.parse(uploadText);
-    const fileId = uploadData.id;
-    console.log('[openai] uploaded fileId:', fileId);
+    // Convert PDF to base64 for Gemini
+    console.log('Converting PDF to base64 for Gemini...');
+    const base64Pdf = btoa(String.fromCharCode(...pdfBytes));
+    console.log('[gemini] PDF converted to base64');
 
     // Import schemas and normalizer
     const { QUOTE_COMPARISON_SCHEMA } = await import("../_shared/openai-schemas.ts");
-    const { normalizeStrictJsonSchema, findFirstRequiredMismatch, assertObjectSchema } = await import("../_shared/schema-utils.ts");
     
-    console.log('[schema QC] root.type:', QUOTE_COMPARISON_SCHEMA.schema?.type);
-    
-    // Normalize schema for strict mode
-    const QC_STRICT = normalizeStrictJsonSchema(
-      structuredClone(QUOTE_COMPARISON_SCHEMA.schema)
-    );
-    assertObjectSchema("QUOTE_COMPARISON_SCHEMA", QC_STRICT);
-    
-    console.log('[schema QC] first keys:', Object.keys(QC_STRICT.properties || {}).slice(0,5));
-    const mismatchQC = findFirstRequiredMismatch(QC_STRICT);
-    if (mismatchQC) {
-      console.error('[schema QC] required mismatch at:', mismatchQC);
-      return json(req, 500, { ok: false, error: `Schema 'QuoteComparison' not strict: ${mismatchQC}` });
-    }
+    console.log('[schema QC] processing quote comparison');
 
-    // Call OpenAI Responses API with native PDF
-    console.log('Calling OpenAI Responses API...');
-    const body = {
-      model: "gpt-4o-mini",
-      input: [
-        { 
-          role: "system", 
-          content: [{ 
-            type: "input_text", 
-            text: "You are an expert insurance analyst for commercial lines. Extract and normalise quote details (limits, sublimits, deductibles/excess, exclusions, endorsements, conditions, premiums, taxes/fees, dates, jurisdiction/territory). Compare carriers conservatively and include citations. Only output valid JSON per the schema."
-          }] 
-        },
-        { 
-          role: "user", 
-          content: [
-            { type: "input_text", text: `Client: ${clientName}\n\nAnalyze the attached insurance quote PDF and return structured JSON per schema.` },
-            { type: "input_file", file_id: fileId }
-          ]
-        }
-      ],
-      text: {
-        format: {
-          type: "json_schema",
-          strict: true,
-          name: "QuoteComparison",
-          schema: QC_STRICT
-        }
-      },
-      temperature: 0,
-      max_output_tokens: 2000
-    };
+    // Call Google Gemini with inline PDF
+    console.log('Calling Google Gemini Responses API...');
+    const systemText = "You are an expert insurance analyst for commercial lines. Extract and normalise quote details (limits, sublimits, deductibles/excess, exclusions, endorsements, conditions, premiums, taxes/fees, dates, jurisdiction/territory). Compare carriers conservatively and include citations. Only output valid JSON per the schema.";
+    const userText = `Client: ${clientName}\n\nAnalyze the attached insurance quote PDF and return structured JSON. Extract all quote data including insurer name, product type, premium, coverage limits, deductibles, inclusions, exclusions, and policy terms.`;
 
-    const responsesResponse = await fetch('https://api.openai.com/v1/responses', {
+    const responsesResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify({
+        contents: [{
+          role: 'user',
+          parts: [
+            { text: systemText + '\n\n' + userText },
+            { inline_data: { mime_type: 'application/pdf', data: base64Pdf } }
+          ]
+        }],
+        generationConfig: {
+          temperature: 0,
+          responseMimeType: 'application/json'
+        }
+      })
     });
 
     const responsesText = await responsesResponse.text();
     if (!responsesResponse.ok) {
-      console.error('[OpenAI] Responses error:', responsesText.slice(0, 400));
-      return json(req, 500, { ok: false, error: `OpenAI Responses failed: ${responsesText.slice(0, 400)}` });
+      console.error('[Gemini] Responses error:', responsesText.slice(0, 400));
+      return json(req, 500, { ok: false, error: `Gemini Responses failed: ${responsesText.slice(0, 400)}` });
     }
 
     const responsesData = JSON.parse(responsesText);
-    let outputText = responsesData?.output?.[0]?.content?.[0]?.text 
-      ?? responsesData?.content?.[0]?.text 
-      ?? responsesData?.output_text
-      ?? responsesData?.choices?.[0]?.message?.content;
+    let outputText = responsesData?.candidates?.[0]?.content?.parts?.[0]?.text;
     
-    console.log('[openai] output preview:', String(outputText).slice(0, 400));
+    console.log('[gemini] output preview:', String(outputText).slice(0, 400));
     
     let structuredData: any;
     try {
       structuredData = typeof outputText === 'string' ? JSON.parse(outputText) : outputText;
     } catch (e) {
-      console.error('[openai] JSON.parse failed. First 400 chars:', String(outputText).slice(0, 400));
+      console.error('[gemini] JSON.parse failed. First 400 chars:', String(outputText).slice(0, 400));
       return json(req, 502, { ok: false, error: 'Model returned non-JSON. See logs for details.' });
     }
     
-    console.log('[openai] model:', responsesData?.model, 'usage:', JSON.stringify(responsesData?.usage ?? null));
+    console.log('[gemini] model: gemini-2.5-flash');
 
     // Extract first quote from structured comparison data
     const firstQuote = structuredData.quotes?.[0];
@@ -307,8 +256,8 @@ serve(async (req) => {
         clientName,
         insurerName: dbQuoteData.insurer_name,
         processedAt: new Date().toISOString(),
-        model: responsesData?.model || 'gpt-4o-mini',
-        usage: responsesData?.usage
+        model: 'gemini-2.5-flash',
+        usage: null
       }
     });
 
