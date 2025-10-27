@@ -2464,119 +2464,159 @@ const InstantQuoteComparison = () => {
             </Card>
           )}
 
-          {/* Product Comparisons */}
+          {/* Product Comparisons - Side by Side Table Format */}
           {comparisonData.product_comparisons && comparisonData.product_comparisons.length > 0 && (
             <div className="space-y-6">
-              {comparisonData.product_comparisons.map((product: any, productIdx: number) => (
-                <Card key={productIdx} className="border-2">
-                  <CardHeader className="bg-gradient-to-r from-primary/5 to-background">
-                    <CardTitle className="text-xl">{product.product}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {product.carrier_results?.map((carrier: any, carrierIdx: number) => (
-                        <Card key={carrierIdx} className="border">
-                          <CardHeader className="pb-4">
-                            <CardTitle className="flex items-center space-x-3">
-                              {(() => {
-                                const insurerInfo = getInsurerInfo(carrier.carrier);
-                                return insurerInfo.logo ? (
-                                  <img 
-                                    src={insurerInfo.logo} 
-                                    alt={insurerInfo.altText}
-                                    className="h-8 w-8 object-contain"
-                                  />
-                                ) : (
-                                  <div className="h-8 w-8 bg-primary/10 rounded flex items-center justify-center">
-                                    <span className="text-sm font-medium text-primary">
-                                      {carrier.carrier.substring(0, 2).toUpperCase()}
-                                    </span>
-                                  </div>
-                                );
-                              })()}
-                              <span>{carrier.carrier}</span>
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                            {/* Key Terms */}
-                            {carrier.key_terms && carrier.key_terms.length > 0 && (
-                              <div>
-                                <h5 className="text-sm font-semibold mb-2">Key Terms</h5>
-                                <ul className="space-y-1">
-                                  {carrier.key_terms.map((term: string, idx: number) => (
-                                    <li key={idx} className="text-sm flex items-start">
-                                      <span className="mr-2">•</span>
-                                      <span className="flex-1">{term}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                            
-                            {/* Subjectivities - NEW SECTION */}
-                            {carrier.subjectivities !== undefined && (
-                              <div className="bg-amber-50 border-2 border-amber-200 rounded-lg p-4">
-                                <h5 className="text-sm font-semibold mb-2 text-amber-900 flex items-center">
-                                  <AlertTriangle className="h-4 w-4 mr-2" />
-                                  Subjectivities (Pre-Binding)
-                                </h5>
-                                {carrier.subjectivities && carrier.subjectivities.length > 0 ? (
-                                  <ul className="space-y-1.5">
-                                    {carrier.subjectivities.map((subj: string, idx: number) => (
-                                      <li key={idx} className="text-sm flex items-start text-amber-900">
-                                        <span className="text-amber-600 mr-2 font-bold">⚠</span>
-                                        <span className="flex-1">{subj}</span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                ) : (
-                                  <p className="text-sm text-green-700 flex items-center">
-                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                    None - Quote is firm
-                                  </p>
-                                )}
-                              </div>
-                            )}
-                            
-                            {/* Standout Points */}
-                            {carrier.standout_points && carrier.standout_points.length > 0 && (
-                              <div>
-                                <h5 className="text-sm font-semibold mb-2">Standout Points</h5>
-                                <ul className="space-y-2">
-                                  {carrier.standout_points.map((point: string, idx: number) => (
-                                    <li key={idx} className="text-sm flex items-start">
-                                      <span className="mr-2">{point.includes('✅') ? '✅' : point.includes('❌') ? '❌' : point.includes('⚠️') ? '⚠️' : '📋'}</span>
-                                      <span className="flex-1">{point.replace(/^[✅❌⚠️📋]\s*/, '')}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                            
-                            {/* Summary Section - NEW */}
-                            {(carrier.standout_summary || carrier.summary) && (
-                              <div className="bg-primary/5 border-l-4 border-primary rounded-lg p-4 mt-4">
-                                <h5 className="text-sm font-bold mb-2 text-primary">Summary</h5>
-                                <p className="text-sm font-semibold text-foreground leading-relaxed">
-                                  {carrier.standout_summary || carrier.summary}
-                                </p>
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
+              {comparisonData.product_comparisons.map((product: any, productIdx: number) => {
+                const carriers = product.carrier_results || [];
+                if (carriers.length === 0) return null;
 
-                    {/* Product-level Summary */}
-                    {product.broker_notes && (
-                      <div className="mt-6 p-4 bg-primary/5 border-l-4 border-primary rounded-r">
-                        <h4 className="text-sm font-bold text-foreground mb-2">Summary</h4>
-                        <p className="text-sm font-semibold text-foreground">{product.broker_notes}</p>
+                return (
+                  <Card key={productIdx} className="border-2">
+                    <CardHeader className="bg-gradient-to-r from-primary/5 to-background">
+                      <CardTitle className="text-xl">{product.product}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                          <thead>
+                            <tr className="border-b-2 border-primary/20">
+                              <th className="text-left p-3 bg-muted/30 font-semibold text-sm w-40">Section</th>
+                              {carriers.map((carrier: any, idx: number) => {
+                                const insurerInfo = getInsurerInfo(carrier.carrier);
+                                return (
+                                  <th key={idx} className="p-3 bg-muted/30 text-left min-w-[300px]">
+                                    <div className="flex items-center space-x-2">
+                                      {insurerInfo.logo ? (
+                                        <img 
+                                          src={insurerInfo.logo} 
+                                          alt={insurerInfo.altText}
+                                          className="h-8 w-8 object-contain"
+                                        />
+                                      ) : (
+                                        <div className="h-8 w-8 bg-primary/10 rounded flex items-center justify-center">
+                                          <span className="text-xs font-medium text-primary">
+                                            {carrier.carrier.substring(0, 2).toUpperCase()}
+                                          </span>
+                                        </div>
+                                      )}
+                                      <span className="font-semibold">{carrier.carrier}</span>
+                                    </div>
+                                  </th>
+                                );
+                              })}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {/* Key Terms Row */}
+                            <tr className="border-b border-muted">
+                              <td className="p-3 align-top bg-muted/10 font-medium text-sm">Key Terms</td>
+                              {carriers.map((carrier: any, idx: number) => (
+                                <td key={idx} className="p-3 align-top">
+                                  {carrier.key_terms && carrier.key_terms.length > 0 ? (
+                                    <ul className="space-y-1">
+                                      {carrier.key_terms.map((term: string, termIdx: number) => (
+                                        <li key={termIdx} className="text-sm flex items-start">
+                                          <span className="mr-2 text-primary">•</span>
+                                          <span className="flex-1">{term}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground">Not provided</span>
+                                  )}
+                                </td>
+                              ))}
+                            </tr>
+
+                            {/* Subjectivities Row */}
+                            <tr className="border-b border-muted">
+                              <td className="p-3 align-top bg-muted/10 font-medium text-sm">
+                                <div className="flex items-center space-x-1">
+                                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                                  <span>Subjectivities</span>
+                                </div>
+                              </td>
+                              {carriers.map((carrier: any, idx: number) => (
+                                <td key={idx} className="p-3 align-top">
+                                  {carrier.subjectivities !== undefined ? (
+                                    carrier.subjectivities && carrier.subjectivities.length > 0 ? (
+                                      <ul className="space-y-1.5">
+                                        {carrier.subjectivities.map((subj: string, subjIdx: number) => (
+                                          <li key={subjIdx} className="text-sm flex items-start">
+                                            <span className="text-amber-600 mr-2 font-bold">⚠</span>
+                                            <span className="flex-1 text-amber-900">{subj}</span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    ) : (
+                                      <span className="text-sm text-green-700 flex items-center">
+                                        <CheckCircle className="h-4 w-4 mr-2" />
+                                        None - Quote is firm
+                                      </span>
+                                    )
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground">Not provided</span>
+                                  )}
+                                </td>
+                              ))}
+                            </tr>
+
+                            {/* Standout Points Row */}
+                            <tr className="border-b border-muted">
+                              <td className="p-3 align-top bg-muted/10 font-medium text-sm">Standout Points</td>
+                              {carriers.map((carrier: any, idx: number) => (
+                                <td key={idx} className="p-3 align-top">
+                                  {carrier.standout_points && carrier.standout_points.length > 0 ? (
+                                    <ul className="space-y-2">
+                                      {carrier.standout_points.map((point: string, pointIdx: number) => (
+                                        <li key={pointIdx} className="text-sm flex items-start">
+                                          <span className="mr-2">
+                                            {point.includes('✅') ? '✅' : point.includes('❌') ? '❌' : point.includes('⚠️') ? '⚠️' : '📋'}
+                                          </span>
+                                          <span className="flex-1">{point.replace(/^[✅❌⚠️📋]\s*/, '')}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground">Not provided</span>
+                                  )}
+                                </td>
+                              ))}
+                            </tr>
+
+                            {/* Summary Row */}
+                            <tr>
+                              <td className="p-3 align-top bg-muted/10 font-medium text-sm">Summary</td>
+                              {carriers.map((carrier: any, idx: number) => (
+                                <td key={idx} className="p-3 align-top">
+                                  {(carrier.standout_summary || carrier.summary) ? (
+                                    <div className="bg-primary/5 border-l-4 border-primary rounded-lg p-3">
+                                      <p className="text-sm font-semibold text-foreground leading-relaxed">
+                                        {carrier.standout_summary || carrier.summary}
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground">Not provided</span>
+                                  )}
+                                </td>
+                              ))}
+                            </tr>
+                          </tbody>
+                        </table>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+
+                      {/* Product-level Summary */}
+                      {product.broker_notes && (
+                        <div className="mt-6 p-4 bg-primary/5 border-l-4 border-primary rounded-r">
+                          <h4 className="text-sm font-bold text-foreground mb-2">Overall Summary</h4>
+                          <p className="text-sm font-semibold text-foreground">{product.broker_notes}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
 
