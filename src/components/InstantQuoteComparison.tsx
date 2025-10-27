@@ -2534,7 +2534,7 @@ const InstantQuoteComparison = () => {
                             </tr>
 
                             {/* Standout Points Row */}
-                            <tr className="border-b border-muted">
+                            <tr>
                               <td className="p-3 align-top bg-muted/10 font-medium text-sm">Standout Points</td>
                               {carriers.map((carrier: any, idx: number) => (
                                 <td key={idx} className="p-3 align-top">
@@ -2549,24 +2549,6 @@ const InstantQuoteComparison = () => {
                                         </li>
                                       ))}
                                     </ul>
-                                  ) : (
-                                    <span className="text-sm text-muted-foreground">Not provided</span>
-                                  )}
-                                </td>
-                              ))}
-                            </tr>
-
-                            {/* Summary Row */}
-                            <tr>
-                              <td className="p-3 align-top bg-muted/10 font-medium text-sm">Summary</td>
-                              {carriers.map((carrier: any, idx: number) => (
-                                <td key={idx} className="p-3 align-top">
-                                  {(carrier.standout_summary || carrier.summary) ? (
-                                    <div className="bg-primary/5 border-l-4 border-primary rounded-lg p-3">
-                                      <p className="text-sm font-semibold text-foreground leading-relaxed">
-                                        {carrier.standout_summary || carrier.summary}
-                                      </p>
-                                    </div>
                                   ) : (
                                     <span className="text-sm text-muted-foreground">Not provided</span>
                                   )}
