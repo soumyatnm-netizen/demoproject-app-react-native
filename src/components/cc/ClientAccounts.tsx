@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Building2, Users, Key, Copy, Check, Settings, Mail, Eye, Trash2 } from "lucide-react";
+import { Plus, Building2, Users, Key, Copy, Check, Settings, Mail, Eye, Trash2, Download, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface ClientAccountsProps {
@@ -28,6 +28,8 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
   const [selectedCompany, setSelectedCompany] = useState<any>(null);
   const [companyInvites, setCompanyInvites] = useState<any[]>([]);
   const [companyUsers, setCompanyUsers] = useState<any[]>([]);
+  const [companyDocuments, setCompanyDocuments] = useState<any[]>([]);
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [deleteInviteId, setDeleteInviteId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -364,6 +366,131 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
     }
   };
 
+  const loadCompanyDocuments = async (companyId: string) => {
+    setLoadingDocuments(true);
+    try {
+      // Fetch quotes
+      const { data: quotes, error: quotesError } = await supabase
+        .from('structured_quotes')
+        .select('id, client_name, insurer_name, created_at, document_id, premium_amount, premium_currency')
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false });
+
+      if (quotesError) throw quotesError;
+
+      // Fetch policy wordings
+      const { data: wordings, error: wordingsError } = await supabase
+        .from('policy_wordings')
+        .select('id, insurer_name, policy_version, created_at, document_id')
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false });
+
+      if (wordingsError) throw wordingsError;
+
+      // Fetch documents for storage paths
+      const documentIds = [
+        ...(quotes?.map(q => q.document_id).filter(Boolean) || []),
+        ...(wordings?.map(w => w.document_id).filter(Boolean) || [])
+      ];
+
+      let documentsMap = new Map();
+      if (documentIds.length > 0) {
+        const { data: docs, error: docsError } = await supabase
+          .from('documents')
+          .select('id, filename, storage_path')
+          .in('id', documentIds);
+
+        if (!docsError && docs) {
+          documentsMap = new Map(docs.map(d => [d.id, d]));
+        }
+      }
+
+      // Combine and format documents
+      const allDocs = [
+        ...(quotes?.map(q => ({
+          id: q.id,
+          type: 'quote',
+          name: `${q.client_name} - ${q.insurer_name}`,
+          insurer: q.insurer_name,
+          client: q.client_name,
+          created_at: q.created_at,
+          document_id: q.document_id,
+          filename: documentsMap.get(q.document_id)?.filename,
+          storage_path: documentsMap.get(q.document_id)?.storage_path,
+          premium: q.premium_amount ? `${q.premium_currency} ${Number(q.premium_amount).toLocaleString()}` : null,
+        })) || []),
+        ...(wordings?.map(w => ({
+          id: w.id,
+          type: 'wording',
+          name: `${w.insurer_name} - Policy Wording${w.policy_version ? ` (${w.policy_version})` : ''}`,
+          insurer: w.insurer_name,
+          created_at: w.created_at,
+          document_id: w.document_id,
+          filename: documentsMap.get(w.document_id)?.filename,
+          storage_path: documentsMap.get(w.document_id)?.storage_path,
+        })) || [])
+      ];
+
+      // Sort by date
+      allDocs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      
+      setCompanyDocuments(allDocs);
+    } catch (error) {
+      console.error('Error loading company documents:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load company documents",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingDocuments(false);
+    }
+  };
+
+  const downloadDocument = async (doc: any) => {
+    if (!doc.storage_path) {
+      toast({
+        title: "Error",
+        description: "Document file not found",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Determine the bucket based on document type
+      const bucket = doc.type === 'quote' ? 'quote-documents' : 'policy-documents';
+      
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .download(doc.storage_path);
+
+      if (error) throw error;
+
+      // Create download link
+      const url = window.URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.filename || `document-${doc.id}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Success",
+        description: "Document downloaded successfully",
+      });
+    } catch (error: any) {
+      console.error('Error downloading document:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to download document",
+        variant: "destructive",
+      });
+    }
+  };
+
   const viewCompanyInvites = async (company: any) => {
     setSelectedCompany(company);
     await loadCompanyInvites(company.id);
@@ -372,7 +499,10 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
 
   const viewCompanyDetails = async (company: any) => {
     setSelectedCompany(company);
-    await loadCompanyUsers(company.id);
+    await Promise.all([
+      loadCompanyUsers(company.id),
+      loadCompanyDocuments(company.id)
+    ]);
     setShowCompanyDetailsDialog(true);
   };
 
@@ -805,6 +935,66 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
                           {user.last_login_at 
                             ? new Date(user.last_login_at).toLocaleDateString()
                             : 'Never'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+
+            {/* Documents List */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4">
+                <FileText className="h-5 w-5 inline mr-2" />
+                Documents ({companyDocuments.length})
+              </h3>
+              {loadingDocuments ? (
+                <p className="text-center text-muted-foreground py-8">Loading documents...</p>
+              ) : companyDocuments.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">No documents uploaded yet</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Insurer</TableHead>
+                      <TableHead>Premium</TableHead>
+                      <TableHead>Uploaded</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {companyDocuments.map((doc) => (
+                      <TableRow key={`${doc.type}-${doc.id}`}>
+                        <TableCell>
+                          <Badge variant={doc.type === 'quote' ? "default" : "secondary"}>
+                            {doc.type === 'quote' ? 'Quote' : 'Wording'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate">
+                          {doc.name}
+                        </TableCell>
+                        <TableCell>{doc.client || '-'}</TableCell>
+                        <TableCell>{doc.insurer}</TableCell>
+                        <TableCell className="text-sm">
+                          {doc.premium || '-'}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {new Date(doc.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => downloadDocument(doc)}
+                            disabled={!doc.storage_path}
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Download
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
