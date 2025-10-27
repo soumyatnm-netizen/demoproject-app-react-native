@@ -406,9 +406,9 @@ function generateApproachRecommendation(score: number, reasons: string[], concer
 }
 
 async function enhanceMatchesWithAI(matches: InsuranceMatch[], clientProfile: ClientProfile): Promise<InsuranceMatch[]> {
-  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  const geminiApiKey = Deno.env.get('GOOGLE_GEMINI_API_KEY');
   
-  if (!openAIApiKey || matches.length === 0) {
+  if (!geminiApiKey || matches.length === 0) {
     return matches;
   }
 
@@ -432,26 +432,27 @@ For each match, provide:
 
 Keep responses concise and practical for broker use.`;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'You are an expert insurance market analyst providing broker guidance.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 1500,
+        contents: [{
+          role: 'user',
+          parts: [{
+            text: 'You are an expert insurance market analyst providing broker guidance.\n\n' + prompt
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.3
+        }
       }),
     });
 
     if (response.ok) {
       const aiData = await response.json();
-      const aiAnalysis = aiData.choices[0].message.content;
+      const aiAnalysis = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
       
       // Parse AI response and enhance matches
       // For demo purposes, we'll add the AI analysis to the first match

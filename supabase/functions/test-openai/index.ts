@@ -13,44 +13,47 @@ serve(async (req) => {
   }
 
   try {
-    const openAIApiKey = Deno.env.get('OPEN_AI_DOCUMENT_SCANNER') || Deno.env.get('OPENAI_DOCUMENT_SCANNER') || Deno.env.get('DOCUMENT_SCANNER_OPENAI_KEY') || Deno.env.get('DOCUMENT_SCANNER_OPEN_AI') || Deno.env.get('COVERCOMPASS_OPENAI') || Deno.env.get('COVERCOMPASS_OPEN_AI') || Deno.env.get('OPENAI_API_KEY');
+    const geminiApiKey = Deno.env.get('GOOGLE_GEMINI_API_KEY');
     
-    if (!openAIApiKey) {
+    if (!geminiApiKey) {
       return new Response(
-        JSON.stringify({ success: false, error: 'OpenAI API key not configured' }),
+        JSON.stringify({ success: false, error: 'Google Gemini API key not configured' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
     }
 
-    console.log('Testing OpenAI API with key:', openAIApiKey.substring(0, 10) + '...');
+    console.log('Testing Google Gemini API with key:', geminiApiKey.substring(0, 10) + '...');
 
-    // Simple test call to OpenAI
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Simple test call to Gemini
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'user', content: 'Say "Hello, OpenAI API is working!" in JSON format with a status field.' }
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: 'Say "Hello, Google Gemini API is working!" in JSON format with a status field.' }]
+          }
         ],
-        max_tokens: 50,
-        temperature: 0.1
+        generationConfig: {
+          temperature: 0.1,
+          responseMimeType: 'application/json'
+        }
       }),
     });
 
-    console.log('OpenAI Response status:', response.status);
-    console.log('OpenAI Response headers:', Object.fromEntries(response.headers.entries()));
+    console.log('Gemini Response status:', response.status);
+    console.log('Gemini Response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenAI API Error:', errorText);
+      console.error('Gemini API Error:', errorText);
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: `OpenAI API Error: ${response.status}`,
+          error: `Gemini API Error: ${response.status}`,
           details: errorText
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
@@ -58,13 +61,15 @@ serve(async (req) => {
     }
 
     const result = await response.json();
-    console.log('OpenAI API Success:', result);
+    console.log('Gemini API Success:', result);
+
+    const generatedText = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'OpenAI API is working correctly',
-        response: result.choices[0]?.message?.content 
+        message: 'Google Gemini API is working correctly',
+        response: generatedText 
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );

@@ -67,23 +67,16 @@ serve(async (req) => {
   }
 
   try {
-    const openAIApiKey =
-      Deno.env.get('OPEN_AI_DOCUMENT_SCANNER') ||
-      Deno.env.get('OPENAI_DOCUMENT_SCANNER') ||
-      Deno.env.get('DOCUMENT_SCANNER_OPENAI_KEY') ||
-      Deno.env.get('DOCUMENT_SCANNER_OPEN_AI') ||
-      Deno.env.get('COVERCOMPASS_OPENAI') ||
-      Deno.env.get('COVERCOMPASS_OPEN_AI') ||
-      Deno.env.get('OPENAI_API_KEY');
+    const geminiApiKey = Deno.env.get('GOOGLE_GEMINI_API_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     console.log('Starting scan-client-document function');
-    console.log('OpenAI key source:', ['OPEN_AI_DOCUMENT_SCANNER','OPENAI_DOCUMENT_SCANNER','DOCUMENT_SCANNER_OPENAI_KEY','DOCUMENT_SCANNER_OPEN_AI','COVERCOMPASS_OPENAI','COVERCOMPASS_OPEN_AI','OPENAI_API_KEY'].find(k => !!Deno.env.get(k)) || 'not found');
+    console.log('Gemini key present:', geminiApiKey ? 'yes' : 'no');
     
-    if (!openAIApiKey) {
-      console.error('OpenAI API key not configured');
-      throw new Error('OpenAI API key not configured');
+    if (!geminiApiKey) {
+      console.error('Google Gemini API key not configured');
+      throw new Error('Google Gemini API key not configured');
     }
 
     if (!supabaseUrl || !supabaseServiceKey) {
@@ -217,37 +210,35 @@ serve(async (req) => {
       }
       const base64Data = btoa(binaryString);
 
-      const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: buildPrompt() },
-                { type: 'image_url', image_url: { url: `data:${document.file_type};base64,${base64Data}` } }
-              ]
-            }
-          ],
-          max_tokens: 2000,
-          temperature: 0.1
+          contents: [{
+            role: 'user',
+            parts: [
+              { text: buildPrompt() },
+              { inline_data: { mime_type: document.file_type, data: base64Data } }
+            ]
+          }],
+          generationConfig: {
+            temperature: 0.1,
+            responseMimeType: 'application/json'
+          }
         }),
       });
 
-      if (!openAIResponse.ok) {
-        const err = await openAIResponse.text();
-        console.error('OpenAI (image) error:', err);
+      if (!geminiResponse.ok) {
+        const err = await geminiResponse.text();
+        console.error('Gemini (image) error:', err);
         await supabase.from('documents').update({ status: 'error', processing_error: 'AI vision failed to analyze image' }).eq('id', documentId);
         return new Response(JSON.stringify({ success: false, error: 'AI failed to analyze image document.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
       }
 
-      const openAIResult = await openAIResponse.json();
-      extractedText = openAIResult.choices?.[0]?.message?.content || null;
+      const geminiResult = await geminiResponse.json();
+      extractedText = geminiResult.candidates?.[0]?.content?.parts?.[0]?.text || null;
 
     } else if (filename.endsWith('.docx') || mime.includes('wordprocessingml')) {
       // DOCX FLOW: extract text from word/document.xml using JSZip
@@ -291,34 +282,36 @@ serve(async (req) => {
         console.log('Successfully extracted text. Length:', plainText.length);
         console.log('Text preview:', plainText.substring(0, 200));
 
-        // Call OpenAI with extracted text
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        // Call Gemini with extracted text
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${openAIApiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-              { role: 'system', content: 'Extract structured client details from provided document text. Always return JSON only.' },
-              { role: 'user', content: `${buildPrompt()}\n\nDocument Text:\n${plainText.slice(0, 15000)}` }
-            ],
-            max_tokens: 2000,
-            temperature: 0.1
+            contents: [{
+              role: 'user',
+              parts: [{
+                text: 'Extract structured client details from provided document text. Always return JSON only.\n\n' + buildPrompt() + '\n\nDocument Text:\n' + plainText.slice(0, 15000)
+              }]
+            }],
+            generationConfig: {
+              temperature: 0.1,
+              responseMimeType: 'application/json'
+            }
           }),
         });
 
         if (!response.ok) {
           const err = await response.text();
-          console.error('OpenAI (docx) error:', err);
-          console.error('OpenAI Response status:', response.status);
-          console.error('OpenAI Response headers:', Object.fromEntries(response.headers.entries()));
+          console.error('Gemini (docx) error:', err);
+          console.error('Gemini Response status:', response.status);
+          console.error('Gemini Response headers:', Object.fromEntries(response.headers.entries()));
           throw new Error('AI failed to analyze DOCX content');
         }
 
         const ai = await response.json();
-        extractedText = ai.choices?.[0]?.message?.content || null;
+        extractedText = ai.candidates?.[0]?.content?.parts?.[0]?.text || null;
         
         console.log('OpenAI API call successful. Response length:', extractedText?.length);
 
@@ -379,67 +372,67 @@ serve(async (req) => {
         }
         const base64Data = btoa(binaryString);
         
-        // Use GPT-4o (supports PDF as base64 image)
-        const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        // Use Gemini (supports PDF as base64)
+        const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${openAIApiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'gpt-4o',
-            messages: [
-              {
-                role: 'user',
-                content: [
-                  { type: 'text', text: buildPrompt() },
-                  { type: 'image_url', image_url: { url: `data:application/pdf;base64,${base64Data}` } }
-                ]
-              }
-            ],
-            max_tokens: 2000,
-            temperature: 0.1
+            contents: [{
+              role: 'user',
+              parts: [
+                { text: buildPrompt() },
+                { inline_data: { mime_type: 'application/pdf', data: base64Data } }
+              ]
+            }],
+            generationConfig: {
+              temperature: 0.1,
+              responseMimeType: 'application/json'
+            }
           }),
         });
         
-        if (!openAIResponse.ok) {
-          const err = await openAIResponse.text();
-          console.error('OpenAI (PDF image) error:', err);
+        if (!geminiResponse.ok) {
+          const err = await geminiResponse.text();
+          console.error('Gemini (PDF image) error:', err);
           await supabase.from('documents').update({ status: 'error', processing_error: 'Failed to parse PDF' }).eq('id', documentId);
           return new Response(JSON.stringify({ success: false, error: 'Failed to parse PDF document.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
         }
         
-        const openAIResult = await openAIResponse.json();
-        extractedText = openAIResult.choices?.[0]?.message?.content || null;
+        const geminiResult = await geminiResponse.json();
+        extractedText = geminiResult.candidates?.[0]?.content?.parts?.[0]?.text || null;
       } else {
         // Use extracted text with GPT-4o-mini (cheaper, faster)
-        console.log('Using extracted text with GPT-4o-mini...');
-        const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        console.log('Using extracted text with Gemini...');
+        const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${openAIApiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-              { role: 'system', content: 'You are a precise data extraction AI. Extract structured client information from the document text. Return ONLY valid JSON with snake_case field names.' },
-              { role: 'user', content: `${buildPrompt()}\n\n=== DOCUMENT TEXT ===\n${cleanText}` }
-            ],
-            max_tokens: 2000,
-            temperature: 0.1
+            contents: [{
+              role: 'user',
+              parts: [{
+                text: 'You are a precise data extraction AI. Extract structured client information from the document text. Return ONLY valid JSON with snake_case field names.\n\n' + buildPrompt() + '\n\n=== DOCUMENT TEXT ===\n' + cleanText
+              }]
+            }],
+            generationConfig: {
+              temperature: 0.1,
+              responseMimeType: 'application/json'
+            }
           }),
         });
 
-        if (!openAIResponse.ok) {
-          const err = await openAIResponse.text();
-          console.error('OpenAI (PDF text) error:', err);
+        if (!geminiResponse.ok) {
+          const err = await geminiResponse.text();
+          console.error('Gemini (PDF text) error:', err);
           await supabase.from('documents').update({ status: 'error', processing_error: 'AI failed to analyze PDF text' }).eq('id', documentId);
           return new Response(JSON.stringify({ success: false, error: 'AI failed to analyze PDF document.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
         }
 
-        const openAIResult = await openAIResponse.json();
-        extractedText = openAIResult.choices?.[0]?.message?.content || null;
+        const geminiResult = await geminiResponse.json();
+        extractedText = geminiResult.candidates?.[0]?.content?.parts?.[0]?.text || null;
       }
 
     } else {

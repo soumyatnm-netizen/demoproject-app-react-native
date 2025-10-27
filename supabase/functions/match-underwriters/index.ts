@@ -7,185 +7,45 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const geminiApiKey = Deno.env.get('GOOGLE_GEMINI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+...
+    console.log('Sending request to Google Gemini for matching analysis');
 
-serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    console.log('Starting underwriter matching process');
-
-    const { documentId } = await req.json();
-    console.log('Processing document ID:', documentId);
-
-    if (!documentId) {
-      throw new Error('Document ID is required');
-    }
-
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured');
-    }
-
-    // Initialize Supabase client
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Get the structured quote data
-    const { data: quoteData, error: quoteError } = await supabase
-      .from('structured_quotes')
-      .select('*')
-      .eq('id', documentId)
-      .single();
-
-    if (quoteError) {
-      console.error('Error fetching quote data:', quoteError);
-      throw new Error('Failed to fetch document data');
-    }
-
-    console.log('Retrieved quote data for:', quoteData.insurer_name);
-
-    // Get all underwriter appetite data
-    const { data: appetiteData, error: appetiteError } = await supabase
-      .from('underwriter_appetite_data')
-      .select(`
-        *,
-        appetite_document:underwriter_appetites(*)
-      `);
-
-    if (appetiteError) {
-      console.error('Error fetching appetite data:', appetiteError);
-      throw new Error('Failed to fetch appetite guides');
-    }
-
-    console.log(`Found ${appetiteData?.length || 0} appetite guides to analyze`);
-
-    // Prepare the matching analysis prompt
-    const matchingPrompt = `
-You are an expert insurance broker AI. Analyze the uploaded document against underwriter appetite guides to find the best matches.
-
-UPLOADED DOCUMENT DATA:
-- Insurer: ${quoteData.insurer_name}
-- Product Type: ${quoteData.product_type}
-- Industry: ${quoteData.industry}
-- Revenue Band: ${quoteData.revenue_band}
-- Premium Amount: ${quoteData.premium_amount} ${quoteData.premium_currency}
-- Coverage Limits: ${JSON.stringify(quoteData.coverage_limits)}
-- Deductible: ${quoteData.deductible_amount}
-- Inclusions: ${JSON.stringify(quoteData.inclusions)}
-- Exclusions: ${JSON.stringify(quoteData.exclusions)}
-
-UNDERWRITER APPETITE GUIDES TO ANALYZE:
-${appetiteData?.map((appetite, index) => `
-${index + 1}. ${appetite.underwriter_name}
-   - Target Sectors: ${JSON.stringify(appetite.target_sectors)}
-   - Financial Ratings: ${JSON.stringify(appetite.financial_ratings)}
-   - Coverage Limits: ${JSON.stringify(appetite.coverage_limits)}
-   - Min Premium: ${appetite.minimum_premium}
-   - Max Premium: ${appetite.maximum_premium}
-   - Risk Appetite: ${appetite.risk_appetite}
-   - Geographic Coverage: ${JSON.stringify(appetite.geographic_coverage)}
-   - Specialty Focus: ${JSON.stringify(appetite.specialty_focus)}
-   - Policy Features: ${JSON.stringify(appetite.policy_features)}
-   - Exclusions: ${JSON.stringify(appetite.exclusions)}
-`).join('\n')}
-
-TASK: Analyze each underwriter and provide a JSON response with matching results.
-
-For each underwriter, calculate:
-1. Match Score (0-100): How well they match the document requirements
-2. Match Rank: Ranking from 1 (best) to N (worst)
-3. Detailed reasoning for the match
-4. Compatibility factors
-5. Risk assessment
-6. Recommended premium range
-7. Coverage gaps (if any)
-8. Competitive advantages
-
-Consider these factors:
-- Industry/sector alignment
-- Revenue band compatibility
-- Coverage limits fit
-- Premium range alignment
-- Risk appetite match
-- Geographic coverage
-- Product type compatibility
-- Policy features alignment
-- Exclusions compatibility
-
-Respond with ONLY a valid JSON array like this:
-[
-  {
-    "underwriter_name": "UnderwriterName",
-    "match_score": 95,
-    "match_rank": 1,
-    "match_reasoning": {
-      "summary": "Excellent match based on...",
-      "strengths": ["Strong sector focus", "Perfect premium range"],
-      "weaknesses": ["Minor geographic limitation"],
-      "overall_assessment": "Highly recommended"
-    },
-    "compatibility_factors": {
-      "industry_match": 95,
-      "revenue_match": 90,
-      "premium_match": 100,
-      "coverage_match": 85,
-      "risk_appetite_match": 90
-    },
-    "risk_assessment": "Low risk - excellent alignment with appetite",
-    "recommended_premium_range": {
-      "min": 50000,
-      "max": 75000,
-      "currency": "GBP",
-      "confidence": "high"
-    },
-    "coverage_gaps": [],
-    "competitive_advantages": ["Fast decision making", "Competitive pricing", "Strong claims handling"]
-  }
-]
-
-Only include underwriters that have a match score above 30. Rank them from 1 (best) to N (worst).
-`;
-
-    console.log('Sending request to OpenAI for matching analysis');
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-2025-08-07',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert insurance broker AI specializing in underwriter matching. Always respond with valid JSON only.'
-          },
+        contents: [
           {
             role: 'user',
-            content: matchingPrompt
+            parts: [{
+              text: 'You are an expert insurance broker AI specializing in underwriter matching. Always respond with valid JSON only.\n\n' + matchingPrompt
+            }]
           }
         ],
-        max_completion_tokens: 4000,
+        generationConfig: {
+          temperature: 0.7,
+          responseMimeType: 'application/json'
+        }
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenAI API error:', errorText);
-      throw new Error(`OpenAI API error: ${response.status}`);
+      console.error('Gemini API error:', errorText);
+      throw new Error(`Gemini API error: ${response.status}`);
     }
 
     const aiResponse = await response.json();
-    console.log('Received response from OpenAI');
+    console.log('Received response from Google Gemini');
 
     let matchingResults;
     try {
-      const content = aiResponse.choices[0].message.content;
+      const content = aiResponse.candidates?.[0]?.content?.parts?.[0]?.text;
       console.log('AI Response content:', content);
       
       // Parse the JSON response
