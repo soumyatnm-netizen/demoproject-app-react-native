@@ -498,7 +498,7 @@ const InstantQuoteComparison = () => {
 
       // Robust invoker with retries for transient network errors (e.g. "Failed to fetch")
       const callBatch = async (docs: any[]) => {
-        const maxAttempts = 3;
+        const maxAttempts = 4;
         let lastErr: any = null;
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
           try {
@@ -512,22 +512,42 @@ const InstantQuoteComparison = () => {
             const msg = e?.message || String(e);
             addStatusLog(`Retry ${attempt}/${maxAttempts} for batch due to: ${msg}`, 'error');
             if (attempt < maxAttempts) {
-              await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
+              const isWorkerLimit = msg?.toLowerCase?.().includes('worker_limit') || msg?.toLowerCase?.().includes('compute resources');
+              const base = isWorkerLimit ? 2000 : 500;
+              const delay = Math.pow(2, attempt) * base + Math.floor(Math.random() * 400);
+              await new Promise(r => setTimeout(r, delay));
             }
           }
         }
         throw lastErr || new Error('Failed to call batch-analyze-documents');
       };
 
-      // Process both batches in parallel (with per-call retries)
-      const [quoteResult, wordingResult] = await Promise.allSettled([
-        quoteDocs.length > 0 
-          ? callBatch(quoteDocs)
-          : Promise.resolve({ data: null, error: null }),
-        wordingDocs.length > 0
-          ? callBatch(wordingDocs)
-          : Promise.resolve({ data: null, error: null })
-      ]);
+      // Process batches sequentially to avoid Supabase WORKER_LIMIT under load
+      let quoteResult: any = { status: 'fulfilled', value: { data: null, error: null } };
+      let wordingResult: any = { status: 'fulfilled', value: { data: null, error: null } };
+
+      if (quoteDocs.length > 0) {
+        addStatusLog(`▶️ Analyzing ${quoteDocs.length} quote(s)...`, 'info');
+        try {
+          const res = await callBatch(quoteDocs);
+          quoteResult = { status: 'fulfilled', value: res };
+        } catch (err) {
+          quoteResult = { status: 'rejected', reason: err };
+        }
+      }
+
+      // small breather to free the worker before starting the next batch
+      await new Promise(r => setTimeout(r, 300));
+
+      if (wordingDocs.length > 0) {
+        addStatusLog(`▶️ Analyzing ${wordingDocs.length} wording(s)...`, 'info');
+        try {
+          const res = await callBatch(wordingDocs);
+          wordingResult = { status: 'fulfilled', value: res };
+        } catch (err) {
+          wordingResult = { status: 'rejected', reason: err };
+        }
+      }
 
       const t_batch = performance.now() - t_batch_start;
 
