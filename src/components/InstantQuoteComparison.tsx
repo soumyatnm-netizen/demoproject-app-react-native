@@ -68,7 +68,40 @@ const InstantQuoteComparison = () => {
   const [extractedDocumentIds, setExtractedDocumentIds] = useState<{documentId: string, type: string, carrier: string}[]>([]);
   const [shouldCancel, setShouldCancel] = useState(false);
   const [statusLog, setStatusLog] = useState<Array<{time: string, message: string, type: 'info' | 'success' | 'error'}>>([]);
+  const [selectedSections, setSelectedSections] = useState<string[]>([
+    'professional_indemnity',
+    'cyber',
+    'crime',
+    'public_products_liability',
+    'employers_liability',
+    'property'
+  ]); // All selected by default
   const { toast } = useToast();
+
+  const coverageSections = [
+    { key: 'professional_indemnity', label: 'Professional Indemnity' },
+    { key: 'cyber', label: 'Cyber & Data' },
+    { key: 'crime', label: 'Crime & Fraud' },
+    { key: 'public_products_liability', label: 'Public & Products Liability' },
+    { key: 'employers_liability', label: 'Employers\' Liability' },
+    { key: 'property', label: 'Property & Business Interruption' },
+  ];
+
+  const toggleSection = (sectionKey: string) => {
+    setSelectedSections(prev => 
+      prev.includes(sectionKey)
+        ? prev.filter(s => s !== sectionKey)
+        : [...prev, sectionKey]
+    );
+  };
+
+  const selectAllSections = () => {
+    setSelectedSections(coverageSections.map(s => s.key));
+  };
+
+  const deselectAllSections = () => {
+    setSelectedSections([]);
+  };
 
   const addStatusLog = (message: string, type: 'info' | 'success' | 'error' = 'info') => {
     const timestamp = new Date().toLocaleTimeString();
@@ -545,7 +578,8 @@ const InstantQuoteComparison = () => {
             jurisdiction: 'UK',
             broker_name: 'CoverCompass',
             priority_metrics: ['Premium(Total)', 'CoverageTrigger', 'Limits', 'Deductible', 'Exclusions'],
-            documents: documentsForAnalysis
+            documents: documentsForAnalysis,
+            selectedSections: selectedSections
           }
         }
       );
@@ -865,7 +899,8 @@ const InstantQuoteComparison = () => {
                 jurisdiction: 'UK',
                 broker_name: 'CoverCompass',
                 priority_metrics: ['Premium(Total)', 'CoverageTrigger', 'Limits', 'Deductible', 'Exclusions'],
-                documents: allDocuments
+                documents: allDocuments,
+                selectedSections: selectedSections
               }
             }
           );
@@ -1384,6 +1419,74 @@ const InstantQuoteComparison = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Coverage Section Selector */}
+      {selectedClient && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Shield className="h-5 w-5" />
+              <span>Step 1.5: Select Coverage Sections</span>
+            </CardTitle>
+            <CardDescription>Choose which sections of the quotes and wordings to analyze</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm text-muted-foreground">
+                  {selectedSections.length} of {coverageSections.length} sections selected
+                </p>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={selectAllSections}
+                  >
+                    Select All
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={deselectAllSections}
+                  >
+                    Clear All
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {coverageSections.map((section) => (
+                  <div
+                    key={section.key}
+                    className={`flex items-center space-x-2 p-3 rounded-lg border-2 cursor-pointer transition-colors ${
+                      selectedSections.includes(section.key)
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                    onClick={() => toggleSection(section.key)}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedSections.includes(section.key)}
+                      onChange={() => {}} // Handled by div click
+                      className="rounded"
+                    />
+                    <label className="text-sm font-medium cursor-pointer flex-1">
+                      {section.label}
+                    </label>
+                  </div>
+                ))}
+              </div>
+              
+              {selectedSections.length === 0 && (
+                <div className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  ⚠️ Please select at least one coverage section to compare
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Step 2: Quote Upload */}
       <Card>
