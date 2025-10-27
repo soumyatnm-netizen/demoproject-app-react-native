@@ -82,7 +82,19 @@ serve(async (req) => {
   }
 
   const t0 = performance.now();
-  
+  // Guard against platform hard timeout: abort Gemini requests after 55s so we can retry/fallback
+  const fetchWithTimeout = async (input: Request | string, init: RequestInit = {}, timeoutMs = 55_000) => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      // @ts-ignore Deno's fetch accepts AbortSignal
+      const res = await fetch(input as any, { ...init, signal: controller.signal });
+      return res;
+    } finally {
+      clearTimeout(id);
+    }
+  };
+
   try {
     console.log('=== Batch Analyze Documents Function Started ===');
     
@@ -726,9 +738,9 @@ ${fetchedDocs.map((doc, idx) => `${idx + 1}. ${doc.filename} (${doc.carrier_name
     
     // Use the latest Gemini 2.5 models with fallback options
     const modelFallbackOrder = [
+      'gemini-1.5-flash',
       'gemini-2.5-flash',
-      'gemini-2.5-flash-lite',
-      'gemini-1.5-flash'
+      'gemini-2.5-flash-lite'
     ];
 
     const maxRetries = 3;
@@ -754,7 +766,7 @@ ${fetchedDocs.map((doc, idx) => `${idx + 1}. ${doc.filename} (${doc.carrier_name
         try {
           console.log(`[batch-analyze] Attempt ${attempt}/${maxRetries} with ${modelName}`);
 
-          const geminiRes = await fetch(
+          const geminiRes = await fetchWithTimeout(
             `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`,
             {
               method: 'POST',
@@ -766,10 +778,12 @@ ${fetchedDocs.map((doc, idx) => `${idx + 1}. ${doc.filename} (${doc.carrier_name
                 }],
                 generationConfig: {
                   temperature: 0,
+                  maxOutputTokens: 2000,
                   responseMimeType: 'application/json'
                 }
               }),
-            }
+            },
+            55_000
           );
 
           const geminiText = await geminiRes.text();
