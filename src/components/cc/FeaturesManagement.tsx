@@ -16,6 +16,7 @@ const AVAILABLE_FEATURES = [
   { id: 'placement_tracking', name: 'Placement Tracking' },
   { id: 'underwriter_matching', name: 'Underwriter Matching' },
   { id: 'appetite_guides', name: 'Appetite Guides' },
+  { id: 'attack_intelligence', name: 'Attack Intelligence' },
   { id: 'predictive_analytics', name: 'Predictive Analytics' },
   { id: 'api_access', name: 'API Access' },
   { id: 'custom_reporting', name: 'Custom Reporting' },

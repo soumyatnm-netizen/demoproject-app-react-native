@@ -282,7 +282,7 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
           </TabsContent>
 
           <TabsContent value="attack-intel">
-            {hasFeature('placement_tracking') || hasFeature('predictive_analytics') ? (
+            {hasFeature('attack_intelligence') ? (
               <AttackingBrokerIntelligence />
             ) : (
               <ComingSoonAlert featureName="Attack Intelligence" />
