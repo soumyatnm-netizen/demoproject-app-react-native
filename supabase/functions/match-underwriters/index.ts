@@ -8,9 +8,105 @@ const corsHeaders = {
 };
 
 const geminiApiKey = Deno.env.get('GOOGLE_GEMINI_API_KEY');
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-...
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { documentId, clientProfile } = await req.json();
+
+    if (!documentId) {
+      throw new Error('documentId is required');
+    }
+
+    if (!geminiApiKey) {
+      throw new Error('GOOGLE_GEMINI_API_KEY is not configured');
+    }
+
+    console.log('Starting underwriter matching for document:', documentId);
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Fetch the processed document data
+    const { data: documentData, error: docError } = await supabase
+      .from('processed_documents')
+      .select('*')
+      .eq('id', documentId)
+      .single();
+
+    if (docError || !documentData) {
+      throw new Error('Document not found or error fetching document');
+    }
+
+    console.log('Fetched document data for:', documentData.file_name);
+
+    // Fetch all underwriter appetite data
+    const { data: appetiteData, error: appetiteError } = await supabase
+      .from('underwriter_appetite_data')
+      .select('*');
+
+    if (appetiteError) {
+      console.error('Error fetching appetite data:', appetiteError);
+      throw new Error('Failed to fetch underwriter appetite data');
+    }
+
+    console.log(`Found ${appetiteData?.length || 0} underwriter appetite documents`);
+
+    // Build the matching prompt
+    const documentDetails = JSON.stringify(documentData.extracted_data || {}, null, 2);
+    const appetiteDetails = appetiteData?.map(a => ({
+      underwriter_name: a.underwriter_name,
+      target_sectors: a.target_sectors,
+      risk_appetite: a.risk_appetite,
+      minimum_premium: a.minimum_premium,
+      maximum_premium: a.maximum_premium,
+      geographic_coverage: a.geographic_coverage,
+      additional_products: a.additional_products,
+    })) || [];
+
+    const matchingPrompt = `You are an expert insurance broker AI. Match this client's insurance requirement document with appropriate underwriters.
+
+CLIENT DOCUMENT DETAILS:
+${documentDetails}
+
+${clientProfile ? `CLIENT PROFILE:
+${JSON.stringify(clientProfile, null, 2)}
+` : ''}
+
+AVAILABLE UNDERWRITERS:
+${JSON.stringify(appetiteDetails, null, 2)}
+
+Analyze the client's requirements and match them with the most suitable underwriters. For each match, provide:
+1. underwriter_name: The name of the underwriter
+2. match_score: A score from 0-100 indicating suitability
+3. match_rank: Ranking (1 being best match)
+4. match_reasoning: Detailed explanation of why this is a good match
+5. compatibility_factors: Array of specific compatibility points
+6. risk_assessment: Assessment of potential risks or concerns
+7. recommended_premium_range: Suggested premium range based on appetite
+8. coverage_gaps: Any gaps between client needs and underwriter appetite
+9. competitive_advantages: Why this underwriter would be competitive
+
+Return an array of matches sorted by match_score (highest first). Include only underwriters with a match_score of 40 or higher.
+
+Respond with valid JSON only in this exact format:
+[{
+  "underwriter_name": "string",
+  "match_score": number,
+  "match_rank": number,
+  "match_reasoning": "string",
+  "compatibility_factors": ["string"],
+  "risk_assessment": "string",
+  "recommended_premium_range": "string",
+  "coverage_gaps": ["string"],
+  "competitive_advantages": ["string"]
+}]`;
+
     console.log('Sending request to Google Gemini for matching analysis');
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
