@@ -97,28 +97,20 @@ const FeaturesManagement = ({ selectedCompanyId }: { selectedCompanyId?: string 
 
     setSaving(true);
     try {
-      // Process all pending changes
+      // Process all pending changes using upsert
       for (const [featureId, enabled] of pendingChanges.entries()) {
-        const existingFeature = features.find(f => f.feature === featureId);
-        
-        if (existingFeature) {
-          const { error } = await supabase
-            .from('broker_company_features')
-            .update({ enabled })
-            .eq('id', existingFeature.id);
+        const { error } = await supabase
+          .from('broker_company_features')
+          .upsert({
+            company_id: selectedCompany,
+            feature: featureId,
+            enabled,
+            updated_at: new Date().toISOString(),
+          }, {
+            onConflict: 'company_id,feature'
+          });
 
-          if (error) throw error;
-        } else {
-          const { error } = await supabase
-            .from('broker_company_features')
-            .insert({
-              company_id: selectedCompany,
-              feature: featureId,
-              enabled,
-            });
-
-          if (error) throw error;
-        }
+        if (error) throw error;
       }
 
       toast({
