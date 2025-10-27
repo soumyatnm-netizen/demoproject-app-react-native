@@ -97,10 +97,16 @@ serve(async (req) => {
       return json(req, 413, { ok: false, error: 'PDF too large (max 20MB)' });
     }
 
-    // Convert to base64 for Gemini
+    // Convert to base64 for Gemini (safely chunked to avoid stack overflow)
     stage = "convert_base64";
     const t_convert_start = performance.now();
-    const base64Pdf = btoa(String.fromCharCode(...pdfBytes));
+    const chunkSize = 8192;
+    let binary = '';
+    for (let i = 0; i < pdfBytes.length; i += chunkSize) {
+      const chunk = Array.from(pdfBytes.subarray(i, Math.min(i + chunkSize, pdfBytes.length)));
+      binary += String.fromCharCode.apply(null, chunk);
+    }
+    const base64Pdf = btoa(binary);
     console.log('[extract-wording] Converted to base64 in', (performance.now() - t_convert_start).toFixed(0), 'ms');
 
     // Extract wording with focused schema

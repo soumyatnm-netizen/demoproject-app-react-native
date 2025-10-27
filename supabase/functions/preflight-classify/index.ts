@@ -66,8 +66,14 @@ serve(async (req) => {
     const pdfBytes = new Uint8Array(await pdfResponse.arrayBuffer());
     console.log(`[Preflight] PDF fetched: ${pdfBytes.byteLength} bytes`);
 
-    // Convert to base64 for Gemini
-    const base64Pdf = btoa(String.fromCharCode(...pdfBytes));
+    // Convert to base64 for Gemini (safely chunked to avoid stack overflow)
+    const chunkSize = 8192;
+    let binary = '';
+    for (let i = 0; i < pdfBytes.length; i += chunkSize) {
+      const chunk = Array.from(pdfBytes.subarray(i, Math.min(i + chunkSize, pdfBytes.length)));
+      binary += String.fromCharCode.apply(null, chunk);
+    }
+    const base64Pdf = btoa(binary);
     console.log(`[Preflight] Converted to base64`);
 
     // Lightweight classification prompt (150-250 tokens)

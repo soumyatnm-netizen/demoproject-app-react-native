@@ -3,13 +3,13 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 
-// Helper to convert PDF bytes to base64
-async function pdfToBase64(bytes: Uint8Array): Promise<string> {
+// Helper to convert PDF bytes to base64 (safely chunked to avoid stack overflow)
+function pdfToBase64(bytes: Uint8Array): string {
   const chunkSize = 8192;
   let binary = '';
   for (let i = 0; i < bytes.length; i += chunkSize) {
-    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
-    binary += String.fromCharCode(...chunk);
+    const chunk = Array.from(bytes.subarray(i, Math.min(i + chunkSize, bytes.length)));
+    binary += String.fromCharCode.apply(null, chunk);
   }
   return btoa(binary);
 }
@@ -112,7 +112,7 @@ serve(async (req) => {
     stage = "convert_pdf";
     const t_convert_start = performance.now();
     
-    const base64Pdf = btoa(String.fromCharCode(...pdfBytes));
+    const base64Pdf = pdfToBase64(pdfBytes);
     console.log('[extract-quote] Converted to base64 in', (performance.now() - t_convert_start).toFixed(0), 'ms');
 
     // Extract quote with OpenAI using the uploaded file
