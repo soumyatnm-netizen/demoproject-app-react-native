@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BarChart3, Download, Eye, TrendingUp, Users, Trash2, Calendar, RefreshCw } from "lucide-react";
+import { BarChart3, Download, Eye, TrendingUp, Users, Trash2, Calendar, RefreshCw, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { reprocessQuote } from "@/utils/reprocessQuotes";
@@ -48,7 +48,40 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
   const [clients, setClients] = useState<string[]>([]);
   const [selectedClient, setSelectedClient] = useState<string>("");
   const [filteredQuotes, setFilteredQuotes] = useState<StructuredQuote[]>([]);
+  const [selectedSections, setSelectedSections] = useState<string[]>([
+    'professional_indemnity',
+    'cyber',
+    'crime',
+    'public_products_liability',
+    'employers_liability',
+    'property'
+  ]); // All selected by default
   const { toast } = useToast();
+
+  const coverageSections = [
+    { key: 'professional_indemnity', label: 'Professional Indemnity' },
+    { key: 'cyber', label: 'Cyber & Data' },
+    { key: 'crime', label: 'Crime & Fraud' },
+    { key: 'public_products_liability', label: 'Public & Products Liability' },
+    { key: 'employers_liability', label: 'Employers\' Liability' },
+    { key: 'property', label: 'Property & Business Interruption' },
+  ];
+
+  const toggleSection = (sectionKey: string) => {
+    setSelectedSections(prev => 
+      prev.includes(sectionKey)
+        ? prev.filter(s => s !== sectionKey)
+        : [...prev, sectionKey]
+    );
+  };
+
+  const selectAllSections = () => {
+    setSelectedSections(coverageSections.map(s => s.key));
+  };
+
+  const deselectAllSections = () => {
+    setSelectedSections([]);
+  };
 
   useEffect(() => {
     fetchClients();
@@ -105,10 +138,22 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
       return;
     }
 
+    if (selectedSections.length === 0) {
+      toast({
+        title: "Selection Required",
+        description: "Please select at least one coverage section to compare",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('generate-comparison', {
-        body: { quoteIds: selectedQuotes }
+        body: { 
+          quoteIds: selectedQuotes,
+          selectedSections: selectedSections 
+        }
       });
 
       if (error) throw error;
@@ -409,11 +454,81 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
         </CardContent>
       </Card>
 
+      {/* Coverage Section Selector */}
+      {selectedClient && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Select Coverage Sections to Compare
+            </CardTitle>
+            <CardDescription>
+              Choose which sections of the quotes and wordings to analyze
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm text-muted-foreground">
+                  {selectedSections.length} of {coverageSections.length} sections selected
+                </p>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={selectAllSections}
+                  >
+                    Select All
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={deselectAllSections}
+                  >
+                    Clear All
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {coverageSections.map((section) => (
+                  <div
+                    key={section.key}
+                    className={`flex items-center space-x-2 p-3 rounded-lg border-2 cursor-pointer transition-colors ${
+                      selectedSections.includes(section.key)
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                    onClick={() => toggleSection(section.key)}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedSections.includes(section.key)}
+                      onChange={() => {}} // Handled by div click
+                      className="rounded"
+                    />
+                    <label className="text-sm font-medium cursor-pointer flex-1">
+                      {section.label}
+                    </label>
+                  </div>
+                ))}
+              </div>
+              
+              {selectedSections.length === 0 && (
+                <div className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  ⚠️ Please select at least one coverage section to compare
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Quote Selection */}
       {selectedClient && (
         <Card>
           <CardHeader>
-            <CardTitle>Select Quotes to Compare</CardTitle>
+            <CardTitle>Step 2: Select Quotes to Compare</CardTitle>
             <CardDescription>
               Choose quotes for {selectedClient} for side-by-side comparison
             </CardDescription>
@@ -553,7 +668,7 @@ const ComparisonView = ({ quotes, onRefresh }: ComparisonViewProps) => {
           <div className="flex items-center space-x-4">
             <Button 
               onClick={generateComparison}
-              disabled={selectedQuotes.length < 2 || loading}
+              disabled={selectedQuotes.length < 2 || selectedSections.length === 0 || loading}
             >
               {loading ? 'Generating...' : 'Generate Comparison'}
             </Button>

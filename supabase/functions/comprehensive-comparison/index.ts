@@ -32,11 +32,31 @@ serve(async (req) => {
       jurisdiction,
       broker_name,
       priority_metrics,
-      documents 
+      documents,
+      selectedSections 
     } = await req.json();
 
     console.log('Processing comprehensive comparison for:', client_name);
     console.log('Documents received:', documents.length);
+    console.log('Selected sections:', selectedSections || 'all');
+
+    // Define which sections to analyze
+    const sectionsToAnalyze = selectedSections && selectedSections.length > 0 
+      ? selectedSections 
+      : ['professional_indemnity', 'cyber', 'crime', 'public_products_liability', 'employers_liability', 'property'];
+    
+    const sectionLabels: Record<string, string> = {
+      professional_indemnity: 'Professional Indemnity (PI)',
+      cyber: 'Cyber & Data',
+      crime: 'Crime / Employee Crime / Social Engineering / Fraud',
+      public_products_liability: 'Public & Products Liability',
+      employers_liability: 'Employers\' Liability',
+      property: 'Property',
+    };
+
+    const focusedSectionsText = sectionsToAnalyze.map((key: string) => 
+      sectionLabels[key] || key
+    ).join('\n   - ');
 
     // Fetch document content for each document
     const documentsWithContent = await Promise.all(
@@ -79,8 +99,13 @@ serve(async (req) => {
 
 You are the CoverCompass Cover Comparison Engine designed for deep, competitive comparison of insurance proposals. Your goal is MAXIMUM THOROUGHNESS and DETAIL.
 
+**IMPORTANT: This comparison is FOCUSED on the following coverage sections only:**
+   - ${focusedSectionsText}
+
+**You should ONLY analyze and compare these specific sections. Ignore all other sections in the documents.**
+
 OBJECTIVE:
-Ingest two or more complete insurance proposals (Quote Schedules + Policy Wordings) and output a standardized, structured analysis enabling quantitative and qualitative comparison of premium, limits, deductibles, and key coverage terms (Gap Analysis).
+Ingest two or more complete insurance proposals (Quote Schedules + Policy Wordings) and output a standardized, structured analysis enabling quantitative and qualitative comparison of premium, limits, deductibles, and key coverage terms (Gap Analysis) for the SELECTED SECTIONS ONLY.
 
 INPUT DOCUMENTS PER UNDERWRITER:
 - Quote Schedule (Q): High-level summary of cover, limits, premium
@@ -94,7 +119,7 @@ ANALYSIS PHILOSOPHY:
 - Use plain English suitable for client-facing broker reports
 
 COMPARISON RULES:
-1. Compare each product line individually with MAXIMUM DETAIL:
+1. Compare ONLY the selected product lines listed above with MAXIMUM DETAIL
    - Professional Indemnity (PI)
    - Cyber & Data
    - Property

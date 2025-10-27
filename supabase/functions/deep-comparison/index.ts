@@ -27,9 +27,28 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl!, supabaseKey!);
 
-    const { insurers } = await req.json();
+    const { insurers, selectedSections } = await req.json();
     
     console.log('Processing deep comparison for insurers:', insurers.map((i: any) => i.name));
+    console.log('Selected sections:', selectedSections || 'all');
+
+    // Define which sections to analyze
+    const sectionsToAnalyze = selectedSections && selectedSections.length > 0 
+      ? selectedSections 
+      : ['professional_indemnity', 'cyber', 'crime', 'public_products_liability', 'employers_liability', 'property'];
+    
+    const sectionLabels = {
+      professional_indemnity: 'Professional Indemnity',
+      cyber: 'Cyber & Data',
+      crime: 'Crime & Fraud',
+      public_products_liability: 'Public & Products Liability',
+      employers_liability: 'Employers\' Liability',
+      property: 'Property & Business Interruption',
+    };
+
+    const focusedSectionsText = sectionsToAnalyze.map((key: string) => 
+      sectionLabels[key as keyof typeof sectionLabels] || key
+    ).join(', ');
 
     // Fetch all quote and wording data
     const insurerData = await Promise.all(
@@ -53,6 +72,11 @@ serve(async (req) => {
     const systemPrompt = `You are an insurance coverage analysis expert performing forensic-level comparisons of insurance quotes and policy wordings.
 
 Your task is to extract, normalize, and compare EVERY material coverage term across multiple insurers at section and sub-section level.
+
+**IMPORTANT: This comparison is FOCUSED on the following coverage sections only:**
+${focusedSectionsText}
+
+**You should ONLY analyze and compare these sections. Ignore all other sections in the documents.**
 
 CRITICAL RULES:
 

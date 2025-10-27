@@ -29,9 +29,10 @@ interface DeepComparisonProps {
     quote_id?: string;
     wording_id?: string;
   }>;
+  selectedSections?: string[];
 }
 
-const DeepComparison = ({ insurers }: DeepComparisonProps) => {
+const DeepComparison = ({ insurers, selectedSections }: DeepComparisonProps) => {
   const [comparison, setComparison] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -40,9 +41,13 @@ const DeepComparison = ({ insurers }: DeepComparisonProps) => {
     setLoading(true);
     try {
       console.log('Running deep comparison...', insurers);
+      console.log('Selected sections:', selectedSections);
 
       const { data, error } = await supabase.functions.invoke('deep-comparison', {
-        body: { insurers }
+        body: { 
+          insurers,
+          selectedSections 
+        }
       });
 
       if (error) throw error;
