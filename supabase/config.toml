@@ -78,3 +78,7 @@ verify_jwt = true
 
 [functions.attack-intelligence]
 verify_jwt = true
+
+[functions.batch-analyze-documents]
+verify_jwt = true
+timeout = 300

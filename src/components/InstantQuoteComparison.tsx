@@ -464,139 +464,87 @@ const InstantQuoteComparison = () => {
       const t_upload = performance.now() - t_upload_start;
       addStatusLog(`✓ Uploaded ${uploadedDocs.length} documents in ${Math.round(t_upload)}ms`, 'success');
 
-      // PHASE 2: Preflight classification (parallel, optional - can skip for speed)
-      setProcessingStep("Classifying documents...");
-      const t_preflight_start = performance.now();
-      
-      const preflightPromises = uploadedDocs.map(async (doc) => {
-        const { data, error } = await supabase.functions.invoke('preflight-classify', {
-          body: { documentId: doc.documentId }
-        });
-        
-        if (!error && data?.classification) {
-          const cls = data.classification;
-          addStatusLog(`📋 ${doc.filename}: ${cls.carrier || 'Unknown'} - ${cls.doc_type || 'Unknown'}`, 'info');
-          
-          if (cls.warnings?.length > 0) {
-            cls.warnings.forEach((w: string) => addStatusLog(`⚠️ ${w}`, 'error'));
-          }
-          return { ...doc, classification: cls };
-        }
-        return { ...doc, classification: null };
-      });
-
-      const classifiedDocs = await Promise.all(preflightPromises);
-      const t_preflight = performance.now() - t_preflight_start;
-      addStatusLog(`✓ Classified ${classifiedDocs.length} documents in ${Math.round(t_preflight)}ms`, 'success');
-
-      // PHASE 3: Extract fields (parallel)
-      setProcessingStep("Extracting data with AI...");
-      const t_extract_start = performance.now();
-      
-      const extractPromises = classifiedDocs.map(async (doc) => {
-        const functionName = doc.type === 'Quote' ? 'extract-quote' : 'extract-wording';
-        
-        const { data, error } = await supabase.functions.invoke(functionName, {
-          body: { documentId: doc.documentId }
-        });
-
-        if (error) {
-          addStatusLog(`❌ Failed to extract ${doc.filename}: ${error.message}`, 'error');
-          return null;
-        }
-
-        if (!data?.ok) {
-          addStatusLog(`❌ Extraction error for ${doc.filename}`, 'error');
-          return null;
-        }
-
-        const timing = data.meta?.timing;
-        if (timing) {
-          addStatusLog(`✓ Extracted ${doc.filename} in ${timing.total_ms}ms (fetch: ${timing.fetch_ms}ms, upload: ${timing.upload_ms}ms, extract: ${timing.extract_ms}ms)`, 'success');
-        } else {
-          addStatusLog(`✓ Extracted ${doc.filename}`, 'success');
-        }
-
-        return {
-          ...doc,
-          extraction: data.result,
-          meta: data.meta
-        };
-      });
-
-      const extractedDocs = (await Promise.all(extractPromises)).filter(Boolean);
-      const t_extract = performance.now() - t_extract_start;
-      addStatusLog(`✓ Extracted ${extractedDocs.length}/${classifiedDocs.length} documents in ${Math.round(t_extract)}ms`, 'success');
-
-      if (extractedDocs.length === 0) {
-        throw new Error('No documents extracted successfully');
-      }
-
-      // Track extracted document IDs for potential retry
-      const extractedIds = extractedDocs.map(doc => ({
-        documentId: doc.documentId,
-        type: doc.type,
-        carrier: doc.classification?.carrier || doc.filename.split('_')[0] || 'Unknown'
-      }));
-      setExtractedDocumentIds(extractedIds);
-
-      // Track failed documents for warnings
-      const failedDocs = classifiedDocs.filter(doc => 
-        !extractedDocs.some(extracted => extracted.documentId === doc.documentId)
-      );
-
-      // Track IDs for final summary
-      const quoteCount = extractedDocs.filter(d => d.type === 'Quote').length;
-      const wordingCount = extractedDocs.filter(d => d.type === 'PolicyWording').length;
-
-      // PHASE 4: Aggregate & compare (single call)
+      // PHASE 2: Batch analyze all documents in one AI call (NEW - replaces classify + extract + compare)
       if (shouldCancel) {
         toast({ title: "Cancelled", description: "Analysis cancelled by user" });
         return;
       }
 
-      setProcessingStep("Generating comprehensive comparison...");
-      const t_aggregate_start = performance.now();
-      addStatusLog('🔄 Generating comprehensive comparison...', 'info');
+      setProcessingStep("Analyzing all documents with AI...");
+      const t_batch_start = performance.now();
+      addStatusLog(`🔄 Analyzing ${uploadedDocs.length} documents in one batch...`, 'info');
 
-      const documentsForAnalysis = extractedDocs.map(doc => ({
-        carrier_name: doc.classification?.carrier || doc.filename.split('_')[0] || 'Unknown',
-        document_type: doc.type,
+      const documentsForBatch = uploadedDocs.map((doc, idx) => ({
+        carrier_name: doc.filename.split('_')[0] || 'Unknown',
+        document_type: docTypes[idx],
         filename: doc.filename,
         document_id: doc.documentId
       }));
 
       const selectedClientData = clients.find(c => c.id === selectedClient);
       
-      const { data: comparisonData, error: comparisonError } = await supabase.functions.invoke(
-        'comprehensive-comparison',
+      const { data: batchData, error: batchError } = await supabase.functions.invoke(
+        'batch-analyze-documents',
         {
           body: {
             client_name: selectedClientData?.client_name || 'Unknown Client',
             client_ref: `CC-${Date.now()}`,
             industry: selectedClientData?.industry || 'Professional Services',
             jurisdiction: 'UK',
-            broker_name: 'CoverCompass',
-            priority_metrics: ['Premium(Total)', 'CoverageTrigger', 'Limits', 'Deductible', 'Exclusions'],
-            documents: documentsForAnalysis,
+            documents: documentsForBatch,
             selectedSections: selectedSections
           }
         }
       );
 
-      const t_aggregate = performance.now() - t_aggregate_start;
+      const t_batch = performance.now() - t_batch_start;
 
-      if (comparisonError) {
-        addStatusLog(`❌ Comparison failed: ${comparisonError.message}`, 'error');
-        throw new Error(`Comprehensive comparison failed: ${comparisonError.message}`);
+      if (batchError) {
+        addStatusLog(`❌ Batch analysis failed: ${batchError.message}`, 'error');
+        throw new Error(`Batch analysis failed: ${batchError.message}`);
       }
 
-      if (!comparisonData?.analysis) {
+      if (!batchData?.ok || !batchData?.analysis) {
         addStatusLog('❌ No analysis data received', 'error');
-        throw new Error('Failed to generate comprehensive comparison');
+        throw new Error('Failed to generate batch analysis');
       }
 
-      addStatusLog(`✓ Comparison completed in ${Math.round(t_aggregate)}ms`, 'success');
+      const timing = batchData.meta?.timing;
+      if (timing) {
+        addStatusLog(`✓ Batch analysis completed in ${timing.total_ms}ms (fetch: ${timing.fetch_ms}ms, AI: ${timing.ai_ms}ms)`, 'success');
+      } else {
+        addStatusLog(`✓ Batch analysis completed in ${Math.round(t_batch)}ms`, 'success');
+      }
+
+      // Build compatibility data for the rest of the flow
+      const extractedDocs = uploadedDocs.map((doc, idx) => ({
+        documentId: doc.documentId,
+        filename: doc.filename,
+        type: docTypes[idx],
+        classification: { carrier: doc.filename.split('_')[0] || 'Unknown' }
+      }));
+
+      const extractedIds = extractedDocs.map(doc => ({
+        documentId: doc.documentId,
+        type: doc.type,
+        carrier: doc.classification?.carrier || 'Unknown'
+      }));
+      setExtractedDocumentIds(extractedIds);
+
+      // Track document counts for summary
+      const quoteCount = extractedDocs.filter(d => d.type === 'Quote').length;
+      const wordingCount = extractedDocs.filter(d => d.type === 'PolicyWording').length;
+
+      // Track failed documents (if any)
+      const failedDocs = batchData.analysis?.failed_documents || [];
+
+      // Use batch analysis result as comparison data
+      const comparisonData = batchData;
+
+      // Set timing variables for compatibility with logging below
+      const t_preflight = 0; // No separate classification step in batch mode
+      const t_extract = 0; // No separate extraction step in batch mode
+      const t_aggregate = t_batch; // Batch does everything
       
       // Debug log the analysis structure
       console.log('[DEBUG] Comparison analysis structure:', comparisonData.analysis);
