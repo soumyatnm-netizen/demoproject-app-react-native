@@ -464,16 +464,16 @@ const InstantQuoteComparison = () => {
       const t_upload = performance.now() - t_upload_start;
       addStatusLog(`✓ Uploaded ${uploadedDocs.length} documents in ${Math.round(t_upload)}ms`, 'success');
 
-      // PHASE 2: Batch analyze all documents in one AI call (NEW - replaces classify + extract + compare)
+      // PHASE 2: Split batch analyze - process Quotes and Wordings separately (parallel)
       if (shouldCancel) {
         toast({ title: "Cancelled", description: "Analysis cancelled by user" });
         return;
       }
 
-      setProcessingStep("Analyzing all documents with AI...");
+      setProcessingStep("Analyzing documents with AI...");
       const t_batch_start = performance.now();
-      addStatusLog(`🔄 Analyzing ${uploadedDocs.length} documents in one batch...`, 'info');
-
+      
+      // Split documents by type
       const documentsForBatch = uploadedDocs.map((doc, idx) => ({
         carrier_name: doc.filename.split('_')[0] || 'Unknown',
         document_type: docTypes[idx],
@@ -481,40 +481,96 @@ const InstantQuoteComparison = () => {
         document_id: doc.documentId
       }));
 
+      const quoteDocs = documentsForBatch.filter(d => d.document_type === 'Quote');
+      const wordingDocs = documentsForBatch.filter(d => d.document_type === 'PolicyWording');
+
+      addStatusLog(`🔄 Processing ${quoteDocs.length} quotes and ${wordingDocs.length} wordings in 2 parallel batches...`, 'info');
+
       const selectedClientData = clients.find(c => c.id === selectedClient);
       
-      const { data: batchData, error: batchError } = await supabase.functions.invoke(
-        'batch-analyze-documents',
-        {
-          body: {
-            client_name: selectedClientData?.client_name || 'Unknown Client',
-            client_ref: `CC-${Date.now()}`,
-            industry: selectedClientData?.industry || 'Professional Services',
-            jurisdiction: 'UK',
-            documents: documentsForBatch,
-            selectedSections: selectedSections
-          }
-        }
-      );
+      const basePayload = {
+        client_name: selectedClientData?.client_name || 'Unknown Client',
+        client_ref: `CC-${Date.now()}`,
+        industry: selectedClientData?.industry || 'Professional Services',
+        jurisdiction: 'UK',
+        selectedSections: selectedSections
+      };
+
+      // Process both batches in parallel
+      const [quoteResult, wordingResult] = await Promise.allSettled([
+        quoteDocs.length > 0 
+          ? supabase.functions.invoke('batch-analyze-documents', {
+              body: { ...basePayload, documents: quoteDocs }
+            })
+          : Promise.resolve({ data: null, error: null }),
+        wordingDocs.length > 0
+          ? supabase.functions.invoke('batch-analyze-documents', {
+              body: { ...basePayload, documents: wordingDocs }
+            })
+          : Promise.resolve({ data: null, error: null })
+      ]);
 
       const t_batch = performance.now() - t_batch_start;
 
-      if (batchError) {
-        addStatusLog(`❌ Batch analysis failed: ${batchError.message}`, 'error');
-        throw new Error(`Batch analysis failed: ${batchError.message}`);
-      }
+      // Handle results
+      let quoteData = null;
+      let wordingData = null;
+      const failedBatches: string[] = [];
 
-      if (!batchData?.ok || !batchData?.analysis) {
-        addStatusLog('❌ No analysis data received', 'error');
-        throw new Error('Failed to generate batch analysis');
-      }
-
-      const timing = batchData.meta?.timing;
-      if (timing) {
-        addStatusLog(`✓ Batch analysis completed in ${timing.total_ms}ms (fetch: ${timing.fetch_ms}ms, AI: ${timing.ai_ms}ms)`, 'success');
+      if (quoteResult.status === 'fulfilled' && !quoteResult.value.error) {
+        quoteData = quoteResult.value.data;
+        if (quoteData?.ok) {
+          addStatusLog(`✓ Analyzed ${quoteDocs.length} quotes successfully`, 'success');
+        }
       } else {
-        addStatusLog(`✓ Batch analysis completed in ${Math.round(t_batch)}ms`, 'success');
+        const error = quoteResult.status === 'rejected' ? quoteResult.reason : quoteResult.value.error;
+        addStatusLog(`❌ Quote batch failed: ${error?.message || 'Unknown error'}`, 'error');
+        failedBatches.push('Quotes');
       }
+
+      if (wordingResult.status === 'fulfilled' && !wordingResult.value.error) {
+        wordingData = wordingResult.value.data;
+        if (wordingData?.ok) {
+          addStatusLog(`✓ Analyzed ${wordingDocs.length} wordings successfully`, 'success');
+        }
+      } else {
+        const error = wordingResult.status === 'rejected' ? wordingResult.reason : wordingResult.value.error;
+        addStatusLog(`❌ Wording batch failed: ${error?.message || 'Unknown error'}`, 'error');
+        failedBatches.push('Wordings');
+      }
+
+      // Check if we have at least some data
+      if (!quoteData?.ok && !wordingData?.ok) {
+        throw new Error(`Both batches failed. ${failedBatches.join(' and ')} could not be processed.`);
+      }
+
+      // Merge results from both batches
+      const mergedInsurers = [
+        ...(quoteData?.analysis?.insurers || []),
+        ...(wordingData?.analysis?.insurers || [])
+      ];
+
+      // Deduplicate insurers by name
+      const uniqueInsurers = Array.from(
+        new Map(mergedInsurers.map(i => [i.insurer_name, i])).values()
+      );
+
+      const mergedComparisons = [
+        ...(quoteData?.analysis?.product_comparisons || []),
+        ...(wordingData?.analysis?.product_comparisons || [])
+      ];
+
+      const mergedFindings = [
+        ...(quoteData?.analysis?.overall_findings || []),
+        ...(wordingData?.analysis?.overall_findings || [])
+      ];
+
+      const mergedFailedDocs = [
+        ...(quoteData?.analysis?.failed_documents || []),
+        ...(wordingData?.analysis?.failed_documents || [])
+      ];
+
+      addStatusLog(`✓ Merged results: ${uniqueInsurers.length} insurers, ${mergedComparisons.length} comparisons`, 'success');
 
       // Build compatibility data for the rest of the flow
       const extractedDocs = uploadedDocs.map((doc, idx) => ({
@@ -535,11 +591,25 @@ const InstantQuoteComparison = () => {
       const quoteCount = extractedDocs.filter(d => d.type === 'Quote').length;
       const wordingCount = extractedDocs.filter(d => d.type === 'PolicyWording').length;
 
-      // Track failed documents (if any)
-      const failedDocs = batchData.analysis?.failed_documents || [];
+      // Create merged comparison data
+      const comparisonData = {
+        ok: true,
+        analysis: {
+          insurers: uniqueInsurers,
+          product_comparisons: mergedComparisons,
+          overall_findings: mergedFindings,
+          failed_documents: mergedFailedDocs,
+          comparison_summary: [] // Will be built from insurers data below
+        },
+        meta: {
+          total_ms: Math.round(t_batch),
+          quotes_processed: quoteDocs.length,
+          wordings_processed: wordingDocs.length
+        }
+      };
 
-      // Use batch analysis result as comparison data
-      const comparisonData = batchData;
+      // Track failed documents
+      const failedDocs = mergedFailedDocs;
 
       // Set timing variables for compatibility with logging below
       const t_preflight = 0; // No separate classification step in batch mode
