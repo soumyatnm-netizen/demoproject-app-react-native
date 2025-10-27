@@ -241,6 +241,15 @@ ${fetchedDocs.map((doc, idx) => `${idx + 1}. ${doc.filename} (${doc.carrier_name
 - Policy_Number, Quote_Reference, Quote_Date
 - Policy_Start_Date, Policy_End_Date
 - Premium_Total_Annual, Premium_Currency
+  **IMPORTANT:** Extract the TOTAL ANNUAL PREMIUM which may be labeled as:
+  • "Total Annual Premium"
+  • "Total Payable"
+  • "Total Premium"
+  • "Annual Total"
+  • "Total Cost"
+  • "Premium (including taxes/IPT)"
+  Always extract the FINAL total amount the client pays (including all taxes, IPT, levies).
+  Store as: total_payable, annual_premium, and annual_total (all three with same value for consistency)
 - professional_indemnity: {limit, deductible, retroactive_date, source}
 - cyber: {headline_limit, deductible, sub_limits: [{coverage, limit, deductible}]}
 - crime: {funds_transfer_fraud, customer_payment_fraud}
@@ -284,7 +293,8 @@ ${fetchedDocs.map((doc, idx) => `${idx + 1}. ${doc.filename} (${doc.carrier_name
           "professional_indemnity": 8000,
           "cyber": 3000,
           "property": 2000
-        }
+        },
+        "NOTE": "total_payable, annual_premium, and annual_total should ALL contain the same value - the FINAL total cost to client including all taxes/IPT/levies. Extract from fields labeled: Total Annual Premium, Total Payable, Total Premium, Annual Total, Total Cost, or Premium (including taxes)"
       },
       "extracted_data": { /* full extraction as above */ }
     }
