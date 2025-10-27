@@ -22,7 +22,73 @@ serve(async (req) => {
     if (!geminiApiKey || !supabaseUrl || !supabaseKey) {
       throw new Error('Missing required environment variables');
     }
-...
+
+    // Validate request body
+    const { appetiteDocumentId } = await validateRequest(req, processAppetiteDocumentSchema);
+    console.log('Processing appetite document:', appetiteDocumentId);
+
+    // Initialize Supabase client
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Get appetite document details
+    const { data: appetiteDoc, error: fetchError } = await supabase
+      .from('underwriter_appetites')
+      .select('*')
+      .eq('id', appetiteDocumentId)
+      .single();
+
+    if (fetchError || !appetiteDoc) {
+      throw new Error('Appetite document not found');
+    }
+
+    console.log('Fetched appetite document:', appetiteDoc.file_name);
+
+    // Update status to processing
+    await supabase
+      .from('underwriter_appetites')
+      .update({ status: 'processing' })
+      .eq('id', appetiteDocumentId);
+
+    // Get file content from Supabase Storage
+    const { data: fileData, error: storageError } = await supabase.storage
+      .from('appetite-guides')
+      .download(appetiteDoc.file_path);
+
+    if (storageError || !fileData) {
+      throw new Error('Failed to download appetite document file');
+    }
+
+    console.log('Downloaded file from storage');
+
+    // Convert file to base64 for Gemini API
+    const arrayBuffer = await fileData.arrayBuffer();
+    const base64Data = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+
+    // Create analysis prompt
+    const prompt = `Analyze this underwriter appetite document and extract structured information.
+
+Document: ${appetiteDoc.file_name}
+Underwriter: ${appetiteDoc.underwriter_name}
+
+Please extract and return the following information in JSON format:
+{
+  "underwriter_name": "string",
+  "financial_ratings": {"am_best": "string", "sp": "string", "moodys": "string"},
+  "coverage_limits": {"minimum": number, "maximum": number, "currency": "string"},
+  "target_sectors": ["array of industry sectors"],
+  "geographic_coverage": ["array of countries/regions"],
+  "policy_features": {"key": "value pairs of important features"},
+  "exclusions": ["array of key exclusions"],
+  "minimum_premium": number,
+  "maximum_premium": number,
+  "specialty_focus": ["array of specialty areas"],
+  "broker_features": {"commission_rates": "string", "binding_authority": boolean},
+  "risk_appetite": "conservative|moderate|aggressive",
+  "additional_products": ["array of other product lines"]
+}
+
+Focus on extracting concrete, actionable information that would help brokers match clients to this underwriter.`;
+
     // Call Google Gemini API
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
