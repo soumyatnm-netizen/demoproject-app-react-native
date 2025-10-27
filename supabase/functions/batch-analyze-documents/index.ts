@@ -346,123 +346,144 @@ ${fetchedDocs.map((doc, idx) => `${idx + 1}. ${doc.filename} (${doc.carrier_name
     console.log('[batch-analyze] Calling Gemini with batch...');
     const t_ai_start = performance.now();
     
+    // Prefer the experimental 2.0 flash model but gracefully fallback if overloaded
+    const modelFallbackOrder = [
+      'gemini-2.0-flash-exp',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash'
+    ];
+
     const maxRetries = 3;
     let lastError: any;
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`[batch-analyze] Attempt ${attempt}/${maxRetries}`);
-
-        // Build parts array with text + all PDFs
-        const parts: any[] = [
-          { text: systemPrompt + '\n\n' + userPrompt }
-        ];
-
-        // Add all documents as inline data
-        for (const doc of fetchedDocs) {
-          parts.push({
-            inline_data: {
-              mime_type: 'application/pdf',
-              data: doc.base64
-            }
-          });
+    // Build parts array with text + all PDFs (computed once)
+    const parts: any[] = [
+      { text: systemPrompt + '\n\n' + userPrompt }
+    ];
+    for (const doc of fetchedDocs) {
+      parts.push({
+        inline_data: {
+          mime_type: 'application/pdf',
+          data: doc.base64
         }
+      });
+    }
 
-        const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{
-                role: 'user',
-                parts
-              }],
-              generationConfig: {
-                temperature: 0,
-                responseMimeType: 'application/json'
-              }
-            }),
-          }
-        );
+    for (const modelName of modelFallbackOrder) {
+      console.log(`[batch-analyze] Trying model ${modelName}`);
 
-        const geminiText = await geminiRes.text();
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(`[batch-analyze] Attempt ${attempt}/${maxRetries} with ${modelName}`);
 
-        if (!geminiRes.ok) {
-          const errorData = JSON.parse(geminiText);
-          lastError = errorData;
-          
-          // Retry on server errors
-          if (geminiRes.status >= 500 && geminiRes.status < 600) {
-            console.error(`[batch-analyze] Server error on attempt ${attempt}:`, geminiText.slice(0, 400));
-            
-            if (attempt < maxRetries) {
-              const waitTime = Math.pow(2, attempt) * 1000;
-              console.log(`[batch-analyze] Retrying in ${waitTime}ms...`);
+          const geminiRes = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{
+                  role: 'user',
+                  parts
+                }],
+                generationConfig: {
+                  temperature: 0,
+                  responseMimeType: 'application/json'
+                }
+              }),
+            }
+          );
+
+          const geminiText = await geminiRes.text();
+
+          if (!geminiRes.ok) {
+            let parsedErr: any = undefined;
+            try { parsedErr = JSON.parse(geminiText); } catch {}
+            lastError = parsedErr || geminiText;
+
+            const retriable = geminiRes.status === 429 || (geminiRes.status >= 500 && geminiRes.status < 600);
+            console.error(`[batch-analyze] ${modelName} error (status ${geminiRes.status}) on attempt ${attempt}:`, String(geminiText).slice(0, 400));
+
+            if (retriable && attempt < maxRetries) {
+              const waitTime = Math.pow(2, attempt) * 1000 + Math.floor(Math.random() * 400);
+              console.log(`[batch-analyze] Retrying ${modelName} in ${waitTime}ms...`);
               await new Promise(resolve => setTimeout(resolve, waitTime));
               continue;
             }
+
+            // If retriable but we've exhausted retries, try next model in the list
+            if (retriable) {
+              console.warn(`[batch-analyze] Exhausted retries for ${modelName}, moving to next model if available...`);
+              break; // break attempts loop, continue outer loop to next model
+            }
+
+            // Non-retriable error -> return immediately
+            console.error('[batch-analyze] Non-retriable Gemini error:', String(geminiText).slice(0, 400));
+            return json(req, geminiRes.status, { 
+              ok: false, 
+              error: String(geminiText).slice(0, 400),
+              retriable: false
+            });
           }
+
+          // Parse response (robust JSON handling)
+          const geminiData = JSON.parse(geminiText);
+          const content = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+
+          if (!content) {
+            throw new Error('No content in Gemini response');
+          }
+
+          let analysis: any;
+          try {
+            analysis = typeof content === 'string' ? tryParseJsonLoose(content) : content;
+          } catch (parseErr) {
+            console.error('[batch-analyze] JSON parse failed, content head:', String(content).slice(0, 200));
+            throw new Error('Invalid JSON from model: ' + (parseErr instanceof Error ? parseErr.message : String(parseErr)));
+          }
+
+          const t_ai = performance.now() - t_ai_start;
+          const t_total = performance.now() - t0;
           
-          console.error('[batch-analyze] Gemini error:', geminiText.slice(0, 400));
-          return json(req, geminiRes.status, { 
-            ok: false, 
-            error: geminiText.slice(0, 400),
-            retriable: geminiRes.status >= 500
+          console.log(`[batch-analyze] Success with ${modelName} in ${Math.round(t_ai)}ms`);
+          console.log(`[batch-analyze] Total time: ${Math.round(t_total)}ms`);
+
+          return json(req, 200, {
+            ok: true,
+            analysis,
+            meta: {
+              client_name,
+              documents_processed: fetchedDocs.length,
+              documents_failed: documents.length - fetchedDocs.length,
+              model: modelName,
+              timing: {
+                total_ms: Math.round(t_total),
+                fetch_ms: Math.round(t_fetch),
+                ai_ms: Math.round(t_ai)
+              },
+              attempts: attempt
+            }
           });
-        }
+        } catch (error) {
+          lastError = error;
+          console.error(`[batch-analyze] Attempt ${attempt} with ${modelName} failed:`, String(error));
 
-// Parse response (robust JSON handling)
-const geminiData = JSON.parse(geminiText);
-const content = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-
-if (!content) {
-  throw new Error('No content in Gemini response');
-}
-
-let analysis: any;
-try {
-  analysis = typeof content === 'string' ? tryParseJsonLoose(content) : content;
-} catch (parseErr) {
-  console.error('[batch-analyze] JSON parse failed, content head:', String(content).slice(0, 200));
-  throw new Error('Invalid JSON from model: ' + (parseErr instanceof Error ? parseErr.message : String(parseErr)));
-}
-        
-        const t_ai = performance.now() - t_ai_start;
-        const t_total = performance.now() - t0;
-        
-        console.log(`[batch-analyze] Success in ${Math.round(t_ai)}ms`);
-        console.log(`[batch-analyze] Total time: ${Math.round(t_total)}ms`);
-
-        return json(req, 200, {
-          ok: true,
-          analysis,
-          meta: {
-            client_name,
-            documents_processed: fetchedDocs.length,
-            documents_failed: documents.length - fetchedDocs.length,
-            model: geminiData.model,
-            usage: geminiData.usage,
-            timing: {
-              total_ms: Math.round(t_total),
-              fetch_ms: Math.round(t_fetch),
-              ai_ms: Math.round(t_ai)
-            },
-            attempts: attempt
+          if (attempt < maxRetries) {
+            const waitTime = Math.pow(2, attempt) * 1000 + Math.floor(Math.random() * 400);
+            console.log(`[batch-analyze] Retrying ${modelName} in ${waitTime}ms...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
           }
-        });
-
-      } catch (error) {
-        lastError = error;
-        console.error(`[batch-analyze] Attempt ${attempt} failed:`, String(error));
-        
-        if (attempt < maxRetries) {
-          const waitTime = Math.pow(2, attempt) * 1000;
-          console.log(`[batch-analyze] Retrying in ${waitTime}ms...`);
-          await new Promise(resolve => setTimeout(resolve, waitTime));
         }
       }
+      // try next model
     }
+
+    // All retries and model fallbacks failed
+    return json(req, 503, { 
+      ok: false, 
+      error: `Batch analysis failed across all models. Last error: ${typeof lastError === 'string' ? lastError.slice(0, 200) : JSON.stringify(lastError).slice(0, 200)}`,
+      retriable: true
+    });
 
     // All retries failed
     return json(req, 500, { 
