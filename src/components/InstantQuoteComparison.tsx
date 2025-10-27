@@ -1426,7 +1426,7 @@ const InstantQuoteComparison = () => {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Shield className="h-5 w-5" />
-              <span>Step 1.5: Select Coverage Sections</span>
+              <span>Select Coverage Comparison Sections</span>
             </CardTitle>
             <CardDescription>Choose which sections of the quotes and wordings to analyze</CardDescription>
           </CardHeader>
