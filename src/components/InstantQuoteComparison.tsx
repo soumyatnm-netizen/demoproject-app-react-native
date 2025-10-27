@@ -552,7 +552,7 @@ const InstantQuoteComparison = () => {
 
       // Deduplicate insurers by name
       const uniqueInsurers = Array.from(
-        new Map(mergedInsurers.map(i => [i.insurer_name, i])).values()
+        new Map(mergedInsurers.map(i => [i.insurer_name || i.carrier, i])).values()
       );
 
       const mergedComparisons = [
@@ -565,10 +565,33 @@ const InstantQuoteComparison = () => {
         ...(wordingData?.analysis?.overall_findings || [])
       ];
 
-      const mergedFailedDocs = [
+      // Start with failed docs from successful batches
+      let mergedFailedDocs = [
         ...(quoteData?.analysis?.failed_documents || []),
         ...(wordingData?.analysis?.failed_documents || [])
       ];
+
+      // If a batch failed entirely, surface its documents as failed so the UI warns properly
+      if (failedBatches.includes('Wordings')) {
+        mergedFailedDocs = [
+          ...mergedFailedDocs,
+          ...wordingDocs.map(d => ({
+            filename: d.filename,
+            type: 'PolicyWording',
+            classification: { carrier: d.carrier_name || (d.filename?.split('_')[0] || 'Unknown') }
+          }))
+        ];
+      }
+      if (failedBatches.includes('Quotes')) {
+        mergedFailedDocs = [
+          ...mergedFailedDocs,
+          ...quoteDocs.map(d => ({
+            filename: d.filename,
+            type: 'Quote',
+            classification: { carrier: d.carrier_name || (d.filename?.split('_')[0] || 'Unknown') }
+          }))
+        ];
+      }
 
       addStatusLog(`✓ Merged results: ${uniqueInsurers.length} insurers, ${mergedComparisons.length} comparisons`, 'success');
 
@@ -591,6 +614,36 @@ const InstantQuoteComparison = () => {
       const quoteCount = extractedDocs.filter(d => d.type === 'Quote').length;
       const wordingCount = extractedDocs.filter(d => d.type === 'PolicyWording').length;
 
+      // Derive a minimal comparison summary if none provided
+      let summary: any[] = (
+        quoteData?.analysis?.comparison_summary ||
+        wordingData?.analysis?.comparison_summary ||
+        []
+      );
+      if ((!summary || summary.length === 0)) {
+        if (uniqueInsurers.length > 0) {
+          summary = uniqueInsurers.map((i: any) => ({
+            insurer_name: i.insurer_name || i.carrier || 'Unknown',
+            premium_amount: Number(
+              i.premiums?.total_payable ??
+              i.premiums?.annual_total ??
+              i.premiums?.annual_premium ??
+              0
+            ),
+            coverage_score: 0,
+            overall_score: 0,
+          }));
+        } else if (mergedComparisons.length > 0) {
+          const first = (mergedComparisons as any)[0];
+          summary = (first?.carrier_results || []).map((cr: any) => ({
+            insurer_name: cr.carrier || 'Unknown',
+            premium_amount: Number(cr.premiums?.total_payable ?? 0),
+            coverage_score: 0,
+            overall_score: 0,
+          }));
+        }
+      }
+
       // Create merged comparison data
       const comparisonData = {
         ok: true,
@@ -599,7 +652,7 @@ const InstantQuoteComparison = () => {
           product_comparisons: mergedComparisons,
           overall_findings: mergedFindings,
           failed_documents: mergedFailedDocs,
-          comparison_summary: [] // Will be built from insurers data below
+          comparison_summary: summary
         },
         meta: {
           total_ms: Math.round(t_batch),
@@ -609,7 +662,7 @@ const InstantQuoteComparison = () => {
       };
 
       // Track failed documents
-      const failedDocs = mergedFailedDocs;
+      const failedDocs = comparisonData.analysis.failed_documents || [];
 
       // Set timing variables for compatibility with logging below
       const t_preflight = 0; // No separate classification step in batch mode
@@ -625,7 +678,7 @@ const InstantQuoteComparison = () => {
       // Store the full comparison data for display, including failed documents
       const analysisWithWarnings = {
         ...comparisonData.analysis,
-        failed_documents: failedDocs.map(doc => ({
+        failed_documents: failedDocs.map((doc: any) => ({
           filename: doc.filename,
           type: doc.type,
           carrier: doc.classification?.carrier || 'Unknown'
@@ -636,8 +689,8 @@ const InstantQuoteComparison = () => {
       console.log('[DEBUG] Failed documents:', analysisWithWarnings.failed_documents);
       
       setComparisonData(analysisWithWarnings);
-      setRankings(comparisonData.analysis.comparison_summary || []);
-      setScoredRankings(comparisonData.analysis.comparison_summary || []);
+      setRankings(summary || []);
+      setScoredRankings(summary || []);
       setAnalysisComplete(true);
 
       // Final timing summary
