@@ -1,12 +1,196 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const geminiApiKey = Deno.env.get('GOOGLE_GEMINI_API_KEY');
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-...
+interface ClientProfile {
+  client_name: string;
+  industry: string;
+  revenue_band: string;
+  employee_count: number;
+  risk_profile: string;
+  coverage_requirements: string[];
+  geographic_location?: string;
+}
+
+interface EnhancedMatch {
+  underwriter_name: string;
+  match_score: number;
+  confidence_level: 'high' | 'medium' | 'low';
+  match_reasons: string[];
+  concerns: string[];
+  recommended_approach: string;
+  estimated_win_probability: number;
+  historical_performance: {
+    win_rate: number;
+    avg_response_time: number;
+    typical_premium_adjustment: number;
+  };
+  appetite_alignment: {
+    industry_fit: number;
+    revenue_alignment: number;
+    coverage_expertise: number;
+    risk_appetite_match: number;
+  };
+  market_intelligence: {
+    recent_activity: string;
+    competitive_position: string;
+    capacity_status: string;
+  };
+  similar_clients_success: {
+    count: number;
+    examples: string[];
+    success_rate: number;
+  };
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    console.log('Starting enhanced insurer matching process');
+    
+    const { client_id, client_data } = await req.json();
+    
+    if (!client_id && !client_data) {
+      throw new Error('Either client_id or client_data must be provided');
+    }
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    let clientProfile: ClientProfile;
+
+    // Get client information
+    if (client_id) {
+      console.log('Fetching client data for ID:', client_id);
+      const { data: clientReport, error: clientError } = await supabase
+        .from('client_reports')
+        .select('*')
+        .eq('id', client_id)
+        .single();
+
+      if (clientError) {
+        throw new Error(`Error fetching client data: ${clientError.message}`);
+      }
+
+      const reportData = clientReport.report_data as any;
+      clientProfile = {
+        client_name: clientReport.client_name,
+        industry: reportData?.industry || 'Unknown',
+        revenue_band: reportData?.revenue_band || 'Unknown',
+        employee_count: reportData?.employee_count || 0,
+        risk_profile: reportData?.risk_profile || 'medium',
+        coverage_requirements: Array.isArray(reportData?.coverage_requirements) 
+          ? reportData.coverage_requirements 
+          : [],
+        geographic_location: 'UK'
+      };
+    } else {
+      clientProfile = client_data;
+    }
+
+    console.log('Client profile:', clientProfile);
+
+    // Fetch similar clients for pattern analysis
+    const { data: similarClients, error: similarError } = await supabase
+      .from('client_reports')
+      .select('*')
+      .ilike('report_data->>industry', `%${clientProfile.industry}%`)
+      .limit(10);
+
+    if (similarError) {
+      console.log('Similar clients fetch error (non-fatal):', similarError.message);
+    }
+
+    // Fetch underwriter appetite data
+    const { data: appetiteData, error: appetiteError } = await supabase
+      .from('underwriter_appetite_data')
+      .select('*');
+
+    if (appetiteError) {
+      console.log('Appetite data fetch error (non-fatal):', appetiteError.message);
+    }
+
+    // Fetch placement outcomes for historical performance
+    const { data: placementData, error: placementError } = await supabase
+      .from('placement_outcomes')
+      .select('*')
+      .eq('industry', clientProfile.industry.toLowerCase());
+
+    if (placementError) {
+      console.log('Placement data fetch error (non-fatal):', placementError.message);
+    }
+
+    console.log('Data fetched. Analyzing with Gemini AI...');
+
+    const geminiApiKey = Deno.env.get('GOOGLE_GEMINI_API_KEY');
+    if (!geminiApiKey) {
+      throw new Error('GOOGLE_GEMINI_API_KEY is not configured');
+    }
+
+    // Create comprehensive analysis prompt
+    const analysisPrompt = `Analyze this insurance placement scenario and provide enhanced insurer recommendations:
+
+Client Profile:
+- Name: ${clientProfile.client_name}
+- Industry: ${clientProfile.industry}
+- Revenue: ${clientProfile.revenue_band}
+- Employees: ${clientProfile.employee_count}
+- Risk Profile: ${clientProfile.risk_profile}
+- Coverage Needs: ${clientProfile.coverage_requirements.join(', ')}
+
+Similar Clients Performance:
+${(similarClients || []).slice(0, 3).map(c => `- ${c.client_name}: ${c.status || 'active'}`).join('\n')}
+
+Underwriter Appetite Data:
+${(appetiteData || []).slice(0, 5).map(u => `- ${u.underwriter_name}: ${u.target_sectors?.join(', ') || 'general'}`).join('\n')}
+
+Market Intelligence:
+${(placementData || []).slice(0, 3).map(p => `- ${p.underwriter_name}: ${p.outcome} (${p.response_time_days} days)`).join('\n')}
+
+Provide a JSON array of enhanced insurer matches with this exact structure:
+[{
+  "underwriter_name": "string",
+  "match_score": number (0-100),
+  "confidence_level": "high" | "medium" | "low",
+  "match_reasons": ["string"],
+  "concerns": ["string"],
+  "recommended_approach": "string",
+  "estimated_win_probability": number (0-100),
+  "historical_performance": {
+    "win_rate": number (0-1),
+    "avg_response_time": number,
+    "typical_premium_adjustment": number
+  },
+  "appetite_alignment": {
+    "industry_fit": number (0-100),
+    "revenue_alignment": number (0-100),
+    "coverage_expertise": number (0-100),
+    "risk_appetite_match": number (0-100)
+  },
+  "market_intelligence": {
+    "recent_activity": "string",
+    "competitive_position": "string",
+    "capacity_status": "string"
+  },
+  "similar_clients_success": {
+    "count": number,
+    "examples": ["string"],
+    "success_rate": number (0-100)
+  }
+}]
+
+Return 5-8 matches sorted by match_score descending.`;
+
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
