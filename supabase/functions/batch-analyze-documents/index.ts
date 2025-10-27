@@ -133,15 +133,7 @@ serve(async (req) => {
     // STEP 2: Build comprehensive prompt with all documents
     console.log('[batch-analyze] Building batch analysis prompt...');
     
-    const systemPrompt = `You are CoverCompass AI, a specialist insurance document analyzer. You will receive multiple insurance documents (quotes and policy wordings) and must perform a comprehensive comparison analysis.
-
-Your task:
-1. Classify each document (carrier, type, version)
-2. Extract key data from each document
-3. Compare all documents across selected coverage sections
-4. Identify gaps, advantages, and recommendations
-
-Return structured JSON with complete analysis.`;
+    const systemPrompt = `You are CoverCompass AI, a specialist insurance document analyzer. Extract ONLY actual values as stated in documents. Never infer missing cover - only flag what's explicitly absent. You must return structured JSON with exact verbatim values and page references.`;
 
     const sectionMapping: Record<string, string> = {
       'professional_indemnity': 'Professional Indemnity',
@@ -156,56 +148,156 @@ Return structured JSON with complete analysis.`;
     
     const userPrompt = `Analyze these ${fetchedDocs.length} insurance documents for ${client_name}.
 
-**Selected Coverage Sections to Analyze:**
-${selectedSectionNames.length > 0 ? selectedSectionNames.join(', ') : 'All sections'}
+**Selected Coverage Sections:** ${selectedSectionNames.length > 0 ? selectedSectionNames.join(', ') : 'All sections'}
 
 **Documents:**
 ${fetchedDocs.map((doc, idx) => `${idx + 1}. ${doc.filename} (${doc.carrier_name}, ${doc.document_type})`).join('\n')}
 
-**Instructions:**
-1. For each document, extract:
-   - Insurer name, policy details, premium
-   - Coverage limits, deductibles, sub-limits
-   - Key terms, exclusions, subjectivities
-   - ONLY for the selected sections above
+**EXTRACTION RULES (CRITICAL - FOLLOW EXACTLY):**
 
-2. Compare all documents:
-   - Premium comparison
-   - Coverage breadth per section
-   - Key differences and gaps
-   - Broker recommendations
+1. EXACT DATA CAPTURE
+   - Always extract stated figures verbatim (e.g. "GBP 25,000 deductible each and every claim")
+   - Include the basis (e.g. "each and every claim", "aggregate", "costs inclusive")
+   - Include section title (e.g. "Insuring Clause 5.D: Crisis Communication Costs")
+   - Provide page reference + verbatim snippet for evidence
 
-3. Output format:
+2. DO NOT INFER "MISSING COVER"
+   - If a limit isn't separately itemised (e.g. AI liability inside PI), record as part of main section
+   - Use "No cover given" ONLY if document explicitly states it or section is entirely absent
+   - Never assume something is excluded just because standalone sub-limit is not shown
+
+3. SUB-LIMIT RECOGNITION (CRITICAL)
+   - Differentiate between headline limits (e.g. Cyber £5m e&e) and small sub-limits (e.g. Post-Breach Remediation £50k)
+   - Do NOT replace a £5m limit with a £50k sub-limit
+   - Show both: headline_limit AND sub_limits array
+   - Extract ALL sub-limits mentioned in the document
+
+4. SPECIAL CONDITIONS & SUBJECTIVITIES
+   - Capture ALL mandatory requirements (e.g. incident response app registration) with deadlines
+   - Store verbatim wording in subjectivities array
+
+5. RETROACTIVE DATE
+   - Always capture retroactive dates as written
+   - If unlimited or "none stated", record "unlimited"
+
+6. INDEMNITY PERIODS & TIME FRANCHISE
+   - Extract exact months/hours
+   - Do not assume industry norms; only capture what is printed
+
+7. PROPERTY/BI/EXTENSIONS
+   - Capture each extension separately (e.g. denial of access, suppliers failure, utilities outage)
+   - Record their sub-limits exactly
+
+8. ERP / RUN-OFF TERMS
+   - Record availability, duration, and cost basis (e.g. "12 months at 100% of annual premium")
+
+**FOR EACH DOCUMENT, EXTRACT:**
+
+**FOR QUOTES:**
+- Insurer_Name, Client_Name, Product_Type, Industry
+- Policy_Number, Quote_Reference, Quote_Date
+- Policy_Start_Date, Policy_End_Date
+- Premium_Total_Annual, Premium_Currency
+- professional_indemnity: {limit, deductible, retroactive_date, source}
+- cyber: {headline_limit, deductible, sub_limits: [{coverage, limit, deductible}]}
+- crime: {funds_transfer_fraud, customer_payment_fraud}
+- business_interruption: {indemnity_period, time_franchise, extensions: []}
+- property: {buildings, general_contents, equipment}
+- employers_liability: {limit, deductible}
+- public_liability: {limit, deductible}
+- territorial_limits
+- subjectivities: [{requirement, deadline, page_ref, verbatim_excerpt}]
+- erp: {duration, cost}
+- Inclusions, Exclusions_Summary
+- attack_points: [{issue, value, benchmark}]
+
+**FOR POLICY WORDINGS:**
+- insurer_name, form_name_or_code, version_date, coverage_trigger
+- insuring_clauses: [{title, summary, page_ref}]
+- definitions_notable: [{term, delta_from_market, verbatim_excerpt, page_ref}]
+- exclusions, conditions, warranties, endorsements
+- limits: [{limit_type, amount, currency, description, page_ref}]
+- sublimits: [{coverage_name, limit, currency, applies_to, description, page_ref}]
+- inner_limits_and_sub_limits: [{coverage_section, limit_amount, currency, limit_type, applies_to, verbatim_text, page_ref}]
+- deductibles_excesses
+- defence_costs_position
+- extended_reporting_period, claims_control, claims_notification, cancellation
+- governing_law_and_jurisdiction, dispute_resolution
+- TLDR: {3_bullet_summary, what_is_different_or_unusual, client_attention_items, overall_complexity}
+
+**COMPARISON OUTPUT FORMAT:**
 {
   "insurers": [
     {
-      "insurer_name": "string",
+      "insurer_name": "Hiscox",
+      "document_type": "Quote",
       "premiums": {
-        "total_payable": number,
-        "annual_premium": number,
-        "currency": "GBP"
-      }
+        "total_payable": 15234.50,
+        "annual_premium": 15234.50,
+        "annual_total": 15234.50,
+        "ipt": 1234.50,
+        "currency": "GBP",
+        "base_premium_by_section": {
+          "professional_indemnity": 8000,
+          "cyber": 3000,
+          "property": 2000
+        }
+      },
+      "extracted_data": { /* full extraction as above */ }
     }
   ],
   "product_comparisons": [
     {
-      "product": "Professional Indemnity|Cyber & Data|etc",
+      "product": "Professional Indemnity",
       "carrier_results": [
         {
-          "carrier": "string",
-          "key_terms": ["limit: X", "deductible: Y"],
+          "carrier": "Hiscox",
+          "key_terms": [
+            "Limit: £5,000,000 each and every claim",
+            "Deductible: £25,000 each and every claim including costs",
+            "Retroactive date: 01/08/2023",
+            "Defence costs: Within limit of liability"
+          ],
+          "subjectivities": [
+            "Must register incident response app within 30 days"
+          ],
+          "standout_points": [
+            "Higher deductible than CFC (£25k vs £10k)",
+            "More restrictive retroactive date",
+            "Includes AI liability within main PI cover"
+          ]
+        },
+        {
+          "carrier": "CFC",
+          "key_terms": [ /* similar detail */ ],
           "subjectivities": [],
           "standout_points": []
         }
       ],
-      "broker_notes": "Coverage assessment"
+      "broker_notes": "Hiscox offers broader AI coverage but higher deductible. CFC has better retroactive coverage."
+    },
+    {
+      "product": "Cyber & Data",
+      "carrier_results": [ /* similar detail */ ],
+      "broker_notes": "..."
     }
   ],
-  "overall_findings": ["key insight 1", "key insight 2"],
+  "overall_findings": [
+    "CFC offers £10k lower deductible across all sections",
+    "Hiscox has more sub-limits which may restrict certain claims",
+    "Both include post-breach services but CFC limit is higher (£100k vs £50k)"
+  ],
   "failed_documents": []
 }
 
-**CRITICAL:** Only analyze sections in the selected list: ${selectedSectionNames.join(', ')}. Do not analyze other sections.`;
+**QUALITY CHECKS:**
+- Cross-check that every headline £5m limit is recorded, even if sub-limits exist
+- Highlight "No cover given" explicitly where stated
+- Flag unusually high deductibles (>£25k), short BI periods (<24m), or low crime limits (<£250k)
+- Base only on extracted values, not assumptions
+- Extract EVERY monetary amount mentioned in documents
+
+**CRITICAL:** Only analyze these sections: ${selectedSectionNames.join(', ')}. Do not analyze or include other sections in the output.`;
 
     // STEP 3: Call Gemini with all documents in one batch
     console.log('[batch-analyze] Calling Gemini with batch...');
