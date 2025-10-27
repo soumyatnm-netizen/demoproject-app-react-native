@@ -346,10 +346,10 @@ ${fetchedDocs.map((doc, idx) => `${idx + 1}. ${doc.filename} (${doc.carrier_name
     console.log('[batch-analyze] Calling Gemini with batch...');
     const t_ai_start = performance.now();
     
-    // Prefer the experimental 2.0 flash model but gracefully fallback if overloaded
+    // Use the latest Gemini 2.5 models with fallback options
     const modelFallbackOrder = [
-      'gemini-2.0-flash-exp',
-      'gemini-2.0-flash',
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
       'gemini-1.5-flash'
     ];
 
