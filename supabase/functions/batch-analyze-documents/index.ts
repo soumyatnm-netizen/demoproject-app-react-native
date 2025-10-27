@@ -33,6 +33,49 @@ function pdfToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
+// JSON extraction/repair helpers
+function extractJsonFromText(raw: string): string | null {
+  if (!raw) return null;
+  // Prefer fenced code block ```json ... ```
+  const fence = raw.match(/```json\s*([\s\S]*?)```/i) || raw.match(/```\s*([\s\S]*?)```/i);
+  if (fence?.[1]) return fence[1].trim();
+  // Fallback: grab the largest {...} slice
+  const first = raw.indexOf('{');
+  const last = raw.lastIndexOf('}');
+  if (first !== -1 && last !== -1 && last > first) {
+    return raw.slice(first, last + 1).trim();
+  }
+  return null;
+}
+
+function stripControlChars(s: string): string {
+  // Remove non-printable control chars except tab/newline/carriage return
+  return s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
+}
+
+function removeTrailingCommas(s: string): string {
+  return s.replace(/,(\s*[}\]])/g, '$1');
+}
+
+function tryParseJsonLoose(raw: string): any {
+  // 1) direct parse
+  try { return JSON.parse(raw); } catch {}
+  // 2) extract JSON from text or fences
+  const extracted = extractJsonFromText(raw);
+  if (extracted) {
+    const cleaned = removeTrailingCommas(stripControlChars(extracted));
+    try { return JSON.parse(cleaned); } catch (e) {
+      // try once more removing stray backticks
+      const noTicks = cleaned.replace(/```/g, '');
+      return JSON.parse(noTicks);
+    }
+  }
+  // 3) last resort: remove backticks and attempt parse
+  const noTicks = raw.replace(/```/g, '');
+  const cleaned = removeTrailingCommas(stripControlChars(noTicks));
+  return JSON.parse(cleaned);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { status: 200, headers: corsHeaders(req) });
@@ -369,15 +412,21 @@ ${fetchedDocs.map((doc, idx) => `${idx + 1}. ${doc.filename} (${doc.carrier_name
           });
         }
 
-        // Parse response
-        const geminiData = JSON.parse(geminiText);
-        const content = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-        
-        if (!content) {
-          throw new Error('No content in Gemini response');
-        }
+// Parse response (robust JSON handling)
+const geminiData = JSON.parse(geminiText);
+const content = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
 
-        const analysis = typeof content === 'string' ? JSON.parse(content) : content;
+if (!content) {
+  throw new Error('No content in Gemini response');
+}
+
+let analysis: any;
+try {
+  analysis = typeof content === 'string' ? tryParseJsonLoose(content) : content;
+} catch (parseErr) {
+  console.error('[batch-analyze] JSON parse failed, content head:', String(content).slice(0, 200));
+  throw new Error('Invalid JSON from model: ' + (parseErr instanceof Error ? parseErr.message : String(parseErr)));
+}
         
         const t_ai = performance.now() - t_ai_start;
         const t_total = performance.now() - t0;
