@@ -814,28 +814,35 @@ ${fetchedDocs.map((doc, idx) => `${idx + 1}. ${doc.filename} (${doc.carrier_name
               break; // break attempts loop, continue outer loop to next model
             }
 
-            // Non-retriable error -> return immediately
-            console.error('[batch-analyze] Non-retriable Gemini error (returning):', String(geminiText).slice(0, 400));
-            return json(req, geminiRes.status, { 
-              ok: false, 
-              error: String(geminiText).slice(0, 400),
-              retriable: false
-            });
+            // Non-retriable error -> move to next model rather than failing the whole request
+            console.error('[batch-analyze] Non-retriable Gemini error (continuing to next model):', String(geminiText).slice(0, 400));
+            lastError = parsedErr || geminiText;
+            break; // break attempts loop; try next model
+          }
           }
 
           // Parse response (robust JSON handling)
           const geminiData = JSON.parse(geminiText);
-          const content = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
 
-          if (!content) {
+          const candidate = geminiData.candidates?.[0];
+          const partsOut = candidate?.content?.parts ?? [];
+          const combinedText = partsOut
+            .map((p: any) => typeof p?.text === 'string' ? p.text : '')
+            .filter(Boolean)
+            .join('\n')
+            .trim();
+
+          if (!combinedText) {
+            const finishReason = candidate?.finishReason || geminiData.finishReason;
+            console.error('[batch-analyze] Empty content from Gemini.', { finishReason });
             throw new Error('No content in Gemini response');
           }
 
           let analysis: any;
           try {
-            analysis = typeof content === 'string' ? tryParseJsonLoose(content) : content;
+            analysis = tryParseJsonLoose(combinedText);
           } catch (parseErr) {
-            console.error('[batch-analyze] JSON parse failed, content head:', String(content).slice(0, 200));
+            console.error('[batch-analyze] JSON parse failed, content head:', String(combinedText).slice(0, 200));
             throw new Error('Invalid JSON from model: ' + (parseErr instanceof Error ? parseErr.message : String(parseErr)));
           }
 
@@ -875,17 +882,10 @@ ${fetchedDocs.map((doc, idx) => `${idx + 1}. ${doc.filename} (${doc.carrier_name
       // try next model
     }
 
-    // All retries and model fallbacks failed
-    return json(req, 503, { 
+    // All retries and model fallbacks failed – return gracefully with ok:false to avoid client transport retries
+    return json(req, 200, { 
       ok: false, 
-      error: `Batch analysis failed across all models. Last error: ${typeof lastError === 'string' ? lastError.slice(0, 200) : JSON.stringify(lastError).slice(0, 200)}`,
-      retriable: true
-    });
-
-    // All retries failed
-    return json(req, 500, { 
-      ok: false, 
-      error: `Batch analysis failed after ${maxRetries} attempts. Last error: ${JSON.stringify(lastError).slice(0, 200)}`,
+      error: `Batch analysis failed across all models. Last error: ${typeof lastError === 'string' ? lastError.slice(0, 200) : (lastError?.message || JSON.stringify(lastError)?.slice(0, 200))}`,
       retriable: true
     });
 
