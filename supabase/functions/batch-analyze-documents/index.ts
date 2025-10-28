@@ -736,9 +736,8 @@ ${fetchedDocs.map((doc, idx) => `${idx + 1}. ${doc.filename} (${doc.carrier_name
     console.log('[batch-analyze] Calling Gemini with batch...');
     const t_ai_start = performance.now();
     
-    // Use the latest Gemini 2.5 models with fallback options
+    // Use supported Gemini 2.5 models first; skip unsupported 1.5 variants
     const modelFallbackOrder = [
-      'gemini-1.5-flash',
       'gemini-2.5-flash',
       'gemini-2.5-flash-lite'
     ];
@@ -803,6 +802,12 @@ ${fetchedDocs.map((doc, idx) => `${idx + 1}. ${doc.filename} (${doc.carrier_name
               continue;
             }
 
+            // If model is not available in this API version or project, try next model
+            if (geminiRes.status === 404) {
+              console.warn(`[batch-analyze] Model ${modelName} not available (404). Moving to next model...`);
+              break; // break attempts loop, continue outer loop to next model
+            }
+
             // If retriable but we've exhausted retries, try next model in the list
             if (retriable) {
               console.warn(`[batch-analyze] Exhausted retries for ${modelName}, moving to next model if available...`);
@@ -810,7 +815,7 @@ ${fetchedDocs.map((doc, idx) => `${idx + 1}. ${doc.filename} (${doc.carrier_name
             }
 
             // Non-retriable error -> return immediately
-            console.error('[batch-analyze] Non-retriable Gemini error:', String(geminiText).slice(0, 400));
+            console.error('[batch-analyze] Non-retriable Gemini error (returning):', String(geminiText).slice(0, 400));
             return json(req, geminiRes.status, { 
               ok: false, 
               error: String(geminiText).slice(0, 400),
