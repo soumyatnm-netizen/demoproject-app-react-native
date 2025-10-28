@@ -819,7 +819,6 @@ ${fetchedDocs.map((doc, idx) => `${idx + 1}. ${doc.filename} (${doc.carrier_name
             lastError = parsedErr || geminiText;
             break; // break attempts loop; try next model
           }
-          }
 
           // Parse response (robust JSON handling)
           const geminiData = JSON.parse(geminiText);
