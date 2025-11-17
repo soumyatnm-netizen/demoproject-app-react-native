@@ -365,7 +365,7 @@ END OF PROMPT
                 }],
                 generationConfig: {
                   temperature: 0,
-                  maxOutputTokens: 2000,
+                  maxOutputTokens: 8000,
                   responseMimeType: 'application/json'
                 }
               }),
