@@ -173,7 +173,6 @@ const DeepComparison = ({ insurers, selectedSections }: DeepComparisonProps) => 
       { key: 'cyber', title: 'Cyber & Data' },
       { key: 'crime', title: 'Crime & Fraud' },
       { key: 'public_products_liability', title: 'Public & Products Liability' },
-      { key: 'employers_liability', title: 'Employers\' Liability' },
       { key: 'property', title: 'Property & Business Interruption' },
     ];
     
