@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import {useState, useEffect, useRef} from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,13 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Upload, 
-  TrendingUp, 
-  Shield, 
-  Award, 
-  AlertTriangle, 
-  CheckCircle, 
+import {
+  Upload,
+  TrendingUp,
+  Shield,
+  Award,
+  AlertTriangle,
+  CheckCircle,
   FileText,
   DollarSign,
   Target,
@@ -22,14 +22,17 @@ import {
   Star,
   Zap,
   X,
-  Download
+  Download, LayoutList
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import CoverageComparisonTable from "./CoverageComparisonTable";
 import PolicyWordingComparison from "./PolicyWordingComparison";
 import { getInsurerInfo } from "@/lib/insurers";
-
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
+import { useReactToPrint } from 'react-to-print';
 interface QuoteRanking {
   quote_id: string;
   insurer_name: string;
@@ -53,6 +56,7 @@ interface ClientProfile {
 }
 
 const InstantQuoteComparison = () => {
+  const reportRef = useRef<HTMLDivElement>(null);
   const [clients, setClients] = useState<ClientProfile[]>([]);
   const [selectedClient, setSelectedClient] = useState<string>("");
   const [uploadedQuotes, setUploadedQuotes] = useState<File[]>([]);
@@ -77,7 +81,7 @@ const InstantQuoteComparison = () => {
     'property'
   ]); // All selected by default
   const { toast } = useToast();
-
+  const [markdownReport, setMarkdownReport] = useState<string | null>(null);
   const coverageSections = [
     { key: 'professional_indemnity', label: 'Professional Indemnity' },
     { key: 'cyber', label: 'Cyber & Data' },
@@ -392,7 +396,7 @@ const InstantQuoteComparison = () => {
     if (!selectedClient || (uploadedQuotes.length === 0 && policyWordingDocs.length === 0)) {
       toast({
         title: "Missing Information",
-        description: "Please select a client and upload at least one quote or policy wording document",
+        description: "Please select a client and upload documents.",
         variant: "destructive",
       });
       return;
@@ -403,60 +407,61 @@ const InstantQuoteComparison = () => {
     setAnalysisComplete(false);
     setShouldCancel(false);
     setStatusLog([]);
-    
-    addStatusLog('🚀 Starting optimised analysis pipeline...', 'info');
-    
+
+    // Reset previous results to clear the view
+    setRankings([]);
+    setComparisonData(null);
+    setMarkdownReport(null);
+
+    addStatusLog('🚀 Starting comparative analysis...', 'info');
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No authenticated user');
 
       // Get user's company_id
       const { data: profile } = await supabase
-        .from('profiles')
-        .select('company_id')
-        .eq('user_id', user.id)
-        .single();
+          .from('profiles')
+          .select('company_id')
+          .eq('user_id', user.id)
+          .single();
 
-      if (!profile?.company_id) {
-        throw new Error('User profile or company not found');
-      }
+      if (!profile?.company_id) throw new Error('User profile not found');
 
       const allDocs: File[] = [...uploadedQuotes, ...policyWordingDocs];
       const docTypes = [
         ...uploadedQuotes.map(() => 'Quote'),
         ...policyWordingDocs.map(() => 'PolicyWording')
       ];
-      
-      addStatusLog(`📄 Processing ${allDocs.length} document(s) in parallel...`, 'info');
-      
-      // PHASE 1: Upload all documents (parallel)
+
+      // --- PHASE 1: UPLOAD DOCUMENTS ---
       setProcessingStep("Uploading documents...");
       const t_upload_start = performance.now();
-      
+
       const uploadPromises = allDocs.map(async (file, idx) => {
         const fileName = `${user.id}/${Date.now()}-${idx}-${file.name}`;
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('documents')
-          .upload(fileName, file);
+            .from('documents')
+            .upload(fileName, file);
 
         if (uploadError) throw uploadError;
 
         const { data: docData, error: docError } = await supabase
-          .from('documents')
-          .insert({
-            user_id: user.id,
-            company_id: profile.company_id,
-            filename: file.name,
-            storage_path: uploadData.path,
-            file_type: file.type,
-            file_size: file.size,
-            status: 'uploaded'
-          })
-          .select()
-          .single();
+            .from('documents')
+            .insert({
+              user_id: user.id,
+              company_id: profile.company_id,
+              filename: file.name,
+              storage_path: uploadData.path,
+              file_type: file.type,
+              file_size: file.size,
+              status: 'uploaded'
+            })
+            .select()
+            .single();
 
         if (docError) throw docError;
-        
+
         return { documentId: docData.id, filename: file.name, type: docTypes[idx] };
       });
 
@@ -464,16 +469,10 @@ const InstantQuoteComparison = () => {
       const t_upload = performance.now() - t_upload_start;
       addStatusLog(`✓ Uploaded ${uploadedDocs.length} documents in ${Math.round(t_upload)}ms`, 'success');
 
-      // PHASE 2: Split batch analyze - process Quotes and Wordings separately (parallel)
-      if (shouldCancel) {
-        toast({ title: "Cancelled", description: "Analysis cancelled by user" });
-        return;
-      }
+      // --- PHASE 2: GENERATE REPORT ---
+      setProcessingStep("Generating Comparative Report with AI...");
 
-      setProcessingStep("Analyzing documents with AI...");
-      const t_batch_start = performance.now();
-      
-      // Split documents by type
+      // Prepare metadata for all documents in a single batch
       const documentsForBatch = uploadedDocs.map((doc, idx) => ({
         carrier_name: doc.filename.split('_')[0] || 'Unknown',
         document_type: docTypes[idx],
@@ -481,402 +480,64 @@ const InstantQuoteComparison = () => {
         document_id: doc.documentId
       }));
 
-      const quoteDocs = documentsForBatch.filter(d => d.document_type === 'Quote');
-      const wordingDocs = documentsForBatch.filter(d => d.document_type === 'PolicyWording');
-
-      addStatusLog(`🔄 Processing ${quoteDocs.length} quotes and ${wordingDocs.length} wordings sequentially (reduced load)...`, 'info');
-
       const selectedClientData = clients.find(c => c.id === selectedClient);
-      
-      const basePayload = {
+
+      // CONSTRUCT PAYLOAD WITH "comparison_report" MODE
+      const payload = {
         client_name: selectedClientData?.client_name || 'Unknown Client',
         client_ref: `CC-${Date.now()}`,
         industry: selectedClientData?.industry || 'Professional Services',
         jurisdiction: 'UK',
-        selectedSections: selectedSections
+        selectedSections: selectedSections,
+        mode: "comparison_report", // <--- KEY CHANGE: Request Report Mode
+        documents: documentsForBatch
       };
 
-      // Robust invoker with retries for transient network errors (e.g. "Failed to fetch")
-      const callBatch = async (docs: any[]) => {
-        const maxAttempts = 4;
-        let lastErr: any = null;
-        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-          try {
-            const res = await supabase.functions.invoke('batch-analyze-documents', {
-              body: { ...basePayload, documents: docs }
-            });
-            if ((res as any)?.error) throw (res as any).error;
-            return res;
-          } catch (e: any) {
-            // Network flake or SDK transport issue – try a direct fetch fallback once per attempt
-            lastErr = e;
-            try {
-              const { data: sessionData } = await supabase.auth.getSession();
-              const accessToken = sessionData?.session?.access_token;
-              const direct = await fetch('https://ijhiavpjobzfxoirhnux.supabase.co/functions/v1/batch-analyze-documents', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
-                  'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlqaGlhdnBqb2J6ZnhvaXJobnV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2OTg0ODgsImV4cCI6MjA3MTI3NDQ4OH0.eRjLwH8fCkqaMNnW0R248u213qcBRBLYrc9ZGiAm2Z4'
-                },
-                body: JSON.stringify({ ...basePayload, documents: docs })
-              });
-              if (direct.ok) {
-                const data = await direct.json();
-                return { data, error: null } as any;
-              }
-            } catch (_) {
-              // ignore fallback error; continue with retry/backoff
-            }
+      addStatusLog(`🧠 Comparing ${documentsForBatch.length} documents...`, 'info');
 
-            const msg = e?.message || String(e);
-            addStatusLog(`Retry ${attempt}/${maxAttempts} for batch due to: ${msg}`, 'error');
-            if (attempt < maxAttempts) {
-              const isWorkerLimit = msg?.toLowerCase?.().includes('worker_limit') || msg?.toLowerCase?.().includes('compute resources');
-              const base = isWorkerLimit ? 2000 : 800;
-              const delay = Math.min(10000, Math.pow(2, attempt) * base + Math.floor(Math.random() * 500));
-              await new Promise(r => setTimeout(r, delay));
-            }
-          }
-        }
-        throw lastErr || new Error('Failed to call batch-analyze-documents');
-      };
-
-      // Process batches sequentially to avoid Supabase WORKER_LIMIT under load
-      let quoteResult: any = { status: 'fulfilled', value: { data: null, error: null } };
-      let wordingResult: any = { status: 'fulfilled', value: { data: null, error: null } };
-
-      if (quoteDocs.length > 0) {
-        addStatusLog(`▶️ Analyzing ${quoteDocs.length} quote(s)...`, 'info');
-        try {
-          const res = await callBatch(quoteDocs);
-          quoteResult = { status: 'fulfilled', value: res };
-        } catch (err) {
-          quoteResult = { status: 'rejected', reason: err };
-        }
-      }
-
-      // small breather to free the worker before starting the next batch
-      await new Promise(r => setTimeout(r, 1200));
-
-      if (wordingDocs.length > 0) {
-        addStatusLog(`▶️ Analyzing ${wordingDocs.length} wording(s)...`, 'info');
-        try {
-          const res = await callBatch(wordingDocs);
-          wordingResult = { status: 'fulfilled', value: res };
-        } catch (err) {
-          wordingResult = { status: 'rejected', reason: err };
-        }
-      }
-
-      const t_batch = performance.now() - t_batch_start;
-
-      // Handle results
-      let quoteData = null;
-      let wordingData = null;
-      const failedBatches: string[] = [];
-
-      if (quoteResult.status === 'fulfilled' && !quoteResult.value.error) {
-        quoteData = quoteResult.value.data;
-        if (quoteData?.ok) {
-          addStatusLog(`✓ Analyzed ${quoteDocs.length} quotes successfully`, 'success');
-        }
-      } else {
-        const error = quoteResult.status === 'rejected' ? quoteResult.reason : quoteResult.value.error;
-        addStatusLog(`❌ Quote batch failed: ${error?.message || 'Unknown error'}`, 'error');
-        failedBatches.push('Quotes');
-      }
-
-      if (wordingResult.status === 'fulfilled' && !wordingResult.value.error) {
-        wordingData = wordingResult.value.data;
-        if (wordingData?.ok) {
-          addStatusLog(`✓ Analyzed ${wordingDocs.length} wordings successfully`, 'success');
-        }
-      } else {
-        const error = wordingResult.status === 'rejected' ? wordingResult.reason : wordingResult.value.error;
-        addStatusLog(`❌ Wording batch failed: ${error?.message || 'Unknown error'}`, 'error');
-        failedBatches.push('Wordings');
-      }
-
-      // Check if we have at least some data
-      if (!quoteData?.ok && !wordingData?.ok) {
-        throw new Error(`Both batches failed. ${failedBatches.join(' and ')} could not be processed.`);
-      }
-
-      // Merge results from both batches
-      const mergedInsurers = [
-        ...(quoteData?.analysis?.insurers || []),
-        ...(wordingData?.analysis?.insurers || [])
-      ];
-
-      // Deduplicate insurers by name
-      const uniqueInsurers = Array.from(
-        new Map(mergedInsurers.map(i => [i.insurer_name || i.carrier, i])).values()
-      );
-
-      const mergedComparisons = [
-        ...(quoteData?.analysis?.product_comparisons || []),
-        ...(wordingData?.analysis?.product_comparisons || [])
-      ];
-
-      const mergedFindings = [
-        ...(quoteData?.analysis?.overall_findings || []),
-        ...(wordingData?.analysis?.overall_findings || [])
-      ];
-
-      // Start with failed docs from successful batches
-      let mergedFailedDocs = [
-        ...(quoteData?.analysis?.failed_documents || []),
-        ...(wordingData?.analysis?.failed_documents || [])
-      ];
-
-      // If a batch failed entirely, surface its documents as failed so the UI warns properly
-      if (failedBatches.includes('Wordings')) {
-        mergedFailedDocs = [
-          ...mergedFailedDocs,
-          ...wordingDocs.map(d => ({
-            filename: d.filename,
-            type: 'PolicyWording',
-            classification: { carrier: d.carrier_name || (d.filename?.split('_')[0] || 'Unknown') }
-          }))
-        ];
-      }
-      if (failedBatches.includes('Quotes')) {
-        mergedFailedDocs = [
-          ...mergedFailedDocs,
-          ...quoteDocs.map(d => ({
-            filename: d.filename,
-            type: 'Quote',
-            classification: { carrier: d.carrier_name || (d.filename?.split('_')[0] || 'Unknown') }
-          }))
-        ];
-      }
-
-      addStatusLog(`✓ Merged results: ${uniqueInsurers.length} insurers, ${mergedComparisons.length} comparisons`, 'success');
-
-      // Build compatibility data for the rest of the flow
-      const extractedDocs = uploadedDocs.map((doc, idx) => ({
-        documentId: doc.documentId,
-        filename: doc.filename,
-        type: docTypes[idx],
-        classification: { carrier: doc.filename.split('_')[0] || 'Unknown' }
-      }));
-
-      const extractedIds = extractedDocs.map(doc => ({
-        documentId: doc.documentId,
-        type: doc.type,
-        carrier: doc.classification?.carrier || 'Unknown'
-      }));
-      setExtractedDocumentIds(extractedIds);
-
-      // Track document counts for summary
-      const quoteCount = extractedDocs.filter(d => d.type === 'Quote').length;
-      const wordingCount = extractedDocs.filter(d => d.type === 'PolicyWording').length;
-
-      // Derive a minimal comparison summary if none provided
-      let summary: any[] = (
-        quoteData?.analysis?.comparison_summary ||
-        wordingData?.analysis?.comparison_summary ||
-        []
-      );
-      if ((!summary || summary.length === 0)) {
-        if (uniqueInsurers.length > 0) {
-          summary = uniqueInsurers.map((i: any) => ({
-            insurer_name: i.insurer_name || i.carrier || 'Unknown',
-            premium_amount: Number(
-              i.premiums?.total_payable ??
-              i.premiums?.annual_total ??
-              i.premiums?.annual_premium ??
-              0
-            ),
-            coverage_score: 0,
-            overall_score: 0,
-          }));
-        } else if (mergedComparisons.length > 0) {
-          const first = (mergedComparisons as any)[0];
-          summary = (first?.carrier_results || []).map((cr: any) => ({
-            insurer_name: cr.carrier || 'Unknown',
-            premium_amount: Number(cr.premiums?.total_payable ?? 0),
-            coverage_score: 0,
-            overall_score: 0,
-          }));
-        }
-      }
-
-      // Create merged comparison data
-      const comparisonData = {
-        ok: true,
-        analysis: {
-          insurers: uniqueInsurers,
-          product_comparisons: mergedComparisons,
-          overall_findings: mergedFindings,
-          failed_documents: mergedFailedDocs,
-          comparison_summary: summary
-        },
-        meta: {
-          total_ms: Math.round(t_batch),
-          quotes_processed: quoteDocs.length,
-          wordings_processed: wordingDocs.length
-        }
-      };
-
-      // Track failed documents
-      const failedDocs = comparisonData.analysis.failed_documents || [];
-
-      // Set timing variables for compatibility with logging below
-      const t_preflight = 0; // No separate classification step in batch mode
-      const t_extract = 0; // No separate extraction step in batch mode
-      const t_aggregate = t_batch; // Batch does everything
-      
-      // Debug log the analysis structure
-      console.log('[DEBUG] Comparison analysis structure:', comparisonData.analysis);
-      console.log('[DEBUG] Analysis keys:', Object.keys(comparisonData.analysis || {}));
-      console.log('[DEBUG] Has insurers?', !!comparisonData.analysis?.insurers);
-      console.log('[DEBUG] Insurers count:', comparisonData.analysis?.insurers?.length || 0);
-      
-      // Store the full comparison data for display, including failed documents
-      const analysisWithWarnings = {
-        ...comparisonData.analysis,
-        failed_documents: failedDocs.map((doc: any) => ({
-          filename: doc.filename,
-          type: doc.type,
-          carrier: doc.classification?.carrier || 'Unknown'
-        }))
-      };
-      
-      console.log('[DEBUG] Final comparison data to display:', analysisWithWarnings);
-      console.log('[DEBUG] Failed documents:', analysisWithWarnings.failed_documents);
-      
-      setComparisonData(analysisWithWarnings);
-      setRankings(summary || []);
-      setScoredRankings(summary || []);
-      setAnalysisComplete(true);
-
-      // Final timing summary
-      const t_total = performance.now() - t_start;
-      addStatusLog(`\n🎉 TOTAL TIME: ${Math.round(t_total)}ms`, 'success');
-      addStatusLog(`  • Upload: ${Math.round(t_upload)}ms`, 'info');
-      addStatusLog(`  • Classify: ${Math.round(t_preflight)}ms`, 'info');
-      addStatusLog(`  • Extract: ${Math.round(t_extract)}ms`, 'info');
-      addStatusLog(`  • Compare: ${Math.round(t_aggregate)}ms`, 'info');
-
-      let successMessage = "Analysis complete!";
-      if (quoteCount > 0 && wordingCount > 0) {
-        successMessage = `Analysed ${quoteCount} quote${quoteCount !== 1 ? 's' : ''} and ${wordingCount} wording${wordingCount !== 1 ? 's' : ''} in ${Math.round(t_total / 1000)}s`;
-      } else if (quoteCount > 0) {
-        successMessage = `Ranked ${quoteCount} quote${quoteCount !== 1 ? 's' : ''} in ${Math.round(t_total / 1000)}s`;
-      } else if (wordingCount > 0) {
-        successMessage = `Analysed ${wordingCount} wording${wordingCount !== 1 ? 's' : ''} in ${Math.round(t_total / 1000)}s`;
-      }
-
-      toast({
-        title: "Analysis Complete! ⚡",
-        description: successMessage,
+      // Call Edge Function
+      const { data, error } = await supabase.functions.invoke('batch-analyze-documents', {
+        body: payload
       });
 
-      // Auto-save this Instant Comparison to the 'comparisons' table so it appears in
-      // the Quote Comparison -> Recent Comparisons list
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('No authenticated user');
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.error || 'Analysis failed');
 
-        // Build a simplified comparison payload compatible with QuoteComparison view
-        // Use analysisWithWarnings (the fresh data) not comparisonData (old state)
-        let summary: any[] = (analysisWithWarnings.comparison_summary || []) as any[];
-        console.log('[Auto-save] Comparison summary:', summary);
-        
-        // Fallback: if no comparison_summary present (e.g., comprehensive-comparison output),
-        // derive a minimal summary from insurers or product comparisons
-        if (!summary || summary.length === 0) {
-          const insurers = (analysisWithWarnings as any)?.insurers || [];
-          if (Array.isArray(insurers) && insurers.length > 0) {
-            summary = insurers.map((i: any) => ({
-              insurer_name: i.insurer_name || i.carrier || 'Unknown',
-              premium_amount: Number(
-                i.premiums?.total_payable ??
-                i.premiums?.annual_total ??
-                i.premiums?.annual_premium ??
-                0
-              ),
-              coverage_score: 0,
-              overall_score: 0,
-            }));
-          } else if (Array.isArray((analysisWithWarnings as any)?.product_comparisons)) {
-            const first = (analysisWithWarnings as any).product_comparisons[0];
-            summary = (first?.carrier_results || []).map((cr: any) => ({
-              insurer_name: cr.carrier || 'Unknown',
-              premium_amount: Number(cr.premiums?.total_payable ?? 0),
-              coverage_score: 0,
-              overall_score: 0,
-            }));
-          }
-          console.log('[Auto-save] Built fallback summary from analysis:', summary);
-        }
-        
-        const simpleComparison = (summary || []).map((r: any) => ({
-          insurer: r.insurer_name || r.insurer || 'Unknown',
-          premium: Number(r.premium_amount) || Number(r.premium) || 0,
-          coverage: Math.round(Number(r.coverage_score) || 0),
-          deductible: 0,
-          score: Math.round(Number(r.overall_score) || 0),
+      // HANDLE MARKDOWN RESPONSE
+      if (data.report_markdown) {
+        setMarkdownReport(data.report_markdown);
+        setAnalysisComplete(true);
+
+        // Update processed IDs state for UI consistency
+        const extractedIds = documentsForBatch.map(doc => ({
+          documentId: doc.document_id,
+          type: doc.document_type,
+          carrier: doc.carrier_name
         }));
+        setExtractedDocumentIds(extractedIds);
 
-        console.log('[Auto-save] Simple comparison to save:', simpleComparison);
+        const t_total = performance.now() - t_start;
+        addStatusLog(`🎉 Report Generated in ${Math.round(t_total / 1000)}s`, 'success');
 
-        const uploadedQuoteDocIds = (uploadedDocs || [])
-          .filter((d: any) => d.type === 'Quote')
-          .map((d: any) => d.documentId);
-
-        const extractedQuoteDocIds = (extractedDocs || [])
-          .filter((d: any) => d.type === 'Quote')
-          .map((d: any) => d.documentId);
-
-        const quoteDocIds = uploadedQuoteDocIds.length > 0 ? uploadedQuoteDocIds : extractedQuoteDocIds;
-
-        // Map document IDs to structured quote IDs for proper linking in Recent Comparisons
-        const { data: structuredRows, error: sqErr } = await supabase
-          .from('structured_quotes')
-          .select('id, document_id')
-          .in('document_id', quoteDocIds);
-        if (sqErr) console.warn('[Auto-save] structured_quotes lookup error:', sqErr);
-        const quoteIds = (structuredRows?.map((r: any) => r.id) || quoteDocIds);
-
-        const nameClient = selectedClientData?.client_name || 'Unknown Client';
-        const desc = `Instant comparison of ${quoteCount} quotes${wordingCount > 0 ? ` and ${wordingCount} wordings` : ''}`;
-
-        const { error: insertError } = await supabase
-          .from('comparisons')
-          .insert([
-            {
-              user_id: user.id,
-              company_id: profile.company_id,
-              name: `Instant Comparison - ${nameClient}`,
-              description: desc,
-              client_name: nameClient,
-              quote_ids: quoteIds,
-              comparison_data: simpleComparison as any,
-            },
-          ]);
-
-        if (insertError) throw insertError;
-        addStatusLog('💾 Saved to Recent Comparisons', 'success');
-      } catch (saveErr: any) {
-        console.error('Auto-save comparison failed:', saveErr);
-        addStatusLog('⚠️ Could not auto-save comparison', 'error');
+        toast({
+          title: "Report Ready ⚡",
+          description: "Comparative analysis report generated successfully.",
+        });
+      } else {
+        throw new Error("AI did not return a markdown report.");
       }
-    } catch (error) {
+
+    } catch (error: any) {
       console.error('Analysis error:', error);
-      addStatusLog(`❌ Fatal error: ${error.message}`, 'error');
+      addStatusLog(`❌ Error: ${error.message || 'Unknown error'}`, 'error');
       toast({
         title: "Analysis Failed",
-        description: `Error: ${error.message}`,
+        description: error.message,
         variant: "destructive",
       });
     } finally {
       setIsProcessing(false);
       setProcessingStep("");
-      setShouldCancel(false);
     }
   };
 
@@ -890,6 +551,29 @@ const InstantQuoteComparison = () => {
     });
   };
 
+  const handleDownloadPdf = async () => {
+    if (!reportRef.current) return;
+
+    const html2pdf = (await import("html2pdf.js")).default;
+
+    const opt = {
+      margin:       [10, 10, 10, 10],
+      filename:     `Report_${Date.now()}.pdf`,
+      image:        { type: 'jpeg', quality: 1.0 },
+      html2canvas:  {
+        scale: 4,
+        useCORS: true,
+        letterRendering: true,
+        backgroundColor: "#ffffff",
+      },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf()
+        .set(opt)
+        .from(reportRef.current)
+        .save();
+  };
   // Retry a failed document by re-uploading and merging with existing data
   const retryFailedDocument = async (failedDoc: any) => {
     try {
@@ -1410,6 +1094,40 @@ const InstantQuoteComparison = () => {
 </body>
 </html>`;
   };
+
+
+
+    // Custom component for handling the Image placeholder tag
+    const ImagePlaceholder = ({ children }) => {
+      const textNode = Array.isArray(children) && children.length > 0 ? children[0] : null;
+      const text = textNode && textNode.props ? textNode.props.children : '';
+      // FIX: The regex was missing the closing forward slash and pattern components.
+      // The corrected regex matches '' and captures the content inside the brackets.
+      const diagramTitleMatch = text.match('/\/');
+
+      if (diagramTitleMatch) {
+        const diagramTitle = diagramTitleMatch[1];
+        const visualHint = diagramTitle.includes('structure comparison') ? (
+            <LayoutList className="h-10 w-10 text-indigo-400" />
+        ) : (
+            <AlertTriangle className="h-10 w-10 text-yellow-400" />
+        );
+
+        return (
+            <div className="my-8 p-6 bg-indigo-50 border border-indigo-200 rounded-xl shadow-inner flex flex-col items-center justify-center text-center">
+              {visualHint}
+              <p className="mt-4 text-lg font-semibold text-indigo-800">Visual Placeholder</p>
+              <p className="text-sm text-indigo-700 max-w-xl">
+                A diagram showing: <strong className="font-bold">{diagramTitle}</strong>
+              </p>
+              <p className="text-xs text-indigo-600 mt-2">
+                (This diagram visually illustrates the capacity difference between separate indemnity towers and a single aggregate limit.)
+              </p>
+            </div>
+        );
+      }
+      return <p>{children}</p>;
+    };
 
   const generateProductSections = (comparisonData: any): string => {
     if (!comparisonData?.product_level_breakdown || comparisonData.product_level_breakdown.length === 0) {
@@ -2247,7 +1965,7 @@ const InstantQuoteComparison = () => {
                   </ul>
                   <div className="mt-4 p-3 bg-white/80 rounded border border-amber-200">
                     <p className="text-xs text-amber-800">
-                      <strong>Note:</strong> The comparison below is based on successfully extracted documents only. 
+                      <strong>Note:</strong> The comparison below is based on successfully extracted documents only.
                       For a complete analysis, please re-upload the failed documents or contact support if the issue persists.
                     </p>
                   </div>
@@ -3041,6 +2759,113 @@ const InstantQuoteComparison = () => {
             </p>
           </CardContent>
         </Card>
+      )}
+      {analysisComplete && markdownReport && (
+          <div  className="mt-8 animate-in fade-in duration-500 max-w-8xl mx-auto w-full">
+
+            {/* Action Bar */}
+            <div className="flex justify-end mb-4 pr-2">
+              <Button variant="outline" className="gap-2" onClick={handleDownloadPdf}>
+                <Download className="h-4 w-4" />
+                Export to PDF
+              </Button>
+            </div>
+            <div  ref={reportRef}>
+            <Card className="border-slate-200 shadow-xl bg-white overflow-hidden">
+              {/* Report Header */}
+              <CardHeader className="bg-slate-50 border-b border-slate-100 p-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-emerald-100 rounded-lg">
+                    <FileText className="h-8 w-8 text-emerald-700" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-2xl text-slate-900">Comparative Analysis Report</CardTitle>
+                    <CardDescription className="text-slate-500 mt-1">
+                      Generated assessment of {uploadedQuotes.length} insurance quotes
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+
+              {/* Report Content */}
+              <CardContent className="p-8 md:p-10">
+                {/* The main content container to hold Markdown styling */}
+                <div className="prose prose-slate max-w-none prose-headings:scroll-mt-20">
+
+                  <ReactMarkdown
+                      // Add remarkBreaks to the plugins array
+                      remarkPlugins={[remarkGfm, remarkBreaks]}
+                      components={{
+                        // Style Headings
+                        h1: ({node, ...props}) => (
+                            <h1 className="text-3xl font-bold text-slate-900 border-b pb-4 mb-6 mt-2" {...props} />
+                        ),
+                        h2: ({node, ...props}) => (
+                            <h2 className="text-xl font-semibold text-slate-800 bg-slate-50 p-3 rounded-md border-l-4 border-emerald-500 mt-8 mb-4" {...props} />
+                        ),
+                        h3: ({node, ...props}) => (
+                            <h3 className="text-lg font-semibold text-slate-700 mt-6 mb-2" {...props} />
+                        ),
+                        // Custom handler for paragraphs (p) to check for the [Image of X] tag
+                        p: ({ children }) => {
+                          // Check if the content is a single string child that starts with the image tag pattern
+                          if (children.length === 1 && typeof children[0] === 'string' && children[0].trim().startsWith('[Image of')) {
+                            // Pass the paragraph children to the custom ImagePlaceholder component
+                            return <ImagePlaceholder>{children}</ImagePlaceholder>;
+                          }
+                          // Default rendering for all other paragraphs
+                          return <p>{children}</p>;
+                        },
+
+                        // Style Tables (Crucial for the "PDF Look")
+                        table: ({node, ...props}) => (
+                            <div className="my-6 w-full overflow-hidden rounded-lg border border-slate-200 shadow-sm">
+                              <table className="w-full text-sm text-left" {...props} />
+                            </div>
+                        ),
+                        thead: ({node, ...props}) => (
+                            <thead className="bg-slate-50 text-slate-700 font-semibold uppercase text-xs" {...props} />
+                        ),
+                        th: ({node, ...props}) => (
+                            <th className="px-6 py-4 border-b border-slate-200 bg-slate-50/50" {...props} />
+                        ),
+                        td: ({node, ...props}) => (
+                            <td className="px-6 py-4 border-b border-slate-100 text-slate-600 align-top" {...props} />
+                        ),
+                        tr: ({node, ...props}) => (
+                            <tr className="hover:bg-slate-50/50 transition-colors even:bg-slate-50/30" {...props} />
+                        ),
+
+                        // Style Lists
+                        ul: ({node, ...props}) => (
+                            <ul className="my-4 space-y-2 list-none pl-0" {...props} />
+                        ),
+                        li: ({node, ...props}) => (
+                            <li className="flex gap-2 items-start text-slate-700">
+                              <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                              <span>{props.children}</span>
+                            </li>
+                        ),
+
+                        // Style Emphasis (e.g. Recommendations)
+                        strong: ({node, ...props}) => (
+                            <strong className="font-semibold text-slate-900  px-1 rounded" {...props} />
+                        ),
+
+                        // Style Links/Citations
+                        a: ({node, ...props}) => (
+                            <a className="text-emerald-600 hover:text-emerald-700 underline underline-offset-2" {...props} />
+                        ),
+                      }}
+                  >
+                    {markdownReport}
+                  </ReactMarkdown>
+
+                </div>
+              </CardContent>
+            </Card>
+            </div>
+          </div>
       )}
 
       {/* Policy Wording Comparison Results */}
