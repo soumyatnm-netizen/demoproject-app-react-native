@@ -77,7 +77,6 @@ const InstantQuoteComparison = () => {
     'cyber',
     'crime',
     'public_products_liability',
-    'employers_liability',
     'property'
   ]); // All selected by default
   const { toast } = useToast();
@@ -87,7 +86,6 @@ const InstantQuoteComparison = () => {
     { key: 'cyber', label: 'Cyber & Data' },
     { key: 'crime', label: 'Crime & Fraud' },
     { key: 'public_products_liability', label: 'Public & Products Liability' },
-    { key: 'employers_liability', label: 'Employers\' Liability' },
     { key: 'property', label: 'Property & Business Interruption' },
   ];
 
