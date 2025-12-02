@@ -22,7 +22,10 @@ import {
   Star,
   Zap,
   X,
-  Download, LayoutList
+  Download, LayoutList,
+  Pen, // Added for Edit icon
+  Save, // Added for Save icon
+  RotateCcw // Added for Undo/Cancel icon
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -33,6 +36,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import { useReactToPrint } from 'react-to-print';
+import {Textarea} from "@/components/ui/textarea.tsx";
 interface QuoteRanking {
   quote_id: string;
   insurer_name: string;
@@ -54,7 +58,12 @@ interface ClientProfile {
   revenue_band?: string;
   risk_profile?: string;
 }
-
+interface ReportSection {
+  id: string;
+  title: string;
+  content: string;
+  originalContent: string; // To allow reverting if needed
+}
 const InstantQuoteComparison = () => {
   const reportRef = useRef<HTMLDivElement>(null);
   const [clients, setClients] = useState<ClientProfile[]>([]);
@@ -81,6 +90,11 @@ const InstantQuoteComparison = () => {
   ]); // All selected by default
   const { toast } = useToast();
   const [markdownReport, setMarkdownReport] = useState<string | null>(null);
+  const [reportSections, setReportSections] = useState<ReportSection[]>([]);
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
+  const [tempEditContent, setTempEditContent] = useState("");
+  const [isHideEditIcon, setHideEditIcon] = useState(false);
+
   const coverageSections = [
     { key: 'professional_indemnity', label: 'Professional Indemnity' },
     { key: 'cyber', label: 'Cyber & Data' },
@@ -109,6 +123,96 @@ const InstantQuoteComparison = () => {
     const timestamp = new Date().toLocaleTimeString();
     console.log(`[${timestamp}] ${type.toUpperCase()}:`, message);
     setStatusLog(prev => [...prev, { time: timestamp, message, type }]);
+  };
+
+  useEffect(() => {
+    if (markdownReport) {
+      parseReportToSections(markdownReport);
+    }
+  }, [markdownReport]);
+
+  const parseReportToSections = (markdown: string) => {
+    console.log("markdown",markdown)
+    const sections: ReportSection[] = [];
+
+    // Robust section splitter: capture any Markdown heading (1-6 #) as a section title
+    // and capture the following content until the next heading or end of file.
+    // This reliably picks up headings like:
+    // ### 1. Financial Comparison
+    // #### Section 1 Summary: Financials
+    // #### Executive Short Summary
+    const sectionRegex = /(#{1,6}\s*[^\n]+)(?:\r?\n|\r)([\s\S]*?)(?=(?:#{1,6}\s*[^\n]+)|$)/gi;
+
+    let match;
+    while ((match = sectionRegex.exec(markdown)) !== null) {
+      // match[1] is the raw heading (e.g. "### 1. Financial Comparison")
+      // match[2] is the content until the next heading
+      const rawHeading = match[1].trim();
+      // Remove leading hashes and any surrounding bold markers
+      const cleanTitle = rawHeading.replace(/^#{1,6}\s*/,'').replace(/\*\*/g, '').trim();
+      const content = match[2].trim();
+
+      // create a stable id by slugifying the title (limited length)
+      const slug = cleanTitle
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .slice(0, 40);
+
+      sections.push({
+        id: `section-${sections.length}-${slug}`,
+        title: cleanTitle,
+        content: content,
+        originalContent: content
+      });
+    }
+
+    // If regex fails (e.g. flat structure), fallback to one big section
+    if (sections.length === 0 && markdown.length > 0) {
+      sections.push({
+        id: 'section-main',
+        title: 'Full Report Analysis',
+        content: markdown,
+        originalContent: markdown
+      });
+    }
+
+    setReportSections(sections);
+  };
+
+  // --- Editable Handlers ---
+
+  const handleEditClick = (section: ReportSection) => {
+    // Allow editing only for Summary sections
+    if (!section.title.toLowerCase().includes("summary")) {
+        return; // Prevent editing for non-summary sections
+    }
+
+    setEditingSectionId(section.id);
+    setTempEditContent(section.content);
+  };
+
+  const handleCancelClick = () => {
+    setEditingSectionId(null);
+    setTempEditContent("");
+  };
+
+  const handleSaveClick = (id: string) => {
+    setReportSections(prev =>
+        prev.map(section =>
+            section.id === id
+                ? { ...section, content: tempEditContent }
+                : section
+        )
+    );
+    setEditingSectionId(null);
+    setTempEditContent("");
+
+    toast({
+      title: "Section Updated",
+      description: "Changes saved to the report view.",
+      duration: 2000
+    });
   };
 
   useEffect(() => {
@@ -550,6 +654,7 @@ const InstantQuoteComparison = () => {
   };
 
   const handleDownloadPdf = async () => {
+    setHideEditIcon(true)
     if (!reportRef.current) return;
 
     const html2pdf = (await import("html2pdf.js")).default;
@@ -571,6 +676,7 @@ const InstantQuoteComparison = () => {
         .set(opt)
         .from(reportRef.current)
         .save();
+    setHideEditIcon(false)
   };
   // Retry a failed document by re-uploading and merging with existing data
   const retryFailedDocument = async (failedDoc: any) => {
@@ -2759,109 +2865,128 @@ const InstantQuoteComparison = () => {
         </Card>
       )}
       {analysisComplete && markdownReport && (
-          <div  className="mt-8 animate-in fade-in duration-500 max-w-8xl mx-auto w-full">
+          <div className="mt-10 animate-in fade-in duration-500 max-w-7xl mx-auto w-full">
 
             {/* Action Bar */}
-            <div className="flex justify-end mb-4 pr-2">
-              <Button variant="outline" className="gap-2" onClick={handleDownloadPdf}>
+            <div className="flex justify-end mb-6 pr-2">
+              <Button
+                  variant="outline"
+                  className="gap-2 shadow-sm hover:shadow-md transition-all"
+                  onClick={handleDownloadPdf}
+              >
                 <Download className="h-4 w-4" />
                 Export to PDF
               </Button>
             </div>
-            <div  ref={reportRef}>
-            <Card className="border-slate-200 shadow-xl bg-white overflow-hidden">
-              {/* Report Header */}
-              <CardHeader className="bg-slate-50 border-b border-slate-100 p-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-emerald-100 rounded-lg">
-                    <FileText className="h-8 w-8 text-emerald-700" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-2xl text-slate-900">Comparative Analysis Report</CardTitle>
-                    <CardDescription className="text-slate-500 mt-1">
-                      Generated assessment of {uploadedQuotes.length} insurance quotes
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
 
-              {/* Report Content */}
-              <CardContent className="p-8 md:p-10">
-                {/* The main content container to hold Markdown styling */}
-                <div className="prose prose-slate max-w-none prose-headings:scroll-mt-20">
-
-                  <ReactMarkdown
-                      // Add remarkBreaks to the plugins array
-                      remarkPlugins={[remarkGfm, remarkBreaks]}
-                      components={{
-                        // Style Headings
-                        h1: ({node, ...props}) => (
-                            <h1 className="text-3xl font-bold text-slate-900 border-b pb-4 mb-6 mt-2" {...props} />
-                        ),
-                        h2: ({node, ...props}) => (
-                            <h2 className="text-xl font-semibold text-slate-800 bg-slate-50 p-3 rounded-md border-l-4 border-emerald-500 mt-8 mb-4" {...props} />
-                        ),
-                        h3: ({node, ...props}) => (
-                            <h3 className="text-lg font-semibold text-slate-700 mt-6 mb-2" {...props} />
-                        ),
-                        // Custom handler for paragraphs (p) to check for the [Image of X] tag
-                        p: ({ children }) => {
-                          // Check if the content is a single string child that starts with the image tag pattern
-                          if (children.length === 1 && typeof children[0] === 'string' && children[0].trim().startsWith('[Image of')) {
-                            // Pass the paragraph children to the custom ImagePlaceholder component
-                            return <ImagePlaceholder>{children}</ImagePlaceholder>;
-                          }
-                          // Default rendering for all other paragraphs
-                          return <p>{children}</p>;
-                        },
-
-                        // Style Tables (Crucial for the "PDF Look")
-                        table: ({node, ...props}) => (
-                            <div className="my-6 w-full overflow-hidden rounded-lg border border-slate-200 shadow-sm">
-                              <table className="w-full text-sm text-left" {...props} />
-                            </div>
-                        ),
-                        thead: ({node, ...props}) => (
-                            <thead className="bg-slate-50 text-slate-700 font-semibold uppercase text-xs" {...props} />
-                        ),
-                        th: ({node, ...props}) => (
-                            <th className="px-6 py-4 border-b border-slate-200 bg-slate-50/50" {...props} />
-                        ),
-                        td: ({node, ...props}) => (
-                            <td className="px-6 py-4 border-b border-slate-100 text-slate-600 align-top" {...props} />
-                        ),
-                        tr: ({node, ...props}) => (
-                            <tr className="hover:bg-slate-50/50 transition-colors even:bg-slate-50/30" {...props} />
-                        ),
-
-                        // Style Lists
-                        ul: ({node, ...props}) => (
-                            <ul className="my-4 space-y-2 list-none pl-0" {...props} />
-                        ),
-                        li: ({node, ...props}) => (
-                            <li className="flex gap-2 items-start text-slate-700">
-                              <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-                              <span>{props.children}</span>
-                            </li>
-                        ),
-
-                        // Style Emphasis (e.g. Recommendations)
-                        strong: ({node, ...props}) => (
-                            <strong className="font-semibold text-slate-900  px-1 rounded" {...props} />
-                        ),
-
-                        // Style Links/Citations
-                        a: ({node, ...props}) => (
-                            <a className="text-emerald-600 hover:text-emerald-700 underline underline-offset-2" {...props} />
-                        ),
-                      }}
+            <div ref={reportRef} className="space-y-6">
+              {reportSections.map((section) => (
+                  <Card
+                      key={section.id}
+                      className="w-full shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-300 rounded-xl overflow-hidden"
                   >
-                    {markdownReport}
-                  </ReactMarkdown>
+                    <CardHeader className="pb-4 pt-5 bg-gradient-to-r from-muted/30 to-white border-b px-6">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-xl font-semibold text-primary flex items-center gap-2">
+                          <FileText className="h-5 w-5 text-blue-600" />
+                          {section.title}
+                        </CardTitle>
 
-                </div>
-              </CardContent>
-            </Card>
+                        {/* Edit Button — only for summaries, hidden in PDF */}
+                        <div className="print:hidden">
+                          {editingSectionId === section.id ? (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                Editing…
+                              </div>
+                          ) : (
+                              !isHideEditIcon &&
+                              section.title.toLowerCase().includes("summary") && (
+                                  <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleEditClick(section)}
+                                      className="text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-md px-2 py-1"
+                                  >
+                                    <Pen className="h-4 w-4 mr-1" />
+                                    Edit
+                                  </Button>
+                              )
+                          )}
+                        </div>
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="pt-5 pb-6 px-6">
+                      {editingSectionId === section.id ? (
+                          <div className="space-y-4 print:hidden">
+                            <Label className="sr-only">Edit Content</Label>
+                            <Textarea
+                                value={tempEditContent}
+                                onChange={(e) => setTempEditContent(e.target.value)}
+                                className="min-h-[220px] font-mono text-sm leading-relaxed border rounded-lg shadow-sm focus:ring-2 focus:ring-primary focus:outline-none"
+                                placeholder="Edit the section summary here..."
+                            />
+
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handleCancelClick}
+                                  className="text-destructive hover:bg-destructive/10"
+                              >
+                                <X className="h-4 w-4 mr-1" />
+                                Cancel
+                              </Button>
+                              <Button
+                                  size="sm"
+                                  onClick={() => handleSaveClick(section.id)}
+                                  className="bg-green-600 hover:bg-green-700 text-white shadow"
+                              >
+                                <Save className="h-4 w-4 mr-1" />
+                                Save
+                              </Button>
+                            </div>
+                          </div>
+                      ) : (
+                          <div className="prose prose-sm max-w-none dark:prose-invert text-slate-700 dark:text-slate-300 leading-relaxed">
+                            <ReactMarkdown
+                                remarkPlugins={[remarkGfm, remarkBreaks]}
+                                components={{
+                                  p: ({ node, ...props }) => (
+                                      <p className="mb-3 leading-relaxed" {...props} />
+                                  ),
+                                  ul: ({ node, ...props }) => (
+                                      <ul className="list-disc pl-5 mb-3 space-y-1.5" {...props} />
+                                  ),
+                                  strong: ({ node, ...props }) => (
+                                      <span className="font-semibold text-slate-900 dark:text-slate-100" {...props} />
+                                  ),
+                                  table: ({ node, ...props }) => (
+                                    <div className="overflow-x-auto my-4 border border-gray-200 rounded-lg">
+                                      <table {...props} />
+                                    </div>
+                                  ),
+                                  thead: ({ node, ...props }) => (
+                                    <thead className="bg-gray-100 border-b text-gray-700 font-semibold" {...props} />
+                                  ),
+                                  tbody: ({ node, ...props }) => (
+                                    <tbody className="border-t border-gray-200" {...props} />
+                                  ),
+                                  th: ({ node, ...props }) => (
+                                    <th className="px-4 py-2 border-b bg-gray-50 text-sm font-semibold text-gray-700" {...props} />
+                                  ),
+                                  td: ({ node, ...props }) => (
+                                    <td className="px-4 py-4 align-top text-sm text-gray-700 whitespace-pre-line break-words" {...props} />
+                                  ),
+                                }}
+                            >
+                              {section.content}
+                            </ReactMarkdown>
+                          </div>
+                      )}
+                    </CardContent>
+                  </Card>
+              ))}
             </div>
           </div>
       )}

@@ -218,6 +218,17 @@ Create a table comparing the options based on the following available data. **Ad
 * **Key Difference:** A column articulating the main financial or capacity difference.
 
 ---
+### **Cyber — Business Interruption (First‑Party Loss) Comparison**
+When analysing the Cyber section, you must specifically compare **Business Interruption (first‑party loss)** items between insurers. Extract and cite all available figures and sub‑limits. Compare the following key elements explicitly:
+* **Business Interruption Limit**
+* **Indemnity Period** (Hiscox often limited — verify if extended in this quote)
+* **Dependent Business Interruption** (coverage and limits)
+* **AICOW (Additional Increased Cost of Working)**
+* **Operational Error Coverage**
+* **System Failure Coverage**
+* **Key Difference:** Provide a short statement summarising the most material difference in BI‑related Cyber coverage.
+
+---
 #### **Section 1 Summary: Financials**
 Provide a **one-sentence summary** of the most critical financial difference between the two quotes (e.g., "Hiscox offers a lower total premium but a significantly higher deductible for Cyber.").
 
