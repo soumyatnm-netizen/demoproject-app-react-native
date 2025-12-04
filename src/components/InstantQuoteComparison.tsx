@@ -656,16 +656,16 @@ const InstantQuoteComparison = () => {
     const html2pdf = (await import("html2pdf.js")).default;
 
     const opt = {
-      margin: [10, 10, 10, 10],
+      margin: [10, 10, 10, 10] as [number, number, number, number],
       filename: `Report_${Date.now()}.pdf`,
-      image: { type: "jpeg", quality: 1.0 },
+      image: { type: "jpeg" as const, quality: 1.0 },
       html2canvas: {
         scale: 4,
         useCORS: true,
         letterRendering: true,
         backgroundColor: "#ffffff",
       },
-      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      jsPDF: { unit: "mm" as const, format: "a4" as const, orientation: "portrait" as const },
     };
 
     html2pdf().set(opt).from(reportRef.current).save();
