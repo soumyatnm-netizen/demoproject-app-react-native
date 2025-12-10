@@ -95,7 +95,7 @@ serve(async (req)=>{
   try {
     console.log('=== Batch Analyze Documents Function Started ===');
     const bodyIn = await req.json();
-    const { documents, client_name, client_ref, industry, jurisdiction, selectedSections, mode } = bodyIn;
+    const { documents, client_name, client_ref, industry, jurisdiction, selectedSections, mode, userName } = bodyIn;
     // Determine output mode: "structured" (JSON), "narrative", or "comparison_report" (Markdown)
     const outputMode = mode || "structured";
     if (!documents || !Array.isArray(documents) || documents.length === 0) {
@@ -165,6 +165,15 @@ serve(async (req)=>{
         error: 'No documents could be fetched'
       });
     }
+
+    // --- Define Static Variables Here ---
+    const REPORT_DATE = new Date().toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric"
+    });
+    const ANALYST_NAME = userName; // Set the Broker/Analyst Name here
+// ------------------------------------
     // STEP 2: Build Prompts based on Output Mode
     let systemPrompt = '';
     let userPrompt = '';
@@ -181,7 +190,7 @@ Your goal is to compare insurance quotes/policies and provide a professional dec
 4. **Citations:** You MUST cite the source document for every key piece of data. Use: "[Source: filename, page number]".
 
 **Required Structure:**
-1. **Title and Header:** Start with a bold title, Client name, Date, and Analyst persona.
+1. **Title and Header:** Start with a bold title, Client name, Date, and Analyst persona. **(The model must generate the header using Client: Sagacity Holdings Limited, Date: ${REPORT_DATE}, and Analyst: ${ANALYST_NAME})**
 2. **Financial Comparison:** Table comparing Total Cost, Net Premium, Admin Fees, and Limits.
 3. **Policy Structure Comparison:** Table comparing high-level structural items like Indemnity Structure (Towers vs. Aggregate) and AI/Emerging Tech coverage.
 4. **Policy Wording Analysis:** Highlight critical clauses (BCP warranties, Jurisdiction exclusions, Conditions Precedent).

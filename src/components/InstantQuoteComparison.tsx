@@ -127,6 +127,7 @@ const InstantQuoteComparison = () => {
     console.log(`[${timestamp}] ${type.toUpperCase()}:`, message);
     setStatusLog((prev) => [...prev, { time: timestamp, message, type }]);
   };
+  let userFullName = ""
 
   useEffect(() => {
     if (markdownReport) {
@@ -190,9 +191,9 @@ const InstantQuoteComparison = () => {
 
   const handleEditClick = (section: ReportSection) => {
     // Allow editing only for Summary sections
-    if (!section.title.toLowerCase().includes("summary")) {
-      return; // Prevent editing for non-summary sections
-    }
+    // if (!section.title.toLowerCase().includes("summary")) {
+    //   return; // Prevent editing for non-summary sections
+    // }
 
     setEditingSectionId(section.id);
     setTempEditContent(section.content);
@@ -373,11 +374,16 @@ const InstantQuoteComparison = () => {
         setProcessingStep(`Processing policy wording ${i + 1} of ${policyWordingDocs.length}...`);
 
         // Get user's company_id
-        const { data: profile } = await supabase.from("profiles").select("company_id").eq("user_id", user.id).single();
+        const { data: profile } = await supabase.from("profiles").select("company_id, first_name, last_name").eq("user_id", user.id).single();
 
         if (!profile?.company_id) {
           throw new Error("User profile or company not found");
         }
+
+        if (profile.first_name || profile.last_name) {
+          userFullName = `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim();
+        }
+
 
         // Upload to storage
         const fileName = `${user.id}/${Date.now()}-${file.name}`;
@@ -526,9 +532,13 @@ const InstantQuoteComparison = () => {
       if (!user) throw new Error("No authenticated user");
 
       // Get user's company_id
-      const { data: profile } = await supabase.from("profiles").select("company_id").eq("user_id", user.id).single();
+      const { data: profile } = await supabase.from("profiles").select("company_id, first_name, last_name").eq("user_id", user.id).single();
 
       if (!profile?.company_id) throw new Error("User profile not found");
+
+      if (profile.first_name || profile.last_name) {
+        userFullName = `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim();
+      }
 
       const allDocs: File[] = [...uploadedQuotes, ...policyWordingDocs];
       const docTypes = [...uploadedQuotes.map(() => "Quote"), ...policyWordingDocs.map(() => "PolicyWording")];
@@ -590,8 +600,9 @@ const InstantQuoteComparison = () => {
         selectedSections: selectedSections,
         mode: "comparison_report", // <--- KEY CHANGE: Request Report Mode
         documents: documentsForBatch,
+        userName: userFullName
       };
-
+      console.log("Payload passing to analyze: ", JSON.stringify(payload));
       addStatusLog(`🧠 Comparing ${documentsForBatch.length} documents...`, "info");
 
       // Call Edge Function
@@ -3032,8 +3043,8 @@ const InstantQuoteComparison = () => {
                       {editingSectionId === section.id ? (
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">Editing…</div>
                       ) : (
-                        !isHideEditIcon &&
-                        section.title.toLowerCase().includes("summary") && (
+                        !isHideEditIcon && (
+                              // section.title.toLowerCase().includes("summary") && (
                           <Button
                             variant="ghost"
                             size="sm"
