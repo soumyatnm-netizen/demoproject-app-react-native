@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,7 +56,7 @@ const BrokerProfile = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
-
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [profileData, setProfileData] = useState({
     first_name: "",
     last_name: "",
@@ -136,6 +136,14 @@ const BrokerProfile = () => {
           push_notifications: true
         }
       });
+
+      // Get public URL after successful upload
+      const { data: signedUrl } = await supabase.storage
+          .from("compass-ai-images")
+          .createSignedUrl(`logo-${user.id}`, 60 * 60 * 24); // 24 hours
+
+      setLogoUrl(signedUrl.signedUrl);
+
     } catch (error) {
       console.error('Error fetching profile:', error);
       toast({
@@ -147,6 +155,39 @@ const BrokerProfile = () => {
       setLoading(false);
     }
   };
+
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    try {
+      // Optional: show loading state here
+
+      const { error: uploadError } = await supabase.storage
+          .from("compass-ai-images")
+          .upload(`logo-${user.id}`, file, { upsert: true }); // <--- this allows overwriting
+
+      console.log("uploadError: ", JSON.stringify(uploadError));
+      if (uploadError) throw uploadError;
+
+      // Get signed URL after successful upload
+      const { data: signedUrl } = await supabase.storage
+          .from("compass-ai-images")
+          .createSignedUrl(`logo-${user.id}`, 60 * 60 * 24); // 24 hours
+
+      setLogoUrl(signedUrl.signedUrl);
+
+      toast({ title: "Company logo updated" });
+    } catch (error) {
+      console.log("Error uploading logo: ", JSON.stringify(error));
+      toast({ title: "Error", description: "Upload failed", variant: "destructive" });
+    }
+  };
+
 
   const handleSave = async () => {
     setSaving(true);
@@ -234,10 +275,41 @@ const BrokerProfile = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">My Profile</h2>
-        <p className="text-muted-foreground">Manage your account settings and preferences</p>
+      <div className="w-full flex items-start justify-between mb-6">
+        {/* Left side */}
+        <div>
+          <h1 className="text-xl font-bold">Manage your account settings and preferences</h1>
+          <p className="text-sm text-muted-foreground">Your personal and company details</p>
+        </div>
+
+        {/* Right side Company logo*/}
+        <div className="flex flex-col items-center">
+          <input
+              id="logo-upload"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleLogoUpload}
+          />
+          <label htmlFor="logo-upload" className="cursor-pointer">
+            <div className="h-20 w-20 rounded-full bg-muted overflow-hidden flex items-center justify-center">
+              {logoUrl && (
+                  <img
+                      src={logoUrl}
+                      alt="Company Logo"
+                      className="h-full w-full object-cover rounded-full"
+                  />
+              )}
+            </div>
+
+            <span className="mt-2 text-xs text-center font-medium text-foreground">
+      Company Logo
+      </span>
+          </label>
+        </div>
+
       </div>
+
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Profile Overview */}
@@ -319,7 +391,7 @@ const BrokerProfile = () => {
                   />
                 </div>
               </div>
-              
+
               <div>
                 <Label htmlFor="company_name">Company/Organisation Name</Label>
                 <Input
@@ -330,7 +402,7 @@ const BrokerProfile = () => {
                 />
                 <p className="text-xs text-muted-foreground mt-1">Contact your administrator to change company assignment</p>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="job_title">Job Title</Label>
@@ -351,7 +423,7 @@ const BrokerProfile = () => {
                   />
                 </div>
               </div>
-              
+
               <div>
                 <Label htmlFor="phone">Phone Number</Label>
                 <Input
@@ -362,7 +434,7 @@ const BrokerProfile = () => {
                   placeholder="+44 20 1234 5678"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="bio">Professional Bio</Label>
                 <Textarea
