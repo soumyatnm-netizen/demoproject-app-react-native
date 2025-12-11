@@ -11,6 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Plus, Building2, Users, Key, Copy, Check, Settings, Mail, Eye, Trash2, Download, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useSuperAdminCheck } from "@/hooks/useSuperAdminCheck";
+import { RedactedText } from "@/utils/piiRedaction";
 
 interface ClientAccountsProps {
   onManageFeatures?: (companyId: string) => void;
@@ -18,6 +20,7 @@ interface ClientAccountsProps {
 
 const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
   const { toast } = useToast();
+  const { isSuperAdmin } = useSuperAdminCheck();
   const [companies, setCompanies] = useState<any[]>([]);
   const [pendingInvites, setPendingInvites] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -534,8 +537,8 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
               <TableBody>
                 {pendingInvites.map((invite) => (
                   <TableRow key={invite.id}>
-                    <TableCell>{invite.email}</TableCell>
-                    <TableCell>{invite.company_name || 'Unknown'}</TableCell>
+                    <TableCell><RedactedText value={invite.email} shouldRedact={isSuperAdmin} /></TableCell>
+                    <TableCell><RedactedText value={invite.company_name || 'Unknown'} shouldRedact={isSuperAdmin} /></TableCell>
                     <TableCell>
                       <Badge variant="outline">{invite.role}</Badge>
                     </TableCell>
@@ -666,9 +669,9 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
                   <TableRow key={company.id}>
                     <TableCell>
                       <div>
-                        <p className="font-medium">{company.name}</p>
+                        <p className="font-medium"><RedactedText value={company.name} shouldRedact={isSuperAdmin} /></p>
                         {company.domain && (
-                          <p className="text-sm text-muted-foreground">{company.domain}</p>
+                          <p className="text-sm text-muted-foreground"><RedactedText value={company.domain} shouldRedact={isSuperAdmin} /></p>
                         )}
                       </div>
                     </TableCell>
@@ -762,7 +765,7 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
           <DialogHeader>
             <DialogTitle>Create Invite</DialogTitle>
             <DialogDescription>
-              Invite a user to {selectedCompany?.name}
+              Invite a user to <RedactedText value={selectedCompany?.name} shouldRedact={isSuperAdmin} />
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -799,7 +802,9 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
       <Dialog open={showCompanyInvitesDialog} onOpenChange={setShowCompanyInvitesDialog}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Pending Invites - {selectedCompany?.name}</DialogTitle>
+            <DialogTitle>
+              Pending Invites - <RedactedText value={selectedCompany?.name} shouldRedact={isSuperAdmin} />
+            </DialogTitle>
             <DialogDescription>
               Active invitations for this company
             </DialogDescription>
@@ -820,7 +825,7 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
               <TableBody>
                 {companyInvites.map((invite) => (
                   <TableRow key={invite.id}>
-                    <TableCell>{invite.email}</TableCell>
+                    <TableCell><RedactedText value={invite.email} shouldRedact={isSuperAdmin} /></TableCell>
                     <TableCell>
                       <Badge variant="outline">{invite.role}</Badge>
                     </TableCell>
@@ -864,7 +869,9 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
       <Dialog open={showCompanyDetailsDialog} onOpenChange={setShowCompanyDetailsDialog}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Company Details - {selectedCompany?.name}</DialogTitle>
+            <DialogTitle>
+              Company Details - <RedactedText value={selectedCompany?.name} shouldRedact={isSuperAdmin} />
+            </DialogTitle>
             <DialogDescription>
               View company information and users
             </DialogDescription>
@@ -874,7 +881,7 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
             <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
               <div>
                 <Label className="text-sm font-medium">Company Name</Label>
-                <p className="text-sm">{selectedCompany?.name}</p>
+                <p className="text-sm"><RedactedText value={selectedCompany?.name} shouldRedact={isSuperAdmin} /></p>
               </div>
               <div>
                 <Label className="text-sm font-medium">Subscription Tier</Label>
@@ -891,7 +898,7 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
               {selectedCompany?.domain && (
                 <div>
                   <Label className="text-sm font-medium">Domain</Label>
-                  <p className="text-sm">{selectedCompany.domain}</p>
+                  <p className="text-sm"><RedactedText value={selectedCompany.domain} shouldRedact={isSuperAdmin} /></p>
                 </div>
               )}
             </div>
@@ -916,11 +923,14 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
                     {companyUsers.map((user) => (
                       <TableRow key={user.user_id}>
                         <TableCell>
-                          {user.first_name && user.last_name 
-                            ? `${user.first_name} ${user.last_name}` 
-                            : 'N/A'}
+                          <RedactedText 
+                            value={user.first_name && user.last_name 
+                              ? `${user.first_name} ${user.last_name}` 
+                              : 'N/A'} 
+                            shouldRedact={isSuperAdmin} 
+                          />
                         </TableCell>
-                        <TableCell>{user.email || 'N/A'}</TableCell>
+                        <TableCell><RedactedText value={user.email || 'N/A'} shouldRedact={isSuperAdmin} /></TableCell>
                         <TableCell>
                           <Badge variant="outline">{user.role}</Badge>
                         </TableCell>
@@ -973,10 +983,10 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
                           </Badge>
                         </TableCell>
                         <TableCell className="max-w-xs truncate">
-                          {doc.name}
+                          <RedactedText value={doc.name} shouldRedact={isSuperAdmin} />
                         </TableCell>
-                        <TableCell>{doc.client || '-'}</TableCell>
-                        <TableCell>{doc.insurer}</TableCell>
+                        <TableCell><RedactedText value={doc.client || '-'} shouldRedact={isSuperAdmin} /></TableCell>
+                        <TableCell><RedactedText value={doc.insurer} shouldRedact={isSuperAdmin} /></TableCell>
                         <TableCell className="text-sm">
                           {doc.premium || '-'}
                         </TableCell>

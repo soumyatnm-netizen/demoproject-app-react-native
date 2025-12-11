@@ -6,10 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FileText, Eye, Download } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useSuperAdminCheck } from "@/hooks/useSuperAdminCheck";
+import { RedactedText } from "@/utils/piiRedaction";
 
 const GlobalReports = () => {
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { isSuperAdmin } = useSuperAdminCheck();
 
   useEffect(() => {
     loadReports();
@@ -73,17 +76,22 @@ const GlobalReports = () => {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <FileText className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{report.report_title}</span>
+                        <RedactedText value={report.report_title} shouldRedact={isSuperAdmin} className="font-medium" />
                       </div>
                     </TableCell>
-                    <TableCell>{report.client_name}</TableCell>
                     <TableCell>
-                      {report.broker_companies?.name || 'N/A'}
+                      <RedactedText value={report.client_name} shouldRedact={isSuperAdmin} />
                     </TableCell>
                     <TableCell>
-                      {report.profiles ? 
-                        `${report.profiles.first_name} ${report.profiles.last_name}` : 
-                        'Unknown'}
+                      <RedactedText value={report.broker_companies?.name || 'N/A'} shouldRedact={isSuperAdmin} />
+                    </TableCell>
+                    <TableCell>
+                      {report.profiles ? (
+                        <RedactedText 
+                          value={`${report.profiles.first_name} ${report.profiles.last_name}`} 
+                          shouldRedact={isSuperAdmin} 
+                        />
+                      ) : 'Unknown'}
                     </TableCell>
                     <TableCell>
                       <Badge variant={report.report_status === 'final' ? 'default' : 'secondary'}>

@@ -5,6 +5,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, FileText, TrendingUp, Clock, Activity, BarChart3 } from "lucide-react";
 import { Bar, BarChart, Line, LineChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { useSuperAdminCheck } from "@/hooks/useSuperAdminCheck";
+import { REDACTED_TEXT } from "@/utils/piiRedaction";
 
 const SystemAnalytics = () => {
   const [stats, setStats] = useState({
@@ -21,7 +23,7 @@ const SystemAnalytics = () => {
   const [activityData, setActivityData] = useState<any[]>([]);
   const [brokerActivity, setBrokerActivity] = useState<any[]>([]);
   const [underwriterActivity, setUnderwriterActivity] = useState<any[]>([]);
-
+  const { isSuperAdmin } = useSuperAdminCheck();
   useEffect(() => {
     loadAnalytics();
   }, []);
@@ -81,7 +83,11 @@ const SystemAnalytics = () => {
 
       const topBrokers = Object.values(brokerCounts || {})
         .sort((a: any, b: any) => b.count - a.count)
-        .slice(0, 10);
+        .slice(0, 10)
+        .map((broker: any, index: number) => ({
+          ...broker,
+          displayName: broker.name, // Keep original for possible future use
+        }));
 
       // Underwriter activity (top 10)
       const { data: underwriterData } = await supabase
@@ -279,7 +285,13 @@ const SystemAnalytics = () => {
                 className="h-[400px]"
               >
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={brokerActivity} layout="vertical">
+                  <BarChart 
+                    data={brokerActivity.map((b, i) => ({
+                      ...b,
+                      name: isSuperAdmin ? `Broker ${i + 1}` : b.name
+                    }))} 
+                    layout="vertical"
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" />
                     <YAxis dataKey="name" type="category" width={150} />
