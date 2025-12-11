@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Users, BarChart3, Package, FileText, LogOut } from "lucide-react";
+import { Building2, Users, BarChart3, Package, FileText, LogOut, ShieldAlert } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ClientAccounts from "./ClientAccounts";
 import FeaturesManagement from "./FeaturesManagement";
@@ -12,6 +12,7 @@ import SystemAnalytics from "./SystemAnalytics";
 import MarketplaceInsights from "./MarketplaceInsights";
 import GlobalReports from "./GlobalReports";
 import coverCompassLogo from "@/assets/covercompass-logo-new.png";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const CCStaffDashboard = () => {
   const navigate = useNavigate();
@@ -102,6 +103,14 @@ const CCStaffDashboard = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
+        {/* Privacy Notice for Super Admin */}
+        <Alert className="mb-6 border-destructive/50 bg-destructive/10">
+          <ShieldAlert className="h-4 w-4 text-destructive" />
+          <AlertDescription className="text-destructive">
+            <strong>Privacy Mode Active:</strong> Client PII (names, emails, addresses) is redacted in this view to protect user privacy.
+          </AlertDescription>
+        </Alert>
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-5 lg:w-auto">
             <TabsTrigger value="accounts" className="gap-2">
