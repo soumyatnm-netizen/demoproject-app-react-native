@@ -21,6 +21,7 @@ interface ClientAccountsProps {
 const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
   const { toast } = useToast();
   const { isSuperAdmin } = useSuperAdminCheck();
+  const forceDisableSuperAdmin = false
   const [companies, setCompanies] = useState<any[]>([]);
   const [pendingInvites, setPendingInvites] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,17 +39,17 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteCompanyId, setDeleteCompanyId] = useState<string | null>(null);
   const [showDeleteCompanyDialog, setShowDeleteCompanyDialog] = useState(false);
-  
+
   // Form states
   const [companyName, setCompanyName] = useState("");
   const [companyDomain, setCompanyDomain] = useState("");
   const [subscriptionTier, setSubscriptionTier] = useState("basic");
   const [maxUsers, setMaxUsers] = useState("10");
-  
+
   // Invite form states
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("broker");
-  
+
   useEffect(() => {
     loadCompanies();
     loadPendingInvites();
@@ -218,7 +219,7 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
             role: inviteRole,
           },
         });
-        
+
         toast({
           title: "Success",
           description: `Invitation sent to ${email}`,
@@ -436,7 +437,7 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
 
       // Sort by date
       allDocs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      
+
       setCompanyDocuments(allDocs);
     } catch (error) {
       console.error('Error loading company documents:', error);
@@ -514,8 +515,8 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
         <CardHeader>
           <CardTitle>Pending Invitations</CardTitle>
           <CardDescription>
-            {pendingInvites.length === 0 
-              ? "No pending invitations at the moment" 
+            {pendingInvites.length === 0
+              ? "No pending invitations at the moment"
               : `${pendingInvites.length} active invite(s) waiting to be used`}
           </CardDescription>
         </CardHeader>
@@ -537,8 +538,9 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
               <TableBody>
                 {pendingInvites.map((invite) => (
                   <TableRow key={invite.id}>
-                    <TableCell><RedactedText value={invite.email} shouldRedact={isSuperAdmin} /></TableCell>
-                    <TableCell><RedactedText value={invite.company_name || 'Unknown'} shouldRedact={isSuperAdmin} /></TableCell>
+                    <TableCell><RedactedText value={invite.email} shouldRedact={forceDisableSuperAdmin} /></TableCell>
+                    <TableCell><RedactedText value={invite.company_name || 'Unknown'} shouldRedact={forceDisableSuperAdmin} /></TableCell>
+
                     <TableCell>
                       <Badge variant="outline">{invite.role}</Badge>
                     </TableCell>
@@ -669,7 +671,7 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
                   <TableRow key={company.id}>
                     <TableCell>
                       <div>
-                        <p className="font-medium"><RedactedText value={company.name} shouldRedact={isSuperAdmin} /></p>
+                        <p className="font-medium"><RedactedText value={company.name} shouldRedact={forceDisableSuperAdmin} /></p>
                         {company.domain && (
                           <p className="text-sm text-muted-foreground"><RedactedText value={company.domain} shouldRedact={isSuperAdmin} /></p>
                         )}
@@ -923,11 +925,11 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
                     {companyUsers.map((user) => (
                       <TableRow key={user.user_id}>
                         <TableCell>
-                          <RedactedText 
-                            value={user.first_name && user.last_name 
-                              ? `${user.first_name} ${user.last_name}` 
-                              : 'N/A'} 
-                            shouldRedact={isSuperAdmin} 
+                          <RedactedText
+                            value={user.first_name && user.last_name
+                              ? `${user.first_name} ${user.last_name}`
+                              : 'N/A'}
+                            shouldRedact={isSuperAdmin}
                           />
                         </TableCell>
                         <TableCell><RedactedText value={user.email || 'N/A'} shouldRedact={isSuperAdmin} /></TableCell>
@@ -940,7 +942,7 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {user.last_login_at 
+                          {user.last_login_at
                             ? new Date(user.last_login_at).toLocaleDateString()
                             : 'Never'}
                         </TableCell>
