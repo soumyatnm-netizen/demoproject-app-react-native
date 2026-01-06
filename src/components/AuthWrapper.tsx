@@ -241,6 +241,24 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
         }
       } else {
         console.log('Profile already exists:', existingProfile);
+        
+        // If profile exists but has no company_id, and user signed up with company code, update it
+        if (!existingProfile.company_id && user.user_metadata?.company_id) {
+          console.log('Updating existing profile with company_id from metadata:', user.user_metadata.company_id);
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ 
+              company_id: user.user_metadata.company_id,
+              role: 'broker'
+            })
+            .eq('user_id', user.id);
+          
+          if (updateError) {
+            console.error('Error updating profile with company_id:', updateError);
+          } else {
+            console.log('Profile updated with company_id successfully');
+          }
+        }
       }
     } catch (error) {
       console.error('Error in createOrUpdateProfile:', error);
