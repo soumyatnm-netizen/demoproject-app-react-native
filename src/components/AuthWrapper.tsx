@@ -225,7 +225,7 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
         
         const { error } = await supabase
           .from('profiles')
-          .insert(profileData);
+          .upsert(profileData, { onConflict: 'user_id' });
 
         if (error) {
           console.error('Error creating profile:', error);
