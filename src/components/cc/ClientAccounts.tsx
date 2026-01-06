@@ -33,12 +33,16 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
   const [companyInvites, setCompanyInvites] = useState<any[]>([]);
   const [companyUsers, setCompanyUsers] = useState<any[]>([]);
   const [companyDocuments, setCompanyDocuments] = useState<any[]>([]);
+  const [unassignedUsers, setUnassignedUsers] = useState<any[]>([]);
   const [loadingDocuments, setLoadingDocuments] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [deleteInviteId, setDeleteInviteId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteCompanyId, setDeleteCompanyId] = useState<string | null>(null);
   const [showDeleteCompanyDialog, setShowDeleteCompanyDialog] = useState(false);
+  const [showAssignUserDialog, setShowAssignUserDialog] = useState(false);
+  const [selectedUserToAssign, setSelectedUserToAssign] = useState<string>("");
+  const [assigningUser, setAssigningUser] = useState(false);
 
   // Form states
   const [companyName, setCompanyName] = useState("");
@@ -370,6 +374,57 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
     }
   };
 
+  const loadUnassignedUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name, role, portal_access, created_at')
+        .is('company_id', null)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setUnassignedUsers(data || []);
+    } catch (error) {
+      console.error('Error loading unassigned users:', error);
+    }
+  };
+
+  const assignUserToCompany = async () => {
+    if (!selectedCompany || !selectedUserToAssign) return;
+
+    setAssigningUser(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ company_id: selectedCompany.id })
+        .eq('user_id', selectedUserToAssign);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "User assigned to company successfully",
+      });
+
+      setShowAssignUserDialog(false);
+      setSelectedUserToAssign("");
+      
+      // Refresh data
+      await Promise.all([
+        loadCompanyUsers(selectedCompany.id),
+        loadUnassignedUsers()
+      ]);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setAssigningUser(false);
+    }
+  };
+
   const loadCompanyDocuments = async (companyId: string) => {
     setLoadingDocuments(true);
     try {
@@ -503,7 +558,8 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
     setSelectedCompany(company);
     await Promise.all([
       loadCompanyUsers(company.id),
-      loadCompanyDocuments(company.id)
+      loadCompanyDocuments(company.id),
+      loadUnassignedUsers()
     ]);
     setShowCompanyDetailsDialog(true);
   };
@@ -907,7 +963,18 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
 
             {/* Users List */}
             <div>
-              <h3 className="text-lg font-semibold mb-4">Active Users ({companyUsers.length})</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Active Users ({companyUsers.length})</h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAssignUserDialog(true)}
+                  disabled={unassignedUsers.length === 0}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Assign Existing User
+                </Button>
+              </div>
               {companyUsers.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">No users yet</p>
               ) : (
@@ -1063,6 +1130,53 @@ const ClientAccounts = ({ onManageFeatures }: ClientAccountsProps = {}) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Assign User Dialog */}
+      <Dialog open={showAssignUserDialog} onOpenChange={setShowAssignUserDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign User to Company</DialogTitle>
+            <DialogDescription>
+              Select an existing user to assign to {selectedCompany?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {unassignedUsers.length === 0 ? (
+              <p className="text-center text-muted-foreground py-4">
+                No unassigned users available
+              </p>
+            ) : (
+              <>
+                <div>
+                  <Label htmlFor="userToAssign">Select User</Label>
+                  <Select value={selectedUserToAssign} onValueChange={setSelectedUserToAssign}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a user" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {unassignedUsers.map((user) => (
+                        <SelectItem key={user.user_id} value={user.user_id}>
+                          {user.first_name && user.last_name 
+                            ? `${user.first_name} ${user.last_name}` 
+                            : `User (${user.user_id.slice(0, 8)}...)`}
+                          {user.role && ` - ${user.role}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button 
+                  onClick={assignUserToCompany} 
+                  className="w-full"
+                  disabled={!selectedUserToAssign || assigningUser}
+                >
+                  {assigningUser ? "Assigning..." : "Assign User"}
+                </Button>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
