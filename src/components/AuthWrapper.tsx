@@ -151,114 +151,137 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
     });
 
     try {
-      // Check if profile already exists
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
+      // Build profile data based on signup type
+      let profileData: any = {
+        user_id: user.id,
+        subscription_tier: 'basic',
+      };
 
-      if (!existingProfile) {
-        let profileData: any = {
-          user_id: user.id,
-          subscription_tier: 'basic',
-        };
+      // If user is signing up with an invite code
+      if (inviteInfo) {
+        console.log('Processing invite signup:', inviteInfo);
+        profileData.company_id = inviteInfo.company_id;
+        profileData.role = inviteInfo.role;
+        profileData.invited_by = inviteInfo.invited_by;
+        profileData.invited_at = new Date().toISOString();
 
-        // If user is signing up with an invite code
-        if (inviteInfo) {
-          console.log('Processing invite signup:', inviteInfo);
-          profileData.company_id = inviteInfo.company_id;
-          profileData.role = inviteInfo.role;
-          profileData.invited_by = inviteInfo.invited_by;
-          profileData.invited_at = new Date().toISOString();
-
-          // Mark invite as used
-          await supabase
-            .from('company_invites')
-            .update({
-              used_at: new Date().toISOString(),
-              used_by: user.id
+        // Mark invite as used
+        await supabase
+          .from('company_invites')
+          .update({
+            used_at: new Date().toISOString(),
+            used_by: user.id
+          })
+          .eq('invite_code', inviteInfo.invite_code);
+      }
+      // If user is signing up with a company code
+      else if (companyInfo || user.user_metadata?.company_id) {
+        const companyId = companyInfo?.company_id || user.user_metadata?.company_id;
+        console.log('Processing company code signup:', { companyInfo, metadataCompanyId: user.user_metadata?.company_id });
+        profileData.company_id = companyId;
+        profileData.role = 'broker'; // Default role for company code signups
+      }
+      // If user is admin creating a company
+      else if (adminData) {
+        console.log('Processing admin signup:', adminData);
+        try {
+          // First create the company
+          const { data: newCompany, error: companyError } = await supabase
+            .from('broker_companies')
+            .insert({
+              name: adminData.companyName,
+              domain: adminData.companyDomain || null,
             })
-            .eq('invite_code', inviteInfo.invite_code);
-        }
-        // If user is signing up with a company code
-        else if (companyInfo || user.user_metadata?.company_id) {
-          const companyId = companyInfo?.company_id || user.user_metadata?.company_id;
-          console.log('Processing company code signup:', { companyInfo, metadataCompanyId: user.user_metadata?.company_id });
-          profileData.company_id = companyId;
-          profileData.role = 'broker'; // Default role for company code signups
-        }
-        // If user is admin creating a company
-        else if (adminData) {
-          console.log('Processing admin signup:', adminData);
-          try {
-            // First create the company
-            const { data: newCompany, error: companyError } = await supabase
-              .from('broker_companies')
-              .insert({
-                name: adminData.companyName,
-                domain: adminData.companyDomain || null,
-              })
-              .select()
-              .single();
+            .select()
+            .single();
 
-            if (companyError) {
-              console.error('Company creation error:', companyError);
-              throw companyError;
-            }
-
-            console.log('Company created successfully:', newCompany);
-
-            profileData.company_id = newCompany.id;
-            profileData.role = 'company_admin';
-            profileData.first_name = adminData.firstName;
-            profileData.last_name = adminData.lastName;
-            profileData.job_title = adminData.jobTitle;
-            profileData.company_name = adminData.companyName;
-          } catch (companyCreationError) {
-            console.error('Failed to create company:', companyCreationError);
-            throw companyCreationError;
+          if (companyError) {
+            console.error('Company creation error:', companyError);
+            throw companyError;
           }
-        }
 
-        console.log('Creating profile with data:', profileData);
-        
-        const { error } = await supabase
+          console.log('Company created successfully:', newCompany);
+
+          profileData.company_id = newCompany.id;
+          profileData.role = 'company_admin';
+          profileData.first_name = adminData.firstName;
+          profileData.last_name = adminData.lastName;
+          profileData.job_title = adminData.jobTitle;
+          profileData.company_name = adminData.companyName;
+        } catch (companyCreationError) {
+          console.error('Failed to create company:', companyCreationError);
+          throw companyCreationError;
+        }
+      }
+
+      console.log('Attempting to create/update profile with data:', profileData);
+
+      // First try to update existing profile (handles race conditions where profile was auto-created)
+      const { data: existingProfile, error: selectError } = await supabase
+        .from('profiles')
+        .select('id, company_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (existingProfile) {
+        // Profile exists - update it with new data
+        console.log('Profile exists, updating with:', profileData);
+        const { error: updateError } = await supabase
           .from('profiles')
-          .upsert(profileData, { onConflict: 'user_id' });
+          .update({
+            company_id: profileData.company_id,
+            role: profileData.role,
+            first_name: profileData.first_name,
+            last_name: profileData.last_name,
+            job_title: profileData.job_title,
+            company_name: profileData.company_name,
+            invited_by: profileData.invited_by,
+            invited_at: profileData.invited_at,
+          })
+          .eq('user_id', user.id);
 
-        if (error) {
-          console.error('Error creating profile:', error);
-          throw error;
+        if (updateError) {
+          console.error('Error updating existing profile:', updateError);
+          // Don't throw - profile exists, just couldn't update some fields
         } else {
-          console.log('Profile created successfully');
-          if (adminData) {
-            toast({
-              title: "Company Created!",
-              description: `${adminData.companyName} has been set up successfully. You can now invite team members.`,
-            });
-          }
+          console.log('Profile updated successfully');
         }
       } else {
-        console.log('Profile already exists:', existingProfile);
-        
-        // If profile exists but has no company_id, and user signed up with company code, update it
-        if (!existingProfile.company_id && user.user_metadata?.company_id) {
-          console.log('Updating existing profile with company_id from metadata:', user.user_metadata.company_id);
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ 
-              company_id: user.user_metadata.company_id,
-              role: 'broker'
-            })
-            .eq('user_id', user.id);
-          
-          if (updateError) {
-            console.error('Error updating profile with company_id:', updateError);
+        // Profile doesn't exist - create it
+        console.log('Creating new profile');
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert(profileData);
+
+        if (insertError) {
+          // If insert fails due to duplicate, try update instead
+          if (insertError.code === '23505') {
+            console.log('Insert failed with duplicate, attempting update');
+            const { error: updateError } = await supabase
+              .from('profiles')
+              .update({
+                company_id: profileData.company_id,
+                role: profileData.role,
+              })
+              .eq('user_id', user.id);
+            
+            if (updateError) {
+              console.error('Fallback update also failed:', updateError);
+            }
           } else {
-            console.log('Profile updated with company_id successfully');
+            console.error('Error creating profile:', insertError);
+            throw insertError;
           }
+        } else {
+          console.log('Profile created successfully');
         }
+      }
+
+      if (adminData) {
+        toast({
+          title: "Company Created!",
+          description: `${adminData.companyName} has been set up successfully. You can now invite team members.`,
+        });
       }
     } catch (error) {
       console.error('Error in createOrUpdateProfile:', error);
