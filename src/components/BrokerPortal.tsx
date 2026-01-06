@@ -227,7 +227,7 @@ const BrokerPortal = ({ onBack }: BrokerPortalProps) => {
           </TabsList>
 
           <TabsContent value="instant-comparison">
-            {hasFeature('quote_comparison') || hasFeature('document_processing') ? (
+            {hasFeature('instant_comparison') ? (
               <InstantQuoteComparison />
             ) : (
               <ComingSoonAlert featureName="Instant Quote Comparison" />
