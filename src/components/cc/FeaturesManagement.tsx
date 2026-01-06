@@ -168,11 +168,12 @@ const FeaturesManagement = ({ selectedCompanyId }: { selectedCompanyId?: string 
               </div>
 
               <div className="space-y-3">
-                {AVAILABLE_FEATURES.map((feature) => {
+              {AVAILABLE_FEATURES.map((feature) => {
                   const featureRecord = features.find(f => f.feature === feature.id);
                   // Check if there's a pending change, otherwise use current state
+                  // Default to FALSE if no record exists (matches useFeatureAccess hook behavior)
                   const hasPendingChange = pendingChanges.has(feature.id);
-                  const currentEnabled = featureRecord ? featureRecord.enabled : true;
+                  const currentEnabled = featureRecord ? featureRecord.enabled : false;
                   const isEnabled = hasPendingChange ? pendingChanges.get(feature.id)! : currentEnabled;
 
                   return (
