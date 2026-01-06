@@ -392,14 +392,22 @@ const InstantQuoteComparison = () => {
         const file = policyWordingDocs[i];
         setProcessingStep(`Processing policy wording ${i + 1} of ${policyWordingDocs.length}...`);
 
-        // Get user's company_id
-        const { data: profile } = await supabase.from("profiles").select("company_id, first_name, last_name").eq("user_id", user.id).single();
+        // Get user's company_id and company name
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("company_id, first_name, last_name, broker_companies(name)")
+          .eq("user_id", user.id)
+          .single();
 
         if (!profile?.company_id) {
           throw new Error("User profile or company not found");
         }
 
-        if (profile.first_name || profile.last_name) {
+        // Use company name for Analyst field, fallback to user's full name
+        const companyName = (profile.broker_companies as any)?.name;
+        if (companyName) {
+          userFullName = companyName;
+        } else if (profile.first_name || profile.last_name) {
           userFullName = `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim();
         }
 
@@ -550,12 +558,20 @@ const InstantQuoteComparison = () => {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("No authenticated user");
 
-      // Get user's company_id
-      const { data: profile } = await supabase.from("profiles").select("company_id, first_name, last_name").eq("user_id", user.id).single();
+      // Get user's company_id and company name for Analyst field
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_id, first_name, last_name, broker_companies(name)")
+        .eq("user_id", user.id)
+        .single();
 
       if (!profile?.company_id) throw new Error("User profile not found");
 
-      if (profile.first_name || profile.last_name) {
+      // Use company name for Analyst field, fallback to user's full name
+      const companyName = (profile.broker_companies as any)?.name;
+      if (companyName) {
+        userFullName = companyName;
+      } else if (profile.first_name || profile.last_name) {
         userFullName = `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim();
       }
 
