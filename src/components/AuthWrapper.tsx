@@ -182,9 +182,10 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
             .eq('invite_code', inviteInfo.invite_code);
         }
         // If user is signing up with a company code
-        else if (companyInfo) {
-          console.log('Processing company code signup:', companyInfo);
-          profileData.company_id = companyInfo.company_id;
+        else if (companyInfo || user.user_metadata?.company_id) {
+          const companyId = companyInfo?.company_id || user.user_metadata?.company_id;
+          console.log('Processing company code signup:', { companyInfo, metadataCompanyId: user.user_metadata?.company_id });
+          profileData.company_id = companyId;
           profileData.role = 'broker'; // Default role for company code signups
         }
         // If user is admin creating a company
@@ -399,6 +400,8 @@ const AuthWrapper = ({ children, onBack }: AuthWrapperProps) => {
             data: {
               invite_code: inviteCode || null,
               company_code: companyCode || null,
+              company_id: companyData?.company_id || null,
+              company_name: companyData?.company_name || null,
               is_admin_signup: isAdminSignUp || false,
               signup_type: signupType
             }
