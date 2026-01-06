@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 const AVAILABLE_FEATURES = [
   { id: 'document_processing', name: 'Document Processing' },
   { id: 'quote_comparison', name: 'Quote Comparison' },
+  { id: 'instant_comparison', name: 'Instant Comparison' },
   { id: 'market_intelligence', name: 'Market Intelligence' },
   { id: 'placement_tracking', name: 'Placement Tracking' },
   { id: 'underwriter_matching', name: 'Underwriter Matching' },
